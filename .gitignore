@@ -1,0 +1,3 @@
+cjit
+*.o
+src/embed*
