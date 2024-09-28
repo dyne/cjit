@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
   const char *code_path = argv[0];
-  _err("cjit to execute code: %s",code_path);
+  _err("CJIT %s",VERSION);
   TCC = tcc_new();
   if (!TCC) {
     _err("Could not initialize tcc");
@@ -107,6 +107,8 @@ int main(int argc, char **argv) {
   }
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
+
+  _err("Source to execute: %s",code_path);
   char *code = file_load(code_path);
   if(!code) {
     _err("File not found: %s",code_path);
@@ -114,7 +116,7 @@ int main(int argc, char **argv) {
   }
   if (tcc_compile_string(TCC, code) == -1) return 1;
   free(code); // safe: bytecode compiled is in TCC now
-  _err("Source compiled successfully");
+  _err("Compilation successful");
 
   // simple temporary exports for hello world
   // tcc_add_symbol(TCC, "exit", &return);
@@ -141,6 +143,7 @@ int main(int argc, char **argv) {
     goto endgame;
   }
 
+  _err("Execution start\n---");
   // run the code
   res = _main(argc, argv);
 
@@ -151,6 +154,6 @@ int main(int argc, char **argv) {
     // _err("remove tmpdir");
     rm_recursive(tmpdir);
   }
-
+  _err("---\nExecution completed");
   exit(res);
 }

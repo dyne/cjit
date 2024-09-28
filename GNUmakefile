@@ -6,7 +6,7 @@ CURRENT_YEAR := $(shell date +%Y)
 
 cc := musl-gcc
 cflags := -static
-# cflags += -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
+cflags += -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
 cflags += -Og -ggdb -DDEBUG=1 -Wall -Wextra -pedantic
 cflags += -Isrc -Ilib/tinycc -DARCH=\"MUSL\"
 
