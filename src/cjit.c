@@ -227,6 +227,7 @@ int main(int argc, char **argv) {
   tcc_add_symbol(TCC, "stdout", &stdout);
   tcc_add_symbol(TCC, "stderr", &stderr);
   tcc_add_symbol(TCC, "fprintf", &fprintf);
+  tcc_add_symbol(TCC, "printf", &printf);
 
   if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
     goto endgame;
