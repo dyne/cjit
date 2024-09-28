@@ -1,0 +1,11 @@
+Files: src/*
+Copyright: 2024 Dyne.org foundation
+License: GPL-3.0-or-later
+
+Files: lib/tinycc/*
+Copyright: 2001-2004 Fabrice Bellard
+License: LGPL-2.1-or-later
+
+Files: lib/tinycc/include/stdatomic.h
+Copyright: 2003-2024 LLVM Project
+License: LLVM-exception
