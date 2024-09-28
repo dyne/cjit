@@ -2,6 +2,14 @@ Files: src/*
 Copyright: 2024 Dyne.org foundation
 License: GPL-3.0-or-later
 
+Files: src/microtar*
+Copyright: 2017 rxi
+License: MIT
+
+Files: src/cflag*
+Copyright: 2020 Adrian Perez de Castro
+License: MIT
+
 Files: lib/tinycc/*
 Copyright: 2001-2004 Fabrice Bellard
 License: LGPL-2.1-or-later
