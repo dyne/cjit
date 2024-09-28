@@ -21,9 +21,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include <cflag.h>
 #include <libtcc.h>
+
+// from embed-libtcc1 generated from lib/tinycc/libtcc1.a
+extern char *libtcc1;
+extern unsigned int libtcc1_len;
 
 // from file.c
 extern long  file_size(const char *filename);
@@ -68,7 +73,7 @@ int main(int argc, char **argv) {
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
   //// TCC DEFAULT PATHS
-  tcc_set_lib_path(TCC,"lib/tinycc"); // inside zenroom source
+//  tcc_set_lib_path(TCC,"lib/tinycc"); // inside zenroom source
   tcc_add_library_path(TCC,"/lib/x86_64-linux-musl"); // devuan default
   tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl"); // devuan
   tcc_add_include_path(TCC,"src"); // devuan
@@ -96,6 +101,29 @@ int main(int argc, char **argv) {
   tcc_add_symbol(TCC, "stdout", &stdout);
   tcc_add_symbol(TCC, "stderr", &stderr);
   tcc_add_symbol(TCC, "fprintf", &fprintf);
+
+  char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
+  char *tmpdir = mkdtemp(tmptemplate);
+  if(!tmpdir) {
+    _err("Error creating temp dir %s: %s",tmptemplate,strerror(errno));
+    goto endgame;
+  }
+  _err("tempdir: %s",tmpdir);
+  char libtcc1_path[256];
+  snprintf(libtcc1_path,255,"%s/libtcc1.a",tmpdir);
+  FILE *libtcc1_fd = fopen(libtcc1_path,"w");
+  if(!libtcc1_fd) {
+    _err("Error writing file %s: %s",libtcc1_path,strerror(errno));
+    goto endgame;
+  }
+  size_t libtcc1_written = fwrite(&libtcc1,1,libtcc1_len,libtcc1_fd);
+  fclose(libtcc1_fd);
+  if(libtcc1_written != libtcc1_len) {
+    _err("Error creating temporary libtcc1.a file");
+    _err("%s",strerror(errno));
+    goto endgame;
+  }
+  tcc_add_library_path(TCC,tmpdir);
 
   // relocate the code
   if (tcc_relocate(TCC) < 0) {

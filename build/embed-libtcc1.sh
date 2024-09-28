@@ -1,7 +1,8 @@
 #!/bin/sh
 
 lib=lib/tinycc/libtcc1.a
-dst=src/embed_libtcc1.c
+dst=src/embed-libtcc1.c
+
 [ -r $lib ] || {
   >&2 echo "Error not found: $lib"
   exit 1

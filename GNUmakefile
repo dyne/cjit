@@ -11,7 +11,7 @@ cflags += -Og -ggdb -DDEBUG=1 -Wall -Wextra -pedantic
 cflags += -Isrc -Ilib/tinycc -DARCH=\"MUSL\"
 
 SOURCES := src/io.o src/file.o src/cflag.o \
-	src/cjit.o
+	src/cjit.o src/embed-libtcc1.o
 
 ldadd := lib/tinycc/libtcc.a
 
@@ -32,7 +32,6 @@ lib/tinycc/libtcc.a:
 clean:
 	${MAKE} -C lib/tinycc clean distclean
 	${MAKE} -C src clean
-	rm -f src/embed-*.c
 
 .c.o:
 	$(cc) \
