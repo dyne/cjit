@@ -127,7 +127,8 @@ static int cjit_cli(TCCState *TCC)
             }
             free(line);
             line = NULL;
-            strcat(code, "\n}\n");
+            if (isatty(fileno(stdin)))
+                strcat(code, "\n}\n");
 
             // run the code from main
 #ifdef VERBOSE_CLI
