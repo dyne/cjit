@@ -19,6 +19,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <errno.h>
+
+#include <ftw.h> // POSIX
+
+extern void _err(const char *fmt, ...);
 
 // Function to get the length of a file in bytes
 long file_size(const char *filename) {
@@ -57,4 +64,45 @@ char* file_load(const char *filename) {
     fclose(file);
 
     return contents;
+}
+
+bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
+  FILE *fd;
+  size_t written;
+  char fullpath[256];
+  snprintf(fullpath,255,"%s/%s",path,filename);
+  fd = fopen(fullpath,"w");
+  if(!fd) {
+    _err("Error: fopen file %s",fullpath);
+    _err("%s",strerror(errno));
+    return false;
+  }
+  written = fwrite(buf,1,len,fd);
+  fclose(fd);
+  if(written != len) {
+    _err("Error: fwrite file %s",fullpath);
+    _err("%s",strerror(errno));
+    return false;
+  }
+  return true;
+}
+
+
+static int rm_ftw(const char *pathname,
+                  const struct stat *sbuf,
+                  int type, struct FTW *ftwb) {
+  if(remove(pathname) < 0) {
+        _err("Error: remove path %s",pathname);
+        _err("%s",strerror(errno));
+        return -1;
+  }
+  return 0;
+}
+bool rm_recursive(char *path) {
+  if (nftw(path, rm_ftw, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS) < 0) {
+    _err("Error: nftw path %s",path);
+    _err("%s",strerror(errno));
+        return false;
+  }
+  return true;
 }

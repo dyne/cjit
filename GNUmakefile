@@ -11,7 +11,7 @@ cflags += -Og -ggdb -DDEBUG=1 -Wall -Wextra -pedantic
 cflags += -Isrc -Ilib/tinycc -DARCH=\"MUSL\"
 
 SOURCES := src/io.o src/file.o src/cflag.o \
-	src/cjit.o src/embed-libtcc1.o
+	src/cjit.o src/embed-libtcc1.o src/embed-musl-libc.o
 
 ldadd := lib/tinycc/libtcc.a
 
@@ -20,14 +20,19 @@ all: deps cjit
 cjit: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldadd}
 
-deps: lib/tinycc/libtcc.a
+deps: lib/tinycc/libtcc.a src/embed-musl-libc.c src/embed-libtcc1.c
+
+src/embed-musl-libc.c:
+	sh build/embed-musl-libc.sh
+
+src/embed-libtcc1.c:
+	sh build/embed-libtcc1.sh
 
 lib/tinycc/libtcc.a:
 	cd lib/tinycc && ./configure \
 		--config-musl --cc=musl-gcc --enable-static --extra-cflags=-static \
 		--extra-ldflags=-static --debug \
 	&& ${MAKE} libtcc.a libtcc1.a
-	sh build/embed-libtcc1.sh
 
 clean:
 	${MAKE} -C lib/tinycc clean distclean
