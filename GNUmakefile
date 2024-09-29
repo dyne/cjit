@@ -34,6 +34,9 @@ lib/tinycc/libtcc.a:
 		--extra-ldflags=-static --debug \
 	&& ${MAKE} libtcc.a libtcc1.a
 
+check:
+	./cjit test/hello.c
+
 clean:
 	${MAKE} -C lib/tinycc clean distclean
 	${MAKE} -C src clean
