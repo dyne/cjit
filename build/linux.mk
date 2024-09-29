@@ -2,6 +2,7 @@ include build/init.mk
 
 cc := gcc
 cflags += -DLIBC_GNU -D_GNU_SOURCE
+ldadd+=lib/tinycc/libtcc.a
 
 all: deps cjit
 

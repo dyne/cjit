@@ -2,9 +2,9 @@ include build/init.mk
 
 cc := musl-gcc
 cflags += -static -Os
-cflags += -Isrc -Ilib/tinycc -DLIBC_MUSL
+cflags += -Isrc -Ilib/tinycc -DLIBC_MUSL -nostdlib
 
-ldadd := lib/tinycc/libtcc.a -lc
+ldadd := lib/tinycc/libtcc.a /usr/lib/x86_64-linux-musl/crt1.o /usr/lib/x86_64-linux-musl/libc.a
 
 all: deps cjit
 

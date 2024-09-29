@@ -172,8 +172,6 @@ static int cjit_cli(TCCState *TCC)
 int main(int argc, char **argv) {
   TCCState *TCC;
   const char *syntax = "[options] code.c";
-  const char *include_path = 0x0;
-  const char *libs_path = 0x0;
   const char *progname = "cjit";
   static bool verbose = false;
   static bool version = false;
@@ -211,28 +209,16 @@ int main(int argc, char **argv) {
   if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
     goto endgame;
 
-#if defined(LIBC_MUSL)
   //// TCC DEFAULT PATHS
   tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
+
+#if defined(LIBC_MUSL)
   if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
     goto endgame;
 #endif
 
-#if defined(LIBC_GNU)
-  tcc_add_include_path(TCC,"lib/tinycc/include");
-#endif
-  // tcc_add_include_path(TCC,"src"); // devuan
-  if(include_path) {
-    _err("Path to headers included: %s",include_path);
-    tcc_add_include_path(TCC,include_path);
-  }
-  if(libs_path) {
-    _err("Path to libraries linked: %s",libs_path);
-    tcc_add_library_path(TCC,libs_path);
-  }
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
-
 
 #if defined(LIBC_MUSL)
   // simple temporary exports for hello world

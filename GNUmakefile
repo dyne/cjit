@@ -29,3 +29,8 @@ check: ## 🔬 Run all tests with the currently built target
 
 clean: ## 🧹 Clean the source from all built objects
 	$(MAKE) -f build/deps.mk clean
+	@rm -f cjit
+
+PREFIX?=/usr/local
+install: cjit
+	@install cjit $(PREFIX)/bin
