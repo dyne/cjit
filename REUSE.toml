@@ -1,0 +1,34 @@
+version = 1
+SPDX-PackageName = "CJIT"
+SPDX-PackageSupplier = "Denis Roio <jaromil@dyne.org>"
+SPDX-PackageDownloadLocation = "https://github.com/dyne/cjit"
+
+[[annotations]]
+path = ["src/**", "**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Dyne.org foundation"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "src/microtar**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2017 rxi"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "src/cflag**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2020 Adrian Perez de Castro"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "lib/tinycc/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2001-2004 Fabrice Bellard"
+SPDX-License-Identifier = "LGPL-2.1-or-later"
+
+[[annotations]]
+path = ["docs/**", "**.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Dyne.org foundation"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
