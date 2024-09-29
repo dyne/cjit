@@ -31,16 +31,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-// from embed-libtcc1 generated from lib/tinycc/libtcc1.a
-extern char *libtcc1;
-extern unsigned int libtcc1_len;
-extern char *musl_libc;
-extern unsigned int musl_libc_len;
-
 // from file.c
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
-extern bool write_to_file(char *path, char *filename, char *buf, unsigned int len);
 extern bool rm_recursive(char *path);
 
 // from io.c
@@ -53,7 +46,7 @@ void handle_error(void *n, const char *m) {
 }
 
 // from execdir.c
-bool tar_x_embedded_buffer(unsigned char src[], unsigned int len);
+extern char *setup_execdir();
 
 static int cjit_exec(TCCState *TCC, const char *ep, int argc, char **argv)
 {
@@ -178,7 +171,6 @@ int main(int argc, char **argv) {
   const char *progname = "cjit";
   static bool verbose = false;
   static bool version = false;
-  char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
   int res = 1;
 
@@ -200,25 +192,18 @@ int main(int argc, char **argv) {
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
 
-  // initialize the tmpdir for execution
-  tmpdir = mkdtemp(tmptemplate);
+  // setup the temporary execution directory
+  tmpdir = setup_execdir();
   if(!tmpdir) {
-    _err("Error creating temp dir %s: %s",tmptemplate,strerror(errno));
+    _err("Could not setup a temporary execution dir");
     goto endgame;
-  }
+  } else
+    _err("Temp execution dir %s",tmpdir);
   tcc_set_lib_path(TCC,tmpdir);
   tcc_add_library_path(TCC,tmpdir);
 
-  if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
-    goto endgame;
-
-  //// TCC DEFAULT PATHS
+  // we use default includes from musl
   tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
-
-#if defined(LIBC_MUSL)
-  if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
-    goto endgame;
-#endif
 
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
@@ -258,9 +243,9 @@ int main(int argc, char **argv) {
   endgame:
   // free TCC
   tcc_delete(TCC);
-  if(tmpdir) {
-    rm_recursive(tmpdir);
-  }
+  // delete the temp exec dir
+  if(tmpdir) rm_recursive(tmpdir);
+
   _err("---\nExecution completed");
   exit(res);
 }

@@ -24,12 +24,20 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#include <libtcc.h>
 #include <microtar.h>
 
 // from io.c
 extern void _err(const char *fmt, ...);
 
+// from file.c
+extern bool write_to_file(char *path, char *filename, char *buf, unsigned int len);
+
 // embedded_headers.c
+extern char *libtcc1;
+extern unsigned int libtcc1_len;
+extern char *musl_libc;
+extern unsigned int musl_libc_len;
 extern char *tinycc_headers;
 extern unsigned int tinycc_headers_len;
 
@@ -65,4 +73,23 @@ bool tar_x_embedded_buffer(unsigned char src[], unsigned int len) {
     mtar_next(&tar);
   }
   return true;
+}
+
+char *setup_execdir() {
+  char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
+  // initialize the tmpdir for execution
+  char *tmpdir = mkdtemp(tmptemplate);
+  if(!tmpdir) {
+    _err("Error creating temp dir %s: %s",tmptemplate,strerror(errno));
+    return(NULL);
+  }
+
+  if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
+    return(NULL);
+
+#if defined(LIBC_MUSL)
+  if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
+    return(NULL);
+#endif
+  return tmpdir;
 }
