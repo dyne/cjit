@@ -223,13 +223,6 @@ int main(int argc, char **argv) {
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
 
-  // simple temporary exports for hello world
-  // tcc_add_symbol(TCC, "exit", &return);
-  tcc_add_symbol(TCC, "stdout", &stdout);
-  tcc_add_symbol(TCC, "stderr", &stderr);
-  tcc_add_symbol(TCC, "fprintf", &fprintf);
-  tcc_add_symbol(TCC, "printf", &printf);
-
   if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
     goto endgame;
   if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
