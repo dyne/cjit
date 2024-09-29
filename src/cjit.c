@@ -112,7 +112,7 @@ static int cjit_cli(TCCState *TCC)
         _err("Not running from a terminal though.\n");
 
     while (1) {
-        // don't print prompt if we are in a pipe 
+        // don't print prompt if we are in a pipe
         if (isatty(fileno(stdin)))
             printf("cjit> ");
         fflush(stdout);
@@ -199,6 +199,7 @@ int main(int argc, char **argv) {
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
 
+#if defined(LIBC_MUSL)
   // initialize the tmpdir for execution
   tmpdir = mkdtemp(tmptemplate);
   if(!tmpdir) {
@@ -208,9 +209,19 @@ int main(int argc, char **argv) {
   // _err("tempdir: %s",tmpdir);
   tcc_set_lib_path(TCC,tmpdir);
   tcc_add_library_path(TCC,tmpdir);
-
   //// TCC DEFAULT PATHS
-  tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl"); // devuan
+  tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
+
+  if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
+    goto endgame;
+  if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
+    goto endgame;
+#endif
+
+#if defined(LIBC_GNU)
+  tcc_add_include_path(TCC,"/usr/include/linux");
+  tcc_add_include_path(TCC,"/usr/lib/gcc/x86_64-linux-gnu/13/include");
+#endif
   // tcc_add_include_path(TCC,"src"); // devuan
   if(include_path) {
     _err("Path to headers included: %s",include_path);
@@ -229,11 +240,6 @@ int main(int argc, char **argv) {
   tcc_add_symbol(TCC, "stderr", &stderr);
   tcc_add_symbol(TCC, "fprintf", &fprintf);
   tcc_add_symbol(TCC, "printf", &printf);
-
-  if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
-    goto endgame;
-  if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
-    goto endgame;
 
   if (argc == 0) {
       printf("No input file: running in interactive mode\n");

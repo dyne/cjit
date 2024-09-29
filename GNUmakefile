@@ -1,52 +1,31 @@
-# Just a start at a simple build system targeting only musl static
-BRANCH := $(shell git symbolic-ref HEAD | cut -d/ -f3-)
-COMMIT := $(shell git rev-parse --short HEAD)
-VERSION := $(shell git describe --tags | cut -d- -f1)
-CURRENT_YEAR := $(shell date +%Y)
+# Copyright (C) 2024 Dyne.org Foundation
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	Please refer
+# to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, , see <https://www.gnu.org/licenses/>.
 
-cc := musl-gcc
-cflags := -static
-cflags += -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
-cflags += -Og -ggdb -DDEBUG=1 -Wall -Wextra -pedantic
-cflags += -Isrc -Ilib/tinycc -DARCH=\"MUSL\"
+help:
+	@echo "✨ Welcome to the CJIT build system"
+	@awk 'BEGIN {FS = ":.*##"; printf "🛟 Usage: make \033[36m<target>\033[0m\n👇 List of targets:\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf " \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5)} ' GNUmakefile
 
-SOURCES := src/io.o src/file.o src/cflag.o \
-	src/cjit.o src/embed-libtcc1.o src/embed-musl-libc.o
+musl-linux: ## 🗿 Build a fully static binary using musl-libc on Linux
+	$(MAKE) -f build/musl.mk
 
-ldadd := lib/tinycc/libtcc.a
+linux-x86: ## 🐧 Build a dynamically linked binary using libs found on Linux x86
+	$(MAKE) -f build/linux.mk
 
-all: deps cjit
-
-cjit: ${SOURCES}
-	$(cc) $(cflags) -o $@ $(SOURCES) ${ldadd}
-
-deps: lib/tinycc/libtcc.a src/embed-musl-libc.c src/embed-libtcc1.c
-
-src/embed-musl-libc.c:
-	sh build/embed-musl-libc.sh
-
-src/embed-libtcc1.c:
-	sh build/embed-libtcc1.sh
-
-lib/tinycc/libtcc.a:
-	cd lib/tinycc && ./configure \
-		--config-musl --cc=musl-gcc --enable-static --extra-cflags=-static \
-		--extra-ldflags=-static --debug \
-	&& ${MAKE} libtcc.a libtcc1.a
-
-check:
+check: ## 🔬 Run all tests with the currently built target
+	$(if $(wildcard ./cjit),,$(error CJIT is not yet built))
 	./cjit test/hello.c
 
-clean:
-	${MAKE} -C lib/tinycc clean distclean
-	${MAKE} -C src clean
-
-.c.o:
-	$(cc) \
-	$(cflags) \
-	-c $< -o $@ \
-	-DVERSION=\"${VERSION}\" \
-	-DCURRENT_YEAR=\"${CURRENT_YEAR}\" \
-	-DCOMMIT=\"${COMMIT}\" \
-	-DBRANCH=\"${BRANCH}\" \
-	-DCFLAGS="${cflags}"
+clean: ## 🧹 Clean the source from all built objects
+	$(MAKE) -f build/deps.mk clean

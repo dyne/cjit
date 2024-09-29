@@ -23,7 +23,9 @@
 #include <string.h>
 #include <errno.h>
 
+#if defined(LIBC_MUSL)
 #include <ftw.h> // POSIX
+#endif
 
 extern void _err(const char *fmt, ...);
 
@@ -87,7 +89,7 @@ bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
   return true;
 }
 
-
+#if defined(LIBC_MUSL)
 static int rm_ftw(const char *pathname,
                   const struct stat *sbuf,
                   int type, struct FTW *ftwb) {
@@ -106,3 +108,4 @@ bool rm_recursive(char *path) {
   }
   return true;
 }
+#endif

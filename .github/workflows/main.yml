@@ -69,7 +69,7 @@ jobs:
           sudo apt install -yq musl-tools musl-dev
       - name: Build x86_64 with musl-system
         run: |
-          make
+          make musl-linux
       - name: Run tests
         run: |
           make check
@@ -114,7 +114,7 @@ jobs:
           sudo apt install -qy make musl-tools musl-dev
       - name: Build x86_64 with musl-system
         run: |
-          make
+          make musl-linux
       - name: Upload artifact linux-amd64
         uses: actions/upload-artifact@v4
         with:
