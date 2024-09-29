@@ -1,9 +1,9 @@
 [![CJIT logo](docs/cjit-logo.png)](https://dyne.org/cjit)
 
-# CJIT executes C code just in time
+# Use C as a scripting language
 
-This is a C interpreter (and compiler) based on tinycc and capable of
-executing C code with no need to compile it. It also supports a
+This is a portable C interpreter (and compiler) based on tinycc and capable of
+executing C code as-is at runtime, without a build step. It also supports a
 curated selection of functions from included libraries.
 
 When using CJIT there is no need for any toolchain, library, headers
