@@ -1,7 +1,7 @@
 include build/init.mk
 
 cc := musl-gcc
-cflags += -static -Os
+cflags := -Wall -static -Os
 cflags += -Isrc -Ilib/tinycc -DLIBC_MUSL -nostdlib
 
 ldadd := lib/tinycc/libtcc.a /usr/lib/x86_64-linux-musl/crt1.o /usr/lib/x86_64-linux-musl/libc.a

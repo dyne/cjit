@@ -171,7 +171,7 @@ static int cjit_cli(TCCState *TCC)
 
 #ifdef LIBC_MUSL
 #include <fcntl.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -564,7 +564,7 @@ static void tcc_add_libc_symbols(TCCState *TCC) {
 int main(int argc, char **argv) {
   TCCState *TCC;
   const char *syntax = "[options] code.c";
-  const char *progname = "cjit";
+  // const char *progname = "cjit";
   static bool verbose = false;
   static bool version = false;
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
@@ -597,14 +597,16 @@ int main(int argc, char **argv) {
   tcc_set_lib_path(TCC,tmpdir);
   tcc_add_library_path(TCC,tmpdir);
 
-  if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
+  if(! write_to_file(tmpdir,"libtcc1.a",(char*)&libtcc1,libtcc1_len) )
     goto endgame;
 
   //// TCC DEFAULT PATHS
   tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
+  // tcc_add_include_path(TCC,"lib/tinycc/include");
+
 
 #if defined(LIBC_MUSL)
-  if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
+  if(! write_to_file(tmpdir,"libc.so",(char*)&musl_libc,musl_libc_len) )
     goto endgame;
 #endif
 
