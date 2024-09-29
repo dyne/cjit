@@ -5,8 +5,8 @@ VERSION := $(shell git describe --tags | cut -d- -f1)
 CURRENT_YEAR := $(shell date +%Y)
 
 cc := musl-gcc
-cflags := -rdynamic
-cflags += -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
+
+cflags := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
 cflags += -Og -ggdb -DDEBUG=1 -Wall -Wextra -pedantic
 cflags += -Isrc -Ilib/tinycc -DARCH=\"MUSL\"
 
@@ -14,8 +14,19 @@ SOURCES := src/io.o src/file.o src/cflag.o \
 	src/cjit.o src/embed-libtcc1.o src/embed-musl-libc.o
 
 ldadd := lib/tinycc/libtcc.a
+cjit-static:cflags += -static -DCJIT_STATIC
+cjit-dynamic:cflags += -rdynamic
 
-all: deps cjit
+
+all: deps cjit-dynamic
+
+static: deps cjit-static
+
+cjit-static: cjit
+	@echo Built static version
+
+cjit-dynamic: cjit
+	@echo Built dynamic version
 
 cjit: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldadd}

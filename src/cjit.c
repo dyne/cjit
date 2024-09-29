@@ -228,6 +228,21 @@ int main(int argc, char **argv) {
   if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
     goto endgame;
 
+#ifdef CJIT_STATIC
+  tcc_add_symbol(TCC, "stdin", &stdin);
+  tcc_add_symbol(TCC, "stdout", &stdout);
+  tcc_add_symbol(TCC, "stderr", &stderr);
+  tcc_add_symbol(TCC, "printf", printf);
+  tcc_add_symbol(TCC, "malloc", malloc);
+  tcc_add_symbol(TCC, "free", free);
+  tcc_add_symbol(TCC, "exit", exit);
+  tcc_add_symbol(TCC, "puts", puts);
+  tcc_add_symbol(TCC, "getchar", getchar);
+  tcc_add_symbol(TCC, "putchar", putchar);
+  tcc_add_symbol(TCC, "fprintf", fprintf);
+  tcc_add_symbol(TCC, "perror", perror);
+#endif
+
   if (argc == 0) {
       printf("No input file: running in interactive mode\n");
       res = cjit_cli(TCC);
