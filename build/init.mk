@@ -20,8 +20,9 @@ endif
 cflags := ${CFLAGS} -Isrc -Ilib/tinycc
 cflags += -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
 
-SOURCES := src/io.o src/file.o src/cflag.o \
-	src/cjit.o src/embed-libtcc1.o src/embed-musl-libc.o
+SOURCES := src/io.o src/file.o src/cflag.o src/cjit.o \
+	src/embed-libtcc1.o src/embed-musl-libc.o src/embed-headers.o \
+	src/microtar.o
 
 ldadd := lib/tinycc/libtcc.a
 
