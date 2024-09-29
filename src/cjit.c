@@ -97,7 +97,7 @@ static int cjit_cli(TCCState *TCC)
 {
     char *line = NULL;
     size_t len = 0;
-    ssize_t read;
+    ssize_t rd;
     int res = 0;
     const char intro[]="#include <stdio.h>\n#include <stdlib.h>\nint main(int argc, char **argv) {\n";
     char *code = malloc(sizeof(intro));
@@ -116,8 +116,8 @@ static int cjit_cli(TCCState *TCC)
         if (isatty(fileno(stdin)))
             printf("cjit> ");
         fflush(stdout);
-        read = getline(&line, &len, stdin);
-        if (read == -1) {
+        rd = getline(&line, &len, stdin);
+        if (rd == -1) {
             /* This is CTRL + D */
             code = realloc(code, strlen(code) + 4);
             if (!code) {
@@ -233,12 +233,15 @@ int main(int argc, char **argv) {
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
 
+
+#if defined(LIBC_MUSL)
   // simple temporary exports for hello world
-  // tcc_add_symbol(TCC, "exit", &return);
   tcc_add_symbol(TCC, "stdout", &stdout);
   tcc_add_symbol(TCC, "stderr", &stderr);
+  tcc_add_symbol(TCC, "exit", &exit);
   tcc_add_symbol(TCC, "fprintf", &fprintf);
   tcc_add_symbol(TCC, "printf", &printf);
+#endif
 
   if (argc == 0) {
       printf("No input file: running in interactive mode\n");
