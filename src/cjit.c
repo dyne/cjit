@@ -28,6 +28,8 @@
 
 #include <cflag.h>
 #include <libtcc.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 // from embed-libtcc1 generated from lib/tinycc/libtcc1.a
 extern char *libtcc1;
@@ -50,6 +52,123 @@ void handle_error(void *n, const char *m) {
   _err("%s",m);
 }
 
+static int cjit_exec(TCCState *TCC, const char *ep, int argc, char **argv)
+{
+  pid_t pid;
+  int res = 1;
+  int (*_ep)(int, char**);
+  _ep = tcc_get_symbol(TCC, ep);
+  if (!_ep) {
+    _err("Symbol not found in source: %s","main");
+    return -1;
+  }
+  _err("Execution start\n---");
+  pid = fork();
+  if (pid == 0) {
+      res = _ep(argc, argv);
+      exit(res);
+  } else {
+      int status;
+      int ret;
+      ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+      if (ret != pid){
+          _err("Wait error in source: %s","main");
+      }
+      if (WIFEXITED(status)) {
+          res = WEXITSTATUS(status);
+          _err("Process has returned %d", res);
+      } else if (WIFSIGNALED(status)) {
+          res = WTERMSIG(status);
+          _err("Process terminated with signal %d", WTERMSIG(status));
+      } else if (WIFSTOPPED(status)) {
+          res = WSTOPSIG(status);
+          _err("Process has returned %d", WSTOPSIG(status));
+      } else if (WIFSTOPPED(status)) {
+          res = WSTOPSIG(status);
+          _err("Process stopped with signal", WSTOPSIG(status));
+      } else {
+          _err("wait: unknown status: %d", status);
+      }
+  }
+  return res;
+}
+
+static int cjit_cli(TCCState *TCC)
+{
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    int res = 0;
+    const char intro[]="#include <stdio.h>\n#include <stdlib.h>\nint main(int argc, char **argv) {\n";
+    char *code = malloc(sizeof(intro));
+    if (!code) {
+        _err("Memory allocation error");
+        return 2;
+    }
+    // don't add automatic main preamble if in a pipe
+    if (isatty(fileno(stdin)))
+        strcpy(code, intro);
+    else
+        _err("Not running from a terminal though.\n");
+
+    while (1) {
+        // don't print prompt if we are in a pipe 
+        if (isatty(fileno(stdin)))
+            printf("cjit> ");
+        fflush(stdout);
+        read = getline(&line, &len, stdin);
+        if (read == -1) {
+            /* This is CTRL + D */
+            code = realloc(code, strlen(code) + 4);
+            if (!code) {
+                _err("Memory allocation error");
+                res = 2;
+                break;
+            }
+            free(line);
+            line = NULL;
+            if (isatty(fileno(stdin)))
+                strcat(code, "\n}\n");
+
+            // run the code from main
+#ifdef VERBOSE_CLI
+            _err("Compiling code\n");
+            _err("-----------------------------------\n");
+            _err("%s\n", code);
+            _err("-----------------------------------\n");
+#endif
+            if (tcc_compile_string(TCC, code) < 0) {
+                _err("Code runtime error in source\n");
+                res = 1;
+                break;
+            }
+            if (tcc_relocate(TCC) < 0) {
+                _err("Code relocation error in source\n");
+                res = 1;
+                break;
+            }
+#ifdef VERBOSE_CLI
+            _err("Running code\n");
+            _err("-----------------------------------\n");
+#endif
+            res = cjit_exec(TCC, "main", 0, NULL);
+            free(code);
+            code = NULL;
+            break;
+        }
+        code = realloc(code, strlen(code) + len + 1);
+        if (!code) {
+            _err("Memory allocation error");
+            res = 2;
+            break;
+        }
+        strcat(code, line);
+        free(line);
+        line = NULL;
+    }
+    return res;
+}
+
 int main(int argc, char **argv) {
   TCCState *TCC;
   const char *syntax = "[options] code.c";
@@ -60,8 +179,8 @@ int main(int argc, char **argv) {
   static bool version = false;
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
-
   int res = 1;
+
 
   static const struct cflag options[] = {
     CFLAG(bool, "verbose", 'v', &verbose, "Verbosely show progress"),
@@ -70,10 +189,6 @@ int main(int argc, char **argv) {
     CFLAG_END
   };
   cflag_apply(options, syntax, &argc, &argv);
-  if(!argv[0]) {
-    cflag_usage(options, progname, syntax, stderr);
-    exit(1);
-  }
   const char *code_path = argv[0];
   _err("CJIT %s",VERSION);
   TCC = tcc_new();
@@ -108,6 +223,23 @@ int main(int argc, char **argv) {
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
 
+  // simple temporary exports for hello world
+  // tcc_add_symbol(TCC, "exit", &return);
+  tcc_add_symbol(TCC, "stdout", &stdout);
+  tcc_add_symbol(TCC, "stderr", &stderr);
+  tcc_add_symbol(TCC, "fprintf", &fprintf);
+  tcc_add_symbol(TCC, "printf", &printf);
+
+  if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
+    goto endgame;
+  if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
+    goto endgame;
+
+  if (argc == 0) {
+      printf("No input file: running in interactive mode\n");
+      res = cjit_cli(TCC);
+      goto endgame;
+  }
   _err("Source to execute: %s",code_path);
   char *code = file_load(code_path);
   if(!code) {
@@ -118,34 +250,13 @@ int main(int argc, char **argv) {
   free(code); // safe: bytecode compiled is in TCC now
   _err("Compilation successful");
 
-  // simple temporary exports for hello world
-  // tcc_add_symbol(TCC, "exit", &return);
-  tcc_add_symbol(TCC, "stdout", &stdout);
-  tcc_add_symbol(TCC, "stderr", &stderr);
-  tcc_add_symbol(TCC, "fprintf", &fprintf);
-
-  if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
-    goto endgame;
-  if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
-    goto endgame;
-
   // relocate the code
   if (tcc_relocate(TCC) < 0) {
     _err("TCC relocation error");
     goto endgame;
   }
 
-  // get entry symbol
-  int (*_main)(int, char**);
-  _main = tcc_get_symbol(TCC, "main");
-  if (!_main) {
-    _err("Symbol not found in source: %s","main");
-    goto endgame;
-  }
-
-  _err("Execution start\n---");
-  // run the code
-  res = _main(argc, argv);
+  res = cjit_exec(TCC, "main", argc, argv);
 
   endgame:
   // free TCC
