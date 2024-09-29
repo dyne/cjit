@@ -170,13 +170,7 @@ static int cjit_cli(TCCState *TCC)
 }
 
 #ifdef LIBC_MUSL
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/poll.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -185,16 +179,13 @@ static int cjit_cli(TCCState *TCC)
 #include <time.h>
 #include <dirent.h>
 #include <signal.h>
-#include <errno.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <termios.h>
 #include <sys/uio.h>
@@ -568,7 +559,6 @@ static void tcc_add_libc_symbols(TCCState *TCC) {
   tcc_add_symbol(TCC, "pthread_mutexattr_getrobust", &pthread_mutexattr_getrobust);
   tcc_add_symbol(TCC, "pthread_mutexattr_setrobust", &pthread_mutexattr_setrobust);
   tcc_add_symbol(TCC, "pthread_mutex_consistent", &pthread_mutex_consistent);
-
 }
 #endif /* LIBC_MUSL */
 
@@ -581,7 +571,6 @@ int main(int argc, char **argv) {
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
   int res = 1;
-
 
   static const struct cflag options[] = {
     CFLAG(bool, "verbose", 'v', &verbose, "Verbosely show progress"),
