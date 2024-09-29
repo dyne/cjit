@@ -1,7 +1,7 @@
 include build/init.mk
 
 cc := gcc
-cflags += -DLIBC_GNU
+cflags += -DLIBC_GNU -D_GNU_SOURCE
 
 all: deps cjit
 

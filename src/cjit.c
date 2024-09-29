@@ -199,28 +199,27 @@ int main(int argc, char **argv) {
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
 
-#if defined(LIBC_MUSL)
   // initialize the tmpdir for execution
   tmpdir = mkdtemp(tmptemplate);
   if(!tmpdir) {
     _err("Error creating temp dir %s: %s",tmptemplate,strerror(errno));
     goto endgame;
   }
-  // _err("tempdir: %s",tmpdir);
   tcc_set_lib_path(TCC,tmpdir);
   tcc_add_library_path(TCC,tmpdir);
-  //// TCC DEFAULT PATHS
-  tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
 
   if(! write_to_file(tmpdir,"libtcc1.a",&libtcc1,libtcc1_len) )
     goto endgame;
+
+#if defined(LIBC_MUSL)
+  //// TCC DEFAULT PATHS
+  tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
   if(! write_to_file(tmpdir,"libc.so",&musl_libc,musl_libc_len) )
     goto endgame;
 #endif
 
 #if defined(LIBC_GNU)
-  tcc_add_include_path(TCC,"/usr/include/linux");
-  tcc_add_include_path(TCC,"/usr/lib/gcc/x86_64-linux-gnu/13/include");
+  tcc_add_include_path(TCC,"lib/tinycc/include");
 #endif
   // tcc_add_include_path(TCC,"src"); // devuan
   if(include_path) {
@@ -268,7 +267,6 @@ int main(int argc, char **argv) {
   // free TCC
   tcc_delete(TCC);
   if(tmpdir) {
-    // _err("remove tmpdir");
     rm_recursive(tmpdir);
   }
   _err("---\nExecution completed");
