@@ -1,0 +1,178 @@
+name: cjit
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+    branches:
+      - main
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  reuse:
+    name: 🚨 REUSE Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fsfe/reuse-action@v3
+
+
+  c-lint:
+    name: 🚨 C lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: reviewdog/action-cpplint@master
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-check
+          targets: --recursive src
+          level: warning
+          flags: --linelength=120 # Optional
+          filter: "-readability/braces\
+            ,-readability/casting\
+            ,-whitespace/comma\
+            ,-whitespace/braces\
+            ,-whitespace/comments\
+            ,-whitespace/indent\
+            ,-whitespace/newline\
+            ,-whitespace/operators\
+            ,-whitespace/parens\
+            ,-whitespace/tab\
+            " # Optional
+        #    - name: Fail fast?!
+        #      if: steps.linter.outputs.checks-failed > 0
+        #      run: |
+        #        echo "😤 Some files failed the C linting checks!"
+
+  musl-test:
+    name: 🐧 Musl Linux build and test
+    needs: [reuse, c-lint, lua-lint]
+    if: "github.event_name == 'pull_request'"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: install dependencies
+        run: |
+          sudo apt install -yq musl-tools musl-dev
+      - name: Build x86_64 with musl-system
+        run: |
+          make
+      - name: Run tests
+        run: |
+          make check
+
+  semantic-release:
+    name: 🤖 Semantic release
+    needs: [musl-test]
+    runs-on: ubuntu-latest
+    if: ${{ github.ref_name == 'main' && github.event_name == 'push' }}
+    outputs:
+      release: ${{ steps.tag_release.outputs.release }}
+      version: ${{ steps.tag_release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - run: yarn
+      - name: Tag release
+        id: tag_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx semantic-release | tee semantic-release.log
+          if [[ `git tag --points-at HEAD` == "" ]]; then
+            echo "release=False" >> $GITHUB_OUTPUT
+          else
+            echo "release=True" >> $GITHUB_OUTPUT
+            awk '/Published release/ { printf("version=v%s\n",$8) }' semantic-release.log >> $GITHUB_OUTPUT
+          fi
+
+  musl-release:
+    name: 🐧 Musl Linux binary release build
+    runs-on: ubuntu-latest
+    needs: [semantic-release]
+    if: ${{ needs.semantic-release.outputs.release == 'True' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Upload release docs artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: |
+            build/release-intro.md
+      - name: Install build deps
+        run: |
+          sudo apt install -qy make musl-tools musl-dev
+      - name: Build x86_64 with musl-system
+        run: |
+          make
+      - name: Upload artifact linux-amd64
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-musl-linux-x86_64
+          path: |
+            cjit
+      - name: Clean for next build
+        run: make clean
+
+  draft-binary-release:
+    name: 📦 Pack release
+    needs: [semantic-release, musl-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: |
+            cjit-bin
+      - name: show directory structure
+        run: tree -dL 3
+      - name: relase all binary artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            cjit-bin/release*/*
+          tag_name: ${{ needs.semantic-release.outputs.version }}
+          body_path: cjit-bin/documentation/release-intro.md
+          append_body: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+
+  remove-tag-on-fail:
+    name: 🧻 Remove tag on fail
+    needs: [semantic-release, musl-release]
+    runs-on: ubuntu-latest
+    if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.release == 'True' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Remove tag
+        uses: dev-drprasad/delete-tag-and-release@v1.0
+        with:
+          tag_name: ${{ needs.semantic-release.outputs.version }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_release: false
+          repo: dyne/cjit
