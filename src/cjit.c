@@ -52,6 +52,9 @@ void handle_error(void *n, const char *m) {
   _err("%s",m);
 }
 
+// from execdir.c
+bool tar_x_embedded_buffer(unsigned char src[], unsigned int len);
+
 static int cjit_exec(TCCState *TCC, const char *ep, int argc, char **argv)
 {
   pid_t pid;

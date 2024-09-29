@@ -60,6 +60,7 @@ struct mtar_t {
   int (*close)(mtar_t *tar);
   void *stream;
   unsigned pos;
+  unsigned max;
   unsigned remaining_data;
   unsigned last_header;
 };
