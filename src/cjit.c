@@ -420,7 +420,6 @@ static void tcc_add_libc_symbols(TCCState *TCC) {
 
   /* polling */
   tcc_add_symbol(TCC, "poll", &poll);
-  tcc_add_symbol(TCC, "ppoll", &ppoll);
   tcc_add_symbol(TCC, "select", &select);
   tcc_add_symbol(TCC, "pselect", &pselect);
   tcc_add_symbol(TCC, "epoll_create", &epoll_create);
