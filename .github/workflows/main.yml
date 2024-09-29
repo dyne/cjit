@@ -79,34 +79,21 @@ jobs:
     needs: [musl-test]
     runs-on: ubuntu-latest
     if: ${{ github.ref_name == 'main' && github.event_name == 'push' }}
-    outputs:
-      release: ${{ steps.tag_release.outputs.release }}
-      version: ${{ steps.tag_release.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Semantic Release
+        uses: cycjimmy/semantic-release-action@v4
         with:
-          node-version: 20.x
-      - run: yarn
-      - name: Tag release
-        id: tag_release
+          extra_plugins: |
+            @semantic-release/changelog
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npx semantic-release | tee semantic-release.log
-          if [[ `git tag --points-at HEAD` == "" ]]; then
-            echo "release=False" >> $GITHUB_OUTPUT
-          else
-            echo "release=True" >> $GITHUB_OUTPUT
-            awk '/Published release/ { printf("version=v%s\n",$8) }' semantic-release.log >> $GITHUB_OUTPUT
-          fi
 
   musl-release:
     name: 🐧 Musl Linux binary release build
     runs-on: ubuntu-latest
     needs: [semantic-release]
-    if: ${{ needs.semantic-release.outputs.release == 'True' }}
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'True' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -150,7 +137,7 @@ jobs:
         with:
           files: |
             cjit-bin/release*/*
-          tag_name: ${{ needs.semantic-release.outputs.version }}
+          tag_name: ${{ needs.semantic-release.outputs.new_release_version }}
           body_path: cjit-bin/documentation/release-intro.md
           append_body: true
           draft: false
@@ -162,7 +149,7 @@ jobs:
     name: 🧻 Remove tag on fail
     needs: [semantic-release, musl-release]
     runs-on: ubuntu-latest
-    if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.release == 'True' }}
+    if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'True' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -171,7 +158,7 @@ jobs:
       - name: Remove tag
         uses: dev-drprasad/delete-tag-and-release@v1.0
         with:
-          tag_name: ${{ needs.semantic-release.outputs.version }}
+          tag_name: ${{ needs.semantic-release.outputs.new_release_version }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           delete_release: false
           repo: dyne/cjit
