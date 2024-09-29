@@ -111,10 +111,11 @@ jobs:
             build/release-intro.md
       - name: Install build deps
         run: |
-          sudo apt install -qy make musl-tools musl-dev
+          sudo apt install -qy make musl-tools musl-dev upx-ucl
       - name: Build x86_64 with musl-system
         run: |
           make musl-linux
+          upx-ucl -q cjit
       - name: Upload artifact linux-amd64
         uses: actions/upload-artifact@v4
         with:
