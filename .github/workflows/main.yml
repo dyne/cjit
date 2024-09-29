@@ -59,7 +59,6 @@ jobs:
   musl-test:
     name: 🐧 Musl Linux build and test
     needs: [reuse, c-lint]
-    if: "github.event_name == 'pull_request'"
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v4
