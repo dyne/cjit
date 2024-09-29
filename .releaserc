@@ -1,7 +1,3 @@
-# Copyright 2024 Dyne.org foundation
-# SPDX-FileCopyrightText: 2017-2021 Dyne.org foundation
-#
-# SPDX-License-Identifier: AGPL-3.0-or-later
 {
   "repositoryUrl": "git@github.com:dyne/cjit.git",
   "plugins": [
