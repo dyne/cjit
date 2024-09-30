@@ -74,6 +74,21 @@ jobs:
         run: |
           make check
 
+  win-test:
+    name: 🐧 Windows cross-build and test
+    needs: [reuse, c-lint]
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: install dependencies
+        run: |
+          sudo apt install -yq mingw-w64 gcc-mingw-w64
+      - name: Build x86_64 with mingw w64
+        run: |
+          make -f build/win.mk
+
   semantic-release:
     name: 🤖 Semantic release
     needs: [musl-test]
