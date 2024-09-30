@@ -34,8 +34,13 @@
 #include <unistd.h>
 
 // from embed-libtcc1 generated from lib/tinycc/libtcc1.a
+#ifdef LIBC_MINGW32
+extern char *lib_tinycc_x86_64_win32_libtcc1_a;
+extern unsigned int lib_tinycc_x86_64_win32_libtcc1_a_len;
+#else
 extern char *libtcc1;
 extern unsigned int libtcc1_len;
+#endif
 extern char *musl_libc;
 extern unsigned int musl_libc_len;
 
@@ -630,8 +635,13 @@ int main(int argc, char **argv) {
   tcc_set_lib_path(TCC,tmpdir);
   tcc_add_library_path(TCC,tmpdir);
 
+#ifndef LIBC_MINGW32
   if(! write_to_file(tmpdir,"libtcc1.a",(char*)&libtcc1,libtcc1_len) )
     goto endgame;
+#else
+  if(! write_to_file(tmpdir,"libtcc1.a",(char*)&lib_tinycc_x86_64_win32_libtcc1_a,lib_tinycc_x86_64_win32_libtcc1_a_len) )
+    goto endgame;
+#endif
 
   //// TCC DEFAULT PATHS
   tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
