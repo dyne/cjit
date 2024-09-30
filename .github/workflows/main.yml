@@ -122,18 +122,6 @@ jobs:
           name: release-musl-linux-x86_64
           path: |
             cjit
-      - name: Build x86_64 with mingw64
-        run: |
-          make -f build/win.mk
-          upx-ucl -q cjit.exe
-      - name: Upload artifact win64
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-mingw-windows-x86_64
-          path: |
-            cjit.exe
-      - name: Clean for next build
-        run: make clean
 
   draft-binary-release:
     name: 📦 Pack release
