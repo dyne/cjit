@@ -13,7 +13,7 @@ ldadd += -lrpcrt4 -lshlwapi
 
 ldflags += -static-libgcc
 
-embed_libtcc1 := lib/tinycc/x86_64-win32-libtcc1.a
+# embed_libtcc1 := lib/tinycc/x86_64-win32-libtcc1.a
 
 all: deps cjit
 
@@ -31,5 +31,6 @@ deps:
 	$(MAKE) -C lib/tinycc cross-x86_64-win32
 	${MAKE} -C lib/tinycc libtcc.a
 	${MAKE} -C lib/tinycc libtcc1.a
+	mv lib/tinycc/x86_64-win32-libtcc1.a lib/tinycc/libtcc1.a
 
 include build/deps.mk
