@@ -13,6 +13,6 @@ cjit: ${SOURCES}
 
 deps: lib/tinycc/libtcc.a
 
-tinycc_config += --targetos=WIN32
+tinycc_config += --targetos=WIN32 --config-backtrace=no
 
 include build/deps.mk
