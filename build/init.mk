@@ -26,6 +26,8 @@ SOURCES := src/io.o src/file.o src/cflag.o \
 
 ldadd := lib/tinycc/libtcc.a
 
+embed_libtcc1 := lib/tinycc/libtcc1.a
+
 tinycc_config ?= --cc=${cc} --extra-cflags="${cflags}"
 ifdef DEBUG
 	tinycc_config += --debug
