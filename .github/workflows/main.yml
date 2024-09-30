@@ -111,7 +111,7 @@ jobs:
             build/release-intro.md
       - name: Install build deps
         run: |
-          sudo apt install -qy make musl-tools musl-dev upx-ucl
+          sudo apt install -qy make musl-tools musl-dev upx-ucl gcc-mingw-w64
       - name: Build x86_64 with musl-system
         run: |
           make musl-linux
@@ -122,6 +122,16 @@ jobs:
           name: release-musl-linux-x86_64
           path: |
             cjit
+      - name: Build x86_64 with mingw64
+        run: |
+          make -f build/win.mk
+          upx-ucl -q cjit.exe
+      - name: Upload artifact win64
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mingw-windows-x86_64
+          path: |
+            cjit.exe
       - name: Clean for next build
         run: make clean
 

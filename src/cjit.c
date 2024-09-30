@@ -23,12 +23,14 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#ifndef LIBC_MINGW32
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#endif
 
 #include <cflag.h>
 #include <libtcc.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 // from embed-libtcc1 generated from lib/tinycc/libtcc1.a
@@ -42,6 +44,9 @@ extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
 extern bool write_to_file(char *path, char *filename, char *buf, unsigned int len);
 extern bool rm_recursive(char *path);
+#ifdef LIBC_MINGW32
+extern char *win32_mkdtemp();
+#endif
 
 // from io.c
 extern void _out(const char *fmt, ...);
@@ -52,7 +57,21 @@ void handle_error(void *n, const char *m) {
   _err("%s",m);
 }
 
-static int cjit_exec(TCCState *TCC, const char *ep, int argc, char **argv)
+static int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
+  int res = 1;
+  int (*_ep)(int, char**);
+  _ep = tcc_get_symbol(TCC, ep);
+  if (!_ep) {
+    _err("Symbol not found in source: %s","main");
+    return -1;
+  }
+  _err("Execution start\n---");
+  res = _ep(argc, argv);
+  return(res);
+}
+
+#ifndef LIBC_MINGW32
+static int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv)
 {
   pid_t pid;
   int res = 1;
@@ -92,6 +111,7 @@ static int cjit_exec(TCCState *TCC, const char *ep, int argc, char **argv)
   }
   return res;
 }
+#endif
 
 static int cjit_cli(TCCState *TCC)
 {
@@ -111,6 +131,9 @@ static int cjit_cli(TCCState *TCC)
     else
         _err("Not running from a terminal though.\n");
 
+#ifdef LIBC_MINGW32
+    _err("Missing source code argument");
+#else
     while (1) {
         // don't print prompt if we are in a pipe
         if (isatty(fileno(stdin)))
@@ -151,7 +174,11 @@ static int cjit_cli(TCCState *TCC)
             _err("Running code\n");
             _err("-----------------------------------\n");
 #endif
-            res = cjit_exec(TCC, "main", 0, NULL);
+#ifndef LIBC_MINGW32
+            res = cjit_exec_fork(TCC, "main", 0, NULL);
+#else
+            res = cjit_exec_win(TCC, "main", 0, NULL);
+#endif
             free(code);
             code = NULL;
             break;
@@ -166,6 +193,7 @@ static int cjit_cli(TCCState *TCC)
         free(line);
         line = NULL;
     }
+#endif
     return res;
 }
 
@@ -589,11 +617,16 @@ int main(int argc, char **argv) {
   tcc_set_error_func(TCC, stderr, handle_error);
 
   // initialize the tmpdir for execution
+#ifndef LIBC_MINGW32
   tmpdir = mkdtemp(tmptemplate);
+#else
+  tmpdir = win32_mkdtemp();
+#endif
   if(!tmpdir) {
     _err("Error creating temp dir %s: %s",tmptemplate,strerror(errno));
     goto endgame;
-  }
+  } // else
+    // _err("Temporary execution dir: %s",tmpdir);
   tcc_set_lib_path(TCC,tmpdir);
   tcc_add_library_path(TCC,tmpdir);
 
@@ -638,7 +671,11 @@ int main(int argc, char **argv) {
     goto endgame;
   }
 
-  res = cjit_exec(TCC, "main", argc, argv);
+#ifndef LIBC_MINGW32
+  res = cjit_exec_fork(TCC, "main", argc, argv);
+#else
+  res = cjit_exec_win(TCC, "main", argc, argv);
+#endif
 
   endgame:
   // free TCC

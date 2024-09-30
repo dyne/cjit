@@ -22,8 +22,17 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #include <ftw.h> // _GNU_SOURCE
+
+#ifdef LIBC_MINGW32
+#include <windows.h>
+#include <shlwapi.h>
+#include <rpc.h>
+#pragma comment(lib, "rpcrt4.lib")
+#pragma comment(lib, "shlwapi.lib")
+#endif
 
 extern void _err(const char *fmt, ...);
 
@@ -105,3 +114,39 @@ bool rm_recursive(char *path) {
   }
   return true;
 }
+
+#ifdef LIBC_MINGW32
+///////////////
+// WINDOWS SHIT
+char *win32_mkdtemp() {
+    static char tempDir[MAX_PATH];
+    char tempPath[MAX_PATH];
+    char *filename = "CJIT-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    // Get the temporary path
+    if (GetTempPath(MAX_PATH, tempPath) == 0) {
+        _err("Failed to get temporary path");
+        return NULL;
+    }
+    // else
+    //   _err("Temporary path is %s",tempPath);
+    // randomize the temp dir name
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    size_t charset_size = sizeof(charset) - 1;
+    char *str = &filename[5];
+    // Seed the random number generator
+    srand((unsigned int)time(NULL));
+    for (size_t i = 0; i < 16; i++) {
+        int key = rand() % charset_size;
+        *str = charset[key];
+        str++;
+    }
+    *str = '\0'; // Null-terminate the string
+    PathCombine(tempDir, tempPath, filename);
+    // Create the temporary directory
+    if (CreateDirectory(tempDir, NULL) == 0) {
+        _err("Failed to create temporary dir: %s",tempDir);
+        return;
+    }
+    return(tempDir);
+}
+#endif
