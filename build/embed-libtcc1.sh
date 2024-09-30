@@ -1,7 +1,7 @@
 #!/bin/sh
 
-lib=lib/tinycc/libtcc1.a
-dst=src/embed-libtcc1.c
+lib=${1:-lib/tinycc/libtcc1.a}
+dst=${2:-src/embed-libtcc1.c}
 
 [ -r $lib ] || {
   >&2 echo "Error not found: $lib"

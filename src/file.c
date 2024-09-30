@@ -145,7 +145,7 @@ char *win32_mkdtemp() {
     // Create the temporary directory
     if (CreateDirectory(tempDir, NULL) == 0) {
         _err("Failed to create temporary dir: %s",tempDir);
-        return;
+        return NULL;
     }
     return(tempDir);
 }
