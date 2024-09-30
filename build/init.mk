@@ -11,14 +11,15 @@ ifdef CCACHE
 	cc := ccache ${cc}
 endif
 
-CFLAGS ?= -Og -ggdb -DDEBUG=1 -Wall -Wextra -pedantic
+CFLAGS ?= -Og -ggdb -DDEBUG=1 -Wall -Wextra
 
 ifdef RELEASE
 	CFLAGS := -O2 -fomit-frame-pointer
 endif
 
 cflags := ${CFLAGS} -Isrc -Ilib/tinycc
-cflags += -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
+
+cflags_stack_protect := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
 
 SOURCES := src/io.o src/file.o src/cflag.o \
 	src/cjit.o src/embed-libtcc1.o src/embed-musl-libc.o
