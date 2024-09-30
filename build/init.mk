@@ -1,6 +1,6 @@
 # CJIT GNUmakefile build initialization
-BRANCH := $(shell git symbolic-ref HEAD | cut -d/ -f3-)
-COMMIT := $(shell git rev-parse --short HEAD)
+# BRANCH := $(shell git symbolic-ref HEAD | cut -d/ -f3-)
+# COMMIT := $(shell git rev-parse --short HEAD)
 VERSION := $(shell git describe --tags | cut -d- -f1)
 CURRENT_YEAR := $(shell date +%Y)
 

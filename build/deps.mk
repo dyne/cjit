@@ -4,11 +4,7 @@
 	$(cflags) \
 	-c $< -o $@ \
 	-DVERSION=\"${VERSION}\" \
-	-DCURRENT_YEAR=\"${CURRENT_YEAR}\" \
-	-DCOMMIT=\"${COMMIT}\" \
-	-DBRANCH=\"${BRANCH}\" \
-	-DCFLAGS="${cflags}"
-
+	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
 
 src/embed-musl-libc.c:
 	sh build/embed-musl-libc.sh
