@@ -57,7 +57,7 @@ jobs:
         #        echo "😤 Some files failed the C linting checks!"
 
   musl-test:
-    name: 🐧 Musl Linux build and test
+    name: 🐧 Musl Linux test
     needs: [reuse, c-lint]
     runs-on: "ubuntu-latest"
     steps:
@@ -73,6 +73,28 @@ jobs:
       - name: Run tests
         run: |
           make check
+
+  win-native-test:
+    name: 🪟 Windows native test
+    needs: [reuse, c-lint]
+    runs-on: "windows-latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: install dependencies
+        run: |
+          choco install --no-progress -r -y upx
+      - name: Build native windows exe for x86_64
+        run: |
+          cd .\lib\tinycc
+          bash configure --targetos=WIN32 --config-backtrace=no
+          make libtcc.a libtcc1.a
+          cd ..\..
+          make -f build/win-native.mk
+      - name: Run tests
+        run: |
+          .\cjit.exe test\hello.c
 
   semantic-release:
     name: 🤖 Semantic release
@@ -122,6 +144,31 @@ jobs:
           name: release-musl-linux-x86_64
           path: |
             cjit
+
+  win-native-release:
+    name: 🪟 Windows native binary release build
+    needs: [semantic-release]
+    runs-on: "windows-latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: install dependencies
+        run: |
+          choco install --no-progress -r -y upx
+      - name: Build native windows exe for x86_64
+        run: |
+          cd .\lib\tinycc
+          bash configure --targetos=WIN32 --config-backtrace=no
+          make libtcc.a libtcc1.a
+          cd ..\..
+          make -f build/win-native.mk
+      - name: Upload artifact windows-amd64
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-win-native-x86_64
+          path: |
+            cjit.exe
 
   draft-binary-release:
     name: 📦 Pack release
