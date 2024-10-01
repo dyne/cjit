@@ -85,9 +85,9 @@ static int cjit_compile_and_run(TCCState *TCC, const char *code, int argc, char 
   const char main_fn[]="main";
   int err_fds[2];
   int err_r, err_w;
-  const char compile_errmsg[]= "Code compilation error in source\n";
-  const char reloc_errmsg[]= "Code relocation error in source\n";
-  const char nomain_errmsg[]= "Symbol 'main' was not found in source\n";
+  const char compile_errmsg[]= "Code compilation error in source";
+  const char reloc_errmsg[]= "Code relocation error in source";
+  const char nomain_errmsg[]= "Symbol 'main' was not found in source";
 
 
   *err_msg = NULL;
@@ -201,7 +201,7 @@ static void error_callback(void *ctx, const char *msg)
     }
 }
 
-#define ERR_MAX 128
+#define ERR_MAX 80
 static int cjit_check_buffer(void *tcs, char *code, char **err_msg)
 {
     TCCState *TCC = (TCCState *)tcs;
@@ -212,6 +212,9 @@ static int cjit_check_buffer(void *tcs, char *code, char **err_msg)
     res = cjit_compile_and_run(TCC, code, 0, NULL, 0, err_msg);
     if (res != 0) {
         if(err_msg) {
+            if (strlen(err_msg) > ERR_MAX -1) {
+                err_msg[ERR_MAX - 1] = 0;
+            }
             char *p = strchr(err_msg, '\n');
             if (p) *p = 0;
             editorSetStatusMessage(*err_msg);
@@ -255,7 +258,15 @@ static int cjit_cli(TCCState *TCC)
         if (err_msg)
             _err(err_msg);
     } else {
+        int row = 0;
         initEditor();
+
+        editorInsertRow(row++, "#include <stdio.h>", 18);
+        editorInsertRow(row++, "#include <stdlib.h>", 19);
+        editorInsertRow(row++, "", 0);
+        editorInsertRow(row++, "int main(int argc, char **argv) {", 33);
+        editorInsertRow(row++, "", 0);
+        editorInsertRow(row++, "}", 1);
         enableRawMode(STDIN_FILENO);
         editorSetStatusMessage(
                 "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find | Ctrl-R Run");
@@ -853,9 +864,6 @@ int main(int argc, char **argv) {
 
   if(! write_to_file(tmpdir,"libtcc1.a",(char*)&libtcc1,libtcc1_len) )
     goto endgame;
-
-  //// TCC DEFAULT PATHS
-  tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
 
 
 #if defined(LIBC_MUSL)
