@@ -247,6 +247,38 @@ fatal:
     return -1;
 }
 
+/* For getchar() behavior */
+int enableGetCharMode(int fd) {
+    struct termios nocanon;
+
+    if (!isatty(STDIN_FILENO))
+        goto fatal;
+    disableRawMode(STDIN_FILENO);
+    if (tcgetattr(fd,&orig_termios) == -1)
+        goto fatal;
+
+    nocanon = orig_termios;  /* modify the original mode */
+    /* input modes: no break, no CR to NL, no parity check, no strip char,
+     * no start/stop output control. */
+    nocanon.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    /* control chars - set return condition: min number of bytes and timer. */
+    nocanon.c_cc[VMIN] = 1; /* Wait for one byte */
+    nocanon.c_cc[VTIME] = 0; /* No timeout */
+
+    /* put terminal in raw mode after flushing */
+    if (tcsetattr(fd,TCSAFLUSH,&nocanon) < 0) goto fatal;
+    return 0;
+
+fatal:
+    errno = ENOTTY;
+    return -1;
+}
+
+/* Disable GetChar mode */
+void disableGetCharMode(int fd) {
+    tcsetattr(fd,TCSAFLUSH,&orig_termios);
+}
+
 /* Read a key from the terminal put in raw mode, trying to handle
  * escape sequences. */
 int editorReadKey(int fd) {
