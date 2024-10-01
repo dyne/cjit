@@ -183,8 +183,12 @@ static int cjit_compile_buffer(void *tcs, char *code, int argc, char **argv)
         _err(err_msg);
         free(err_msg);
     }
+    enableGetCharMode(STDIN_FILENO);
+    _err("\n\n\n\nPress any key to continue....\n");
+    getchar();
+    disableGetCharMode(STDIN_FILENO);
+
     enableRawMode(STDIN_FILENO);
-    sleep(3);
     editorRefreshScreen();
     return res;
 }
