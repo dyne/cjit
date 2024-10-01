@@ -38,6 +38,27 @@ extern char *libtcc1;
 extern unsigned int libtcc1_len;
 extern char *musl_libc;
 extern unsigned int musl_libc_len;
+// from embed-headers generated from lib/tinycc/include
+extern char *lib_tinycc_include_float_h;
+extern unsigned int lib_tinycc_include_float_h_len;
+extern char *lib_tinycc_include_stdalign_h;
+extern unsigned int lib_tinycc_include_stdalign_h_len;
+extern char *lib_tinycc_include_stdarg_h;
+extern unsigned int lib_tinycc_include_stdarg_h_len;
+extern char *lib_tinycc_include_stdatomic_h;
+extern unsigned int lib_tinycc_include_stdatomic_h_len;
+extern char *lib_tinycc_include_stdbool_h;
+extern unsigned int lib_tinycc_include_stdbool_h_len;
+extern char *lib_tinycc_include_stddef_h;
+extern unsigned int lib_tinycc_include_stddef_h_len;
+extern char *lib_tinycc_include_stdnoreturn_h;
+extern unsigned int lib_tinycc_include_stdnoreturn_h_len;
+extern char *lib_tinycc_include_tccdefs_h;
+extern unsigned int lib_tinycc_include_tccdefs_h_len;
+extern char *lib_tinycc_include_tgmath_h;
+extern unsigned int lib_tinycc_include_tgmath_h_len;
+extern char *lib_tinycc_include_varargs_h;
+extern unsigned int lib_tinycc_include_varargs_h_len;
 
 // from file.c
 extern long  file_size(const char *filename);
