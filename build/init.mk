@@ -22,7 +22,7 @@ cflags := ${CFLAGS} -Isrc -Ilib/tinycc
 cflags_stack_protect := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
 
 SOURCES := src/io.o src/file.o src/cflag.o src/cjit.o \
- src/embed-libtcc1.o src/embed-headers.o
+ src/embed-libtcc1.o src/embed-headers.o src/kilo.o
 
 ldadd := lib/tinycc/libtcc.a
 

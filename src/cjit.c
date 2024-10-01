@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/poll.h>
 #endif
 
 #include <cflag.h>
@@ -72,12 +73,205 @@ extern char *win32_mkdtemp();
 // from io.c
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
-// TCC callback
+
+static void error_callback(void *ctx, const char *msg);
+
+#ifdef REPL_SUPPORTED
+static int cjit_compile_and_run(TCCState *TCC, const char *code, int argc, char **argv, int rn, char **err_msg)
+{
+  pid_t pid;
+  int res = 0;
+  int (*_ep)(int, char**);
+  const char main_fn[]="main";
+  int err_fds[2];
+  int err_r, err_w;
+  const char compile_errmsg[]= "Code compilation error in source\n";
+  const char reloc_errmsg[]= "Code relocation error in source\n";
+  const char nomain_errmsg[]= "Symbol 'main' was not found in source\n";
+
+
+  *err_msg = NULL;
+
+  if (pipe(err_fds) != 0) {
+    _err("Error creating pipe\n");
+    return 1;
+  }
+  err_r = err_fds[0];
+  err_w = err_fds[1];
+
+  pid = fork();
+  if (pid == 0) {
+      close(err_r);
+      tcc_set_error_func(TCC, &err_w, error_callback);
+      if (tcc_compile_string(TCC, code) < 0) {
+          write(err_w, compile_errmsg, strlen(compile_errmsg));
+          res = 1;
+      }
+      if ((res == 0) && (tcc_relocate(TCC) < 0)) {
+          write(err_w, reloc_errmsg, strlen(reloc_errmsg));
+          res = 1;
+      }
+      if (res == 0) {
+          _ep = tcc_get_symbol(TCC, main_fn);
+          if (!_ep) {
+              write(err_w, nomain_errmsg, strlen(nomain_errmsg));
+              res = 1;
+          }
+      }
+
+      if ((res == 0) && (rn != 0)) {
+          res = _ep(argc, argv);
+      }
+      close(err_w);
+      exit(res);
+  } else {
+      int status;
+      int ret;
+      struct pollfd pfd;
+      close(err_w);
+      pfd.fd = err_r;
+      pfd.events = POLLIN;
+
+      while (poll(&pfd, 1, 2000) > 0) {
+          ssize_t n = 0;
+          char buf[1024];
+          memset(buf, 0, 1024);
+          n = read(err_r, buf, 1023);
+          if (n > 0) {
+              if (!*err_msg)
+                  *err_msg = strdup(buf);
+          } else break;
+      }
+      close(err_r);
+
+      ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+      if (ret != pid){
+          _err("Wait error in source: %s","main");
+          return 1;
+      }
+      if (WIFEXITED(status)) {
+          res = WEXITSTATUS(status);
+          //_err("Process has returned %d", res);
+      } else if (WIFSIGNALED(status)) {
+          res = WTERMSIG(status);
+          _err("Process terminated with signal %d", WTERMSIG(status));
+      } else if (WIFSTOPPED(status)) {
+          res = WSTOPSIG(status);
+          _err("Process has returned %d", WSTOPSIG(status));
+      } else if (WIFSTOPPED(status)) {
+          res = WSTOPSIG(status);
+          _err("Process stopped with signal", WSTOPSIG(status));
+      } else {
+          _err("wait: unknown status: %d", status);
+      }
+  }
+  return res;
+}
+
+/* Called by the editor when the buffer is set to run */
+static int cjit_compile_buffer(void *tcs, char *code, int argc, char **argv)
+{
+    TCCState *TCC = (TCCState *)tcs;
+    int res = 0;
+    char *err_msg;
+    disableRawMode(STDIN_FILENO);
+    /* Clear the screen */
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    // run the code from main
+    res = cjit_compile_and_run(TCC, code, argc, argv, 1, &err_msg);
+    if (err_msg) {
+        _err(err_msg);
+        free(err_msg);
+    }
+    enableRawMode(STDIN_FILENO);
+    sleep(3);
+    editorRefreshScreen();
+    return res;
+}
+
+static void error_callback(void *ctx, const char *msg)
+{
+    int wfd = *(int *)ctx;
+    if ((msg) && (wfd >=0)) {
+        write(wfd, msg, strlen(msg));
+    }
+}
+
+#define ERR_MAX 128
+static int cjit_check_buffer(void *tcs, char *code, char **err_msg)
+{
+    TCCState *TCC = (TCCState *)tcs;
+    int res = 0;
+    // run the code from main
+    //
+    disableRawMode(STDIN_FILENO);
+    res = cjit_compile_and_run(TCC, code, 0, NULL, 0, err_msg);
+    if (res != 0) {
+        if(err_msg) {
+            char *p = strchr(err_msg, '\n');
+            if (p) *p = 0;
+            editorSetStatusMessage(*err_msg);
+        }
+    } else {
+        editorSetStatusMessage("No errors.");
+    }
+    enableRawMode(STDIN_FILENO);
+    return res;
+}
+
+static int cjit_cli(TCCState *TCC)
+{
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t rd;
+    int res = 0;
+    char *err_msg;
+    // don't add automatic main preamble if in a pipe
+    if (!isatty(fileno(stdin))) {
+        int rd;
+        char *code = NULL;
+        char *line = NULL;
+        _err("Not running from a terminal, executing source from STDIN\n");
+        do {
+            rd = getline(&line, &len, stdin);
+            if (rd > 0) {
+                if (!code)
+                    code = strdup(line);
+                else {
+                   code = realloc(code, strlen(code) + rd + 1);
+                   if (!code) {
+                       _err("Memory error while executing from STDIN\n");
+                       return 2;
+                   }
+                   strcat(code, line);
+                }
+            }
+        } while (rd != -1);
+        cjit_compile_and_run(TCC, code, 0, NULL, 1, &err_msg);
+        if (err_msg)
+            _err(err_msg);
+    } else {
+        initEditor();
+        enableRawMode(STDIN_FILENO);
+        editorSetStatusMessage(
+                "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find | Ctrl-R Run");
+        while(1) {
+            editorSetCompilerCallback(cjit_compile_buffer);
+            editorSetCheckCallback(cjit_check_buffer);
+            editorSetCompilerContext(TCC);
+            editorRefreshScreen();
+            editorProcessKeypress(STDIN_FILENO);
+        }
+    }
+    return res;
+}
+#else
 void handle_error(void *n, const char *m) {
   (void)n;
   _err("%s",m);
 }
 
+#ifdef LIBC_MINGW32
 static int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
   int res = 1;
   int (*_ep)(int, char**);
@@ -91,7 +285,7 @@ static int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
   return(res);
 }
 
-#ifndef LIBC_MINGW32
+#else
 static int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv)
 {
   pid_t pid;
@@ -217,6 +411,9 @@ static int cjit_cli(TCCState *TCC)
 #endif
     return res;
 }
+
+#endif
+
 
 #ifdef LIBC_MUSL
 #include <fcntl.h>
@@ -634,8 +831,6 @@ int main(int argc, char **argv) {
     _err("Could not initialize tcc");
     exit(1);
   }
-  // error handler callback for TCC
-  tcc_set_error_func(TCC, stderr, handle_error);
 
   // initialize the tmpdir for execution
 #ifndef LIBC_MINGW32
@@ -654,6 +849,11 @@ int main(int argc, char **argv) {
 
   if(! write_to_file(tmpdir,"libtcc1.a",(char*)&libtcc1,libtcc1_len) )
     goto endgame;
+
+  //// TCC DEFAULT PATHS
+  tcc_add_include_path(TCC,"/usr/include/x86_64-linux-musl");
+
+
 #if defined(LIBC_MUSL)
   if(! write_to_file(tmpdir,"libc.so",(char*)&musl_libc,musl_libc_len) )
     goto endgame;
@@ -684,12 +884,24 @@ int main(int argc, char **argv) {
   }
   _err("Source to execute: %s",code_path);
   char *code = file_load(code_path);
+  char *err_msg = NULL;
   if(!code) {
     _err("File not found: %s",code_path);
     goto endgame;
   }
+
+#ifdef REPL_SUPPORTED
+  _err("Execution start\n---");
+  res = cjit_compile_and_run(TCC, code, argc, argv, 1, &err_msg);
+  if (err_msg) {
+        _err(err_msg);
+  }
+#else
+  // error handler callback for TCC
+  tcc_set_error_func(TCC, stderr, handle_error);
   if (tcc_compile_string(TCC, code) == -1) return 1;
   free(code); // safe: bytecode compiled is in TCC now
+  code = NULL;
   _err("Compilation successful");
 
   // relocate the code
@@ -703,9 +915,10 @@ int main(int argc, char **argv) {
 #else
   res = cjit_exec_win(TCC, "main", argc, argv);
 #endif
-
+#endif // REPL_SUPPORTED
   endgame:
   // free TCC
+  free(code);
   tcc_delete(TCC);
   if(tmpdir) {
     rm_recursive(tmpdir);
