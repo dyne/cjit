@@ -195,7 +195,7 @@ jobs:
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
-    needs: [semantic-release, musl-release]
+    needs: [semantic-release, musl-release, win-native-release]
     runs-on: ubuntu-latest
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
