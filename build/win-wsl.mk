@@ -15,9 +15,9 @@ ldflags += -static-libgcc
 
 # embed_libtcc1 := lib/tinycc/x86_64-win32-libtcc1.a
 
-all: deps cjit
+all: deps cjit.exe
 
-cjit: ${SOURCES}
+cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
 	upx-ucl -q $@
 # somehow upx compression helps the binary to function: it
