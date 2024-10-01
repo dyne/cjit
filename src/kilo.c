@@ -563,14 +563,12 @@ void editorUpdateRow(erow *row) {
     free(row->render);
     for (j = 0; j < row->size; j++)
         if (row->chars[j] == TAB) tabs++;
-
     unsigned long long allocsize =
         (unsigned long long) row->size + tabs*8 + nonprint*9 + 1;
     if (allocsize > UINT32_MAX) {
         printf("Some line of the edited file is too long for kilo\n");
         exit(1);
     }
-
     row->render = malloc(row->size + tabs*8 + nonprint*9 + 1);
     idx = 0;
     for (j = 0; j < row->size; j++) {
@@ -583,11 +581,8 @@ void editorUpdateRow(erow *row) {
     }
     row->rsize = idx;
     row->render[idx] = '\0';
-
     /* Update the syntax highlighting attributes of the row. */
     editorUpdateSyntax(row);
-
-
 }
 
 char *editorRowsToString(int *buflen);
@@ -715,7 +710,6 @@ void editorInsertChar(int c) {
     if (!row) {
         while(E.numrows <= filerow)
             editorInsertRow(E.numrows,"",0);
-
     }
     row = &E.row[filerow];
     editorRowInsertChar(row,filecol,c);
@@ -832,14 +826,14 @@ int editorOpen(char *filename) {
     return 0;
 }
 
-int editorRun(void) 
+int editorRun(void)
 {
     int len;
     char *buf = editorRowsToString(&len);
     if (E.compiler_cb == NULL) {
         return 0;
     }
-    return E.compiler_cb(E.compiler_cb_ctx, buf, 0, NULL); 
+    return E.compiler_cb(E.compiler_cb_ctx, buf, 0, NULL);
 }
 
 /* Save the current file on disk. Return 0 on success, 1 on error. */
