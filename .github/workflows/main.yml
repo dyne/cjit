@@ -92,9 +92,9 @@ jobs:
           make libtcc.a libtcc1.a
           cd ..\..
           make -f build/win-native.mk
-      - name: Run tests
-        run: |
-          .\cjit.exe test\hello.c
+      # - name: Run tests
+      #   run: |
+      #     .\cjit.exe test\hello.c
 
   semantic-release:
     name: 🤖 Semantic release

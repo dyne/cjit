@@ -16,7 +16,7 @@ cflags := -O2 -fomit-frame-pointer -Isrc -Ilib/tinycc
 cflags += -DLIBC_MINGW32
 
 SOURCES := src/io.o src/file.o src/cflag.o \
-	src/cjit.o src/embed-libtcc1.o
+	src/cjit.o src/embed-libtcc1.o src/embed-headers.o
 
 ldflags += -static-libgcc
 
@@ -38,3 +38,7 @@ cjit.exe: ${SOURCES}
 src/embed-libtcc1.c:
 	$(info Embedding libtcc1: ${embed_libtcc1})
 	sh build/embed-libtcc1.sh ${embed_libtcc1}
+
+src/embed-headers.c:
+	$(info Embedding tinycc headers)
+	bash build/embed-headers.sh
