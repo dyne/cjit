@@ -26,7 +26,6 @@ ldadd := lib/tinycc/libtcc.a -lshlwapi
 
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
-	upx -q $@
 
 .c.o:
 	$(cc) \

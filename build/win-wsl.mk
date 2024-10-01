@@ -19,7 +19,8 @@ all: deps cjit.exe
 
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
-	upx-ucl -q $@
+
+#	upx-ucl -q $@
 # somehow upx compression helps the binary to function: it
 # accidentally fixes some headers that are malformed out of mingw
 
