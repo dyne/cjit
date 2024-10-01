@@ -7,11 +7,15 @@
 	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
 
 src/embed-musl-libc.c:
-	sh build/embed-musl-libc.sh
+	bash build/embed-musl-libc.sh
 
 src/embed-libtcc1.c:
 	$(info Embedding libtcc1: ${embed_libtcc1})
-	sh build/embed-libtcc1.sh ${embed_libtcc1}
+	bash build/embed-libtcc1.sh ${embed_libtcc1}
+
+src/embed-headers.c:
+	$(info Embedding tinycc headers)
+	bash build/embed-headers.sh
 
 lib/tinycc/libtcc.a:
 	cd lib/tinycc && ./configure ${tinycc_config}
