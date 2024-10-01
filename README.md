@@ -16,6 +16,35 @@ implementation is used inside CJIT.
 
 [![software by Dyne.org](https://files.dyne.org/software_by_dyne.png)](http://www.dyne.org)
 
+## Downloads
+
+We provide ready to execute binary builds as releases on github.
+
+- [cgit - Windows x86 64bit](https://github.com/dyne/cjit/releases/latest/download/cjit.exe) ⚠️ (WIP)
+- [cgit - Linux ELF x86 64bit](https://github.com/dyne/cjit/releases/latest/download/cjit)
+
+## Quick start
+
+Paste this into your terminal
+```sh
+curl -sLo cjit https://github.com/dyne/cjit/releases/latest/download/cjit
+chmod +x cjit
+cat << EOF > hello.c
+#!./cjit
+#include <stdio.h>
+#include <stdlib.h>
+int main(int argc, char **argv) {
+  fprintf(stderr,"Hello, World!\n");
+  exit(0);
+}
+EOF
+./cjit hello.c
+```
+You can now play around with `hello.c` and write your own C code, which can be simply executed with this command:
+```
+./cjit hello.c
+```
+
 ## Build dependencies
 
 On GNU+Linux systems make sure to have installed:
