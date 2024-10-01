@@ -62,11 +62,12 @@
 #define HL_KEYWORD2 5
 #define HL_STRING 6
 #define HL_NUMBER 7
-#define HL_ERROR HL_NUMBER
 #define HL_MATCH 8      /* Search match. */
+#define HL_ERROR 9
 
 #define HL_HIGHLIGHT_STRINGS (1<<0)
 #define HL_HIGHLIGHT_NUMBERS (1<<1)
+
 
 struct editorSyntax {
     char **filematch;
@@ -110,6 +111,7 @@ struct editorConfig {
     int (*compiler_cb)(void *, const char *, int, char **);
     int (*check_cb)(void *, const char *, char *);
     void *compiler_cb_ctx;
+    int keep_scratchpad;
 };
 
 static struct editorConfig E;
@@ -123,6 +125,7 @@ enum KEY_ACTION{
         TAB = 9,            /* Tab */
         CTRL_L = 12,        /* Ctrl+l */
         ENTER = 13,         /* Enter */
+        CTRL_E = 5,         /* Ctrl-e */
         CTRL_Q = 17,        /* Ctrl-q */
         CTRL_R = 18,        /* Ctrl-r */
         CTRL_S = 19,        /* Ctrl-s */
@@ -141,6 +144,19 @@ enum KEY_ACTION{
         PAGE_UP,
         PAGE_DOWN
 };
+
+static void editorMakeFilename(void) {
+  const char scratchpad_fname[]="cjit-scratchpad.c";
+  char dirname_tmpl[] = "/tmp/cjit-scratchpad.c.XXXXXX";
+  char *dirname;
+  size_t filename_sz;
+  if (E.filename)
+      return;
+  dirname = mkdtemp(dirname_tmpl);
+  filename_sz = strlen(dirname) + 1 + strlen(scratchpad_fname) + 1;
+  E.filename = malloc(filename_sz);
+  snprintf(E.filename, filename_sz, "%s/%s", dirname, scratchpad_fname);
+}
 
 void editorSetStatusMessage(const char *fmt, ...);
 
@@ -211,6 +227,13 @@ void disableRawMode(int fd) {
 /* Called at exit to avoid remaining in raw mode. */
 void editorAtExit(void) {
     disableRawMode(STDIN_FILENO);
+    if ((!E.keep_scratchpad) && (E.filename)) {
+        char *cp1, *dir_nm;
+        cp1 = strdup(E.filename);
+        dir_nm = dirname(cp1);
+        unlink(E.filename);
+        rmdir(dir_nm);
+    }
 }
 
 /* Raw mode: 1960 magic shit. */
@@ -219,7 +242,6 @@ int enableRawMode(int fd) {
 
     if (E.rawmode) return 0; /* Already enabled. */
     if (!isatty(STDIN_FILENO)) goto fatal;
-    atexit(editorAtExit);
     if (tcgetattr(fd,&orig_termios) == -1) goto fatal;
 
     raw = orig_termios;  /* modify the original mode */
@@ -377,7 +399,7 @@ int getWindowSize(int ifd, int ofd, int *rows, int *cols) {
 
         /* Restore position. */
         char seq[32];
-        snprintf(seq,32,"\x1b[%d;%dH",orig_row,orig_col);
+        snprintf(seq,sizeof(seq),"\x1b[%d;%dH",orig_row,orig_col);
         if (write(ofd,seq,strlen(seq)) == -1) {
             /* Can't recover... */
         }
@@ -472,7 +494,7 @@ void editorUpdateSyntax(erow *row) {
             continue;
         }
 
-        /* Handle "" and '' */
+
         if (in_string) {
             row->hl[i] = HL_STRING;
             if (*p == '\\') {
@@ -484,6 +506,7 @@ void editorUpdateSyntax(erow *row) {
             if (*p == in_string) in_string = 0;
             p++; i++;
             continue;
+        /* Handle "" and '' */
         } else {
             if (*p == '"' || *p == '\'') {
                 in_string = *p;
@@ -559,6 +582,7 @@ int editorSyntaxToColor(int hl) {
     case HL_STRING: return 35;      /* magenta */
     case HL_NUMBER: return 31;      /* red */
     case HL_MATCH: return 34;      /* blu */
+    case HL_ERROR: return 41;      /* red bg */
     default: return 37;             /* white */
     }
 }
@@ -648,6 +672,7 @@ void editorFreeRow(erow *row) {
     free(row->hl);
 }
 
+
 /* Remove the row at the specified position, shifting the remainign on the
  * top. */
 void editorDelRow(int at) {
@@ -657,9 +682,19 @@ void editorDelRow(int at) {
     row = E.row+at;
     editorFreeRow(row);
     memmove(E.row+at,E.row+at+1,sizeof(E.row[0])*(E.numrows-at-1));
-    for (int j = at; j < E.numrows-1; j++) E.row[j].idx++;
+    for (int j = at; j < E.numrows-1; j++) E.row[j].idx--;
     E.numrows--;
     E.dirty++;
+}
+
+/* Clear the entire buffer */
+void editorReset(void) {
+    int j;
+    for (j = E.numrows - 1; j > 0; j--) {
+        editorDelRow(E.row+j);
+    }
+    E.numrows = 0;
+    E.dirty = 0;
 }
 
 /* Turn the editor rows into a single heap-allocated string.
@@ -708,7 +743,13 @@ void editorRowInsertChar(erow *row, int at, int c) {
         row->size++;
     }
     row->chars[at] = c;
+    if (c == '\\') {
+        row->size++;
+        editorUpdateRow(row);
+        row->size--;
+    }
     editorUpdateRow(row);
+
     E.dirty++;
 }
 
@@ -826,16 +867,14 @@ void editorDelChar() {
 
 /* Load the specified program in the editor memory and returns 0 on success
  * or 1 on error. */
-int editorOpen(char *filename) {
+int editorOpen(void) {
     FILE *fp;
 
-    E.dirty = 0;
-    free(E.filename);
-    size_t fnlen = strlen(filename)+1;
-    E.filename = malloc(fnlen);
-    memcpy(E.filename,filename,fnlen);
+    if (!E.filename)
+        return 0;
 
-    fp = fopen(filename,"r");
+    E.dirty = 0;
+    fp = fopen(E.filename,"r");
     if (!fp) {
         if (errno != ENOENT) {
             perror("Opening file");
@@ -870,20 +909,20 @@ int editorRun(void)
 
 /* Save the current file on disk. Return 0 on success, 1 on error. */
 int editorSave(void) {
-    int len;
-    char *buf = editorRowsToString(&len);
-    int fd = open(E.filename,O_RDWR|O_CREAT,0644);
+    int len, fd;
+    char *buf;
+
+    editorMakeFilename();
+    buf = editorRowsToString(&len);
+    fd = open(E.filename,O_RDWR|O_CREAT|O_TRUNC,0644);
     if (fd == -1) goto writeerr;
 
-    /* Use truncate + a single write(2) call in order to make saving
-     * a bit safer, under the limits of what we can do in a small editor. */
-    if (ftruncate(fd,len) == -1) goto writeerr;
     if (write(fd,buf,len) != len) goto writeerr;
 
     close(fd);
     free(buf);
     E.dirty = 0;
-    editorSetStatusMessage("%d bytes written on disk", len);
+    editorSetStatusMessage("%d bytes written to %s", len, E.filename);
     return 0;
 
 writeerr:
@@ -954,11 +993,15 @@ void editorRefreshScreen(void) {
 
         int len = r->rsize - E.coloff;
         int current_color = -1;
+        abAppend(&ab, "\x1b[40m", 5);
         if (len > 0) {
             if (len > E.screencols) len = E.screencols;
             char *c = r->render+E.coloff;
             unsigned char *hl = r->hl+E.coloff;
             int j;
+            if (hl[0] == HL_ERROR) {
+                abAppend(&ab, "\x1b[41m", 5);
+            }
             for (j = 0; j < len; j++) {
                 if (hl[j] == HL_NONPRINT) {
                     char sym;
@@ -988,6 +1031,7 @@ void editorRefreshScreen(void) {
             }
         }
         abAppend(&ab,"\x1b[39m",5);
+        abAppend(&ab, "\x1b[40m", 5);
         abAppend(&ab,"\x1b[0K",4);
         abAppend(&ab,"\r\n",2);
     }
@@ -1043,8 +1087,23 @@ void editorRefreshScreen(void) {
         char *err_msg = NULL;
         unsigned buflen;
         char *buf = editorRowsToString(&buflen);
+        int ret;
         buf[buflen] = (char)0;
-        if ((E.check_cb(E.compiler_cb_ctx, buf, &err_msg) != 0) && (err_msg != NULL)) {
+        if (E.dirty) {
+            int i,j;
+            /* Set highlights from HL_ERROR to HL_NORMAL */
+            for (i = 0; i < E.numrows; i++) {
+                erow *row = &E.row[i];
+                for (j = 0; j < row->rsize; j++) {
+                    if (row->hl[j] == HL_ERROR)
+                        row->hl[j] = HL_NORMAL;
+                }
+            }
+            E.dirty = 0;
+        }
+        editorUpdateSyntax(row);
+        ret = E.check_cb(E.compiler_cb_ctx, buf, &err_msg);
+        if ((ret != 0) && (err_msg != NULL)) {
             int err_line = 0;
             /* extact the error line */
             char *line_ns = strchr(err_msg, ':');
@@ -1056,6 +1115,7 @@ void editorRefreshScreen(void) {
                 /* Mark the error line as red */
                 E.row[at].hl = realloc(E.row[at].hl, E.row[at].rsize);
                 memset(E.row[at].hl, HL_ERROR, E.row[at].rsize);
+                editorUpdateSyntax(row);
             }
         }
         free(buf);
@@ -1232,6 +1292,18 @@ void editorMoveCursor(int key) {
             }
         }
         break;
+    case HOME_KEY:
+        E.cx = 0;
+        break;
+    case END_KEY:
+        if (row && filecol < row->size) {
+            E.cx = row->size;
+            if (E.cx > E.screencols-1) {
+                E.coloff = E.cx-E.screencols+1;
+                E.cx = E.screencols-1;
+            }
+        }
+        break;
     }
     /* Fix cx if the current line has not enough chars. */
     filerow = E.rowoff+E.cy;
@@ -1254,7 +1326,6 @@ void editorProcessKeypress(int fd) {
     /* When the file is modified, requires Ctrl-q to be pressed N times
      * before actually quitting. */
     static int quit_times = KILO_QUIT_TIMES;
-
     int c = editorReadKey(fd);
     switch(c) {
     case ENTER:         /* Enter */
@@ -1265,19 +1336,29 @@ void editorProcessKeypress(int fd) {
          * to the edited file. */
         break;
     case CTRL_Q:        /* Ctrl-q */
-        /* Quit if the file was already saved. */
-        if (E.dirty && quit_times) {
-            editorSetStatusMessage("WARNING!!! File has unsaved changes. "
-                "Press Ctrl-Q %d more times to quit.", quit_times);
-            quit_times--;
-            return;
-        }
         exit(0);
         break;
     case CTRL_S:        /* Ctrl-s */
+        E.dirty++;
+        E.keep_scratchpad = 1;
         editorSave();
         break;
+    case CTRL_E:        /* Ctrl-e */
+        char ed_cmd[200]="/usr/bin/editor ";
+        E.dirty++;
+        editorSave();
+        strcat(ed_cmd, E.filename);
+        disableRawMode(STDIN_FILENO);
+        editorReset();
+        printf("Running %s\n", ed_cmd);
+        system(ed_cmd);
+        enableRawMode(STDIN_FILENO);
+        editorOpen();
+        break;
     case CTRL_R:        /* Ctrl-r */
+        E.cx = 0;
+        E.cy = 0;
+        editorRefreshScreen();
         editorRun();
         break;
     case CTRL_F:
@@ -1306,6 +1387,8 @@ void editorProcessKeypress(int fd) {
     case ARROW_DOWN:
     case ARROW_LEFT:
     case ARROW_RIGHT:
+    case HOME_KEY:
+    case END_KEY:
         editorMoveCursor(c);
         break;
     case CTRL_L: /* ctrl+l, clear screen */
@@ -1350,12 +1433,14 @@ void initEditor(void) {
     E.numrows = 0;
     E.row = NULL;
     E.dirty = 0;
-    E.filename = "";
+    E.filename = NULL;
     E.syntax = &HLDB[0]; /* Hard coding to C. */
     E.compiler_cb = NULL;
     E.check_cb = NULL;
     E.compiler_cb_ctx = NULL;
+    E.keep_scratchpad = 0;
     updateWindowSize();
+    atexit(editorAtExit);
     signal(SIGWINCH, handleSigWinCh);
 }
 
