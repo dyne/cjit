@@ -170,7 +170,7 @@ jobs:
 
   draft-binary-release:
     name: 📦 Pack release
-    needs: [semantic-release, musl-release]
+    needs: [semantic-release, musl-release, win-native-release]
     runs-on: ubuntu-latest
     steps:
       - name: download binary artifacts
