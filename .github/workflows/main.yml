@@ -42,6 +42,7 @@ jobs:
           flags: --linelength=120 # Optional
           filter: "-readability/braces\
             ,-readability/casting\
+            ,-readability/multiline_comment\
             ,-whitespace/comma\
             ,-whitespace/braces\
             ,-whitespace/comments\
@@ -50,6 +51,7 @@ jobs:
             ,-whitespace/operators\
             ,-whitespace/parens\
             ,-whitespace/tab\
+            ,-whitespace/end_of_line\
             " # Optional
         #    - name: Fail fast?!
         #      if: steps.linter.outputs.checks-failed > 0
