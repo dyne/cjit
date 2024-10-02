@@ -52,6 +52,7 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <libgen.h>
 
 /* Syntax highlight types */
 #define HL_NORMAL 0
@@ -112,6 +113,7 @@ struct editorConfig {
     int (*check_cb)(void *, const char *, char *);
     void *compiler_cb_ctx;
     int keep_scratchpad;
+    int exiting;
 };
 
 static struct editorConfig E;
@@ -148,14 +150,14 @@ enum KEY_ACTION{
 static void editorMakeFilename(void) {
   const char scratchpad_fname[]="cjit-scratchpad.c";
   char dirname_tmpl[] = "/tmp/cjit-scratchpad.c.XXXXXX";
-  char *dirname;
+  char *dir_nm;
   size_t filename_sz;
   if (E.filename)
       return;
-  dirname = mkdtemp(dirname_tmpl);
-  filename_sz = strlen(dirname) + 1 + strlen(scratchpad_fname) + 1;
+  dir_nm = mkdtemp(dirname_tmpl);
+  filename_sz = strlen(dir_nm) + 1 + strlen(scratchpad_fname) + 1;
   E.filename = malloc(filename_sz);
-  snprintf(E.filename, filename_sz, "%s/%s", dirname, scratchpad_fname);
+  snprintf(E.filename, filename_sz, "%s/%s", dir_nm, scratchpad_fname);
 }
 
 void editorSetStatusMessage(const char *fmt, ...);
@@ -226,13 +228,17 @@ void disableRawMode(int fd) {
 
 /* Called at exit to avoid remaining in raw mode. */
 void editorAtExit(void) {
+    if (!E.exiting)
+        return;
     disableRawMode(STDIN_FILENO);
     if ((!E.keep_scratchpad) && (E.filename)) {
         char *cp1, *dir_nm;
         cp1 = strdup(E.filename);
         dir_nm = dirname(cp1);
         unlink(E.filename);
-        rmdir(dir_nm);
+        sync();
+        unlinkat(0, dir_nm, AT_REMOVEDIR);
+        free(cp1);
     }
 }
 
@@ -1336,6 +1342,7 @@ void editorProcessKeypress(int fd) {
          * to the edited file. */
         break;
     case CTRL_Q:        /* Ctrl-q */
+        E.exiting = 1;
         exit(0);
         break;
     case CTRL_S:        /* Ctrl-s */
@@ -1439,6 +1446,7 @@ void initEditor(void) {
     E.check_cb = NULL;
     E.compiler_cb_ctx = NULL;
     E.keep_scratchpad = 0;
+    E.exiting = 0;
     updateWindowSize();
     atexit(editorAtExit);
     signal(SIGWINCH, handleSigWinCh);

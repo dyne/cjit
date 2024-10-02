@@ -217,7 +217,8 @@ static int cjit_check_buffer(void *tcs, char *code, char **err_msg)
             }
             char *p = strchr(err_msg, '\n');
             if (p) *p = 0;
-            editorSetStatusMessage(*err_msg);
+            if (*err_msg)
+                editorSetStatusMessage(*err_msg);
         }
     } else {
         editorSetStatusMessage("No errors.");
@@ -269,7 +270,7 @@ static int cjit_cli(TCCState *TCC)
         editorInsertRow(row++, "}", 1);
         enableRawMode(STDIN_FILENO);
         editorSetStatusMessage(
-                "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find | Ctrl-R Run");
+                "HELP: Cx-S = save | Cx-Q = quit | Cx-F = find | Cx-R = run | Cx-E = editor");
         while(1) {
             editorSetCompilerCallback(cjit_compile_buffer);
             editorSetCheckCallback(cjit_check_buffer);
