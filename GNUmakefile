@@ -17,6 +17,10 @@ help:
 	@echo "✨ Welcome to the CJIT build system"
 	@awk 'BEGIN {FS = ":.*##"; printf "🛟 Usage: make \033[36m<target>\033[0m\n👇 List of targets:\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf " \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5)} ' GNUmakefile
 
+
+_: ##
+------: ## __ Production targets
+
 musl-linux: ## 🗿 Build a fully static cjit using musl-libc on Linux
 	$(MAKE) -f build/musl.mk
 
@@ -26,10 +30,20 @@ linux-x86: ## 🐧 Build a dynamically linked cjit using libs found on Linux x86
 win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
 	$(MAKE) -f build/win-wsl.mk
 
-check: ## 🔬 Run all tests with the currently built target
+_: ##
+------: ## __ Debugging targets
+
+linux-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
+	$(MAKE) -f build/linux.mk ASAN=1
+
+_: ##
+------: ## __ Testing targets
+
+check: ## 🧪 Run all tests using the currently built binary ./cjit
 	$(if $(wildcard ./cjit),,$(error CJIT is not yet built))
 	./cjit test/hello.c
 
+_: ##
 clean: ## 🧹 Clean the source from all built objects
 	$(MAKE) -f build/deps.mk clean
 	@rm -f cjit

@@ -28,7 +28,7 @@ ldadd := lib/tinycc/libtcc.a
 
 embed_libtcc1 := lib/tinycc/libtcc1.a
 
-tinycc_config ?= --cc=${cc} --extra-cflags="${cflags}"
+tinycc_config ?= --cc=${cc} --extra-cflags="${cflags}" --extra-ldflags="${ldflags}"
 ifdef DEBUG
 	tinycc_config += --debug
 endif
