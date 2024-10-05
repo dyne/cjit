@@ -64,6 +64,7 @@ extern unsigned int lib_tinycc_include_varargs_h_len;
 // from file.c
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
+extern char* dir_load(const char *path);
 extern bool write_to_file(char *path, char *filename, char *buf, unsigned int len);
 extern bool rm_recursive(char *path);
 #ifdef LIBC_MINGW32
@@ -857,13 +858,16 @@ int main(int argc, char **argv) {
   // const char *progname = "cjit";
   static bool verbose = false;
   static bool version = false;
+  static bool directory = false;
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
+  char *code = NULL;
   int res = 1;
 
   static const struct cflag options[] = {
     CFLAG(bool, "verbose", 'v', &verbose, "Verbosely show progress"),
     CFLAG(bool, "version", 'V', &version, "Show build version"),
+    CFLAG(bool, "directory", 'd', &directory, "Execute program spread over multiple files in the directory"),
     CFLAG_HELP,
     CFLAG_END
   };
@@ -924,7 +928,15 @@ int main(int argc, char **argv) {
       goto endgame;
   }
   _err("Source to execute: %s",code_path);
-  char *code = file_load(code_path);
+
+  if (directory) {
+      _err("(it is a directory path)");
+      tcc_add_include_path(TCC, code_path);
+      code = dir_load(code_path);
+  } else {
+    code = file_load(code_path);
+  }
+
   char *err_msg = NULL;
   if(!code) {
     _err("File not found: %s",code_path);
