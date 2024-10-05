@@ -187,6 +187,7 @@ static int cjit_compile_buffer(void *tcs, char *code, int argc, char **argv)
     _err("\n\n\n\nPress any key to continue....\n");
     getchar();
     disableGetCharMode(STDIN_FILENO);
+    free(code);
 
     enableRawMode(STDIN_FILENO);
     editorRefreshScreen();
@@ -206,19 +207,23 @@ static int cjit_check_buffer(void *tcs, char *code, char **err_msg)
 {
     TCCState *TCC = (TCCState *)tcs;
     int res = 0;
+    if(err_msg)
+        *err_msg = NULL;
     // run the code from main
     //
     disableRawMode(STDIN_FILENO);
     res = cjit_compile_and_run(TCC, code, 0, NULL, 0, err_msg);
     if (res != 0) {
-        if(err_msg) {
+        if(*err_msg) {
             if (strlen(err_msg) > ERR_MAX -1) {
-                err_msg[ERR_MAX - 1] = 0;
+                (*err_msg)[ERR_MAX - 1] = 0;
             }
-            char *p = strchr(err_msg, '\n');
+            char *p = strchr(*err_msg, '\n');
             if (p) *p = 0;
-            if (*err_msg)
+            if (*err_msg) {
                 editorSetStatusMessage(*err_msg);
+            }
+
         }
     } else {
         editorSetStatusMessage("No errors.");
@@ -260,14 +265,22 @@ static int cjit_cli(TCCState *TCC)
             _err(err_msg);
     } else {
         int row = 0;
+        int i = 0;
         initEditor();
 
-        editorInsertRow(row++, "#include <stdio.h>", 18);
-        editorInsertRow(row++, "#include <stdlib.h>", 19);
-        editorInsertRow(row++, "", 0);
-        editorInsertRow(row++, "int main(int argc, char **argv) {", 33);
-        editorInsertRow(row++, "", 0);
-        editorInsertRow(row++, "}", 1);
+        const char editor_rows[6][40] = {
+            "#include <stdio.h>",
+            "#include <stdlib.h>",
+            "",
+            "int main(int argc, char **argv) {",
+            "",
+            "}"
+        };
+
+        for (i = 0; i < 6; i++) {
+            editorInsertRow(row++, editor_rows[i], strlen(editor_rows[i]));
+        }
+
         enableRawMode(STDIN_FILENO);
         editorSetStatusMessage(
                 "HELP: Cx-S = save | Cx-Q = quit | Cx-F = find | Cx-R = run | Cx-E = editor");

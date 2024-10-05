@@ -430,9 +430,15 @@ int is_separator(int c) {
  * that starts at this row or at one before, and does not end at the end
  * of the row but spawns to the next row. */
 int editorRowHasOpenComment(erow *row) {
-    if (row->hl && row->rsize && row->hl[row->rsize-1] == HL_MLCOMMENT &&
-        (row->rsize < 2 || (row->render[row->rsize-2] != '*' ||
-                            row->render[row->rsize-1] != '/'))) return 1;
+    if ((!row->rsize < 3) || (sizeof(row->hl) < row->rsize - 1))
+        return 0;
+    if (row->hl) {
+        if ((row->hl[row->size - 1] == HL_MLCOMMENT)) {
+            if (row->rsize < 2 || (row->render[row->rsize-2] != '*' ||
+                            row->render[row->rsize-1] != '/'))
+                return 1;
+        }
+    }
     return 0;
 }
 
@@ -447,7 +453,8 @@ void editorUpdateSyntax(erow *row) {
     if (E.syntax == NULL) return; /* No syntax, everything is HL_NORMAL. */
 
     int i, prev_sep, in_string, in_comment;
-    char *p;
+    int oc = 0;
+    char *p = NULL;
     char **keywords = E.syntax->keywords;
     char *scs = E.syntax->singleline_comment_start;
     char *mcs = E.syntax->multiline_comment_start;
@@ -469,7 +476,10 @@ void editorUpdateSyntax(erow *row) {
     if (row->idx > 0 && editorRowHasOpenComment(&E.row[row->idx-1]))
         in_comment = 1;
 
-    while(*p) {
+    while((i < row->rsize) && *p) {
+        if (sizeof(row->hl) < row->rsize) {
+            row->hl = realloc(row->hl, row->rsize);
+        }
         /* Handle // comments. */
         if (prev_sep && *p == scs[0] && *(p+1) == scs[1]) {
             /* From here to end is a comment */
@@ -479,8 +489,16 @@ void editorUpdateSyntax(erow *row) {
 
         /* Handle multi line comments. */
         if (in_comment) {
+            if (sizeof(row->hl) < i + 2) {
+                row->hl = realloc(row->hl, i + 2);
+                row->hl[i + 1] = 0;
+            }
             row->hl[i] = HL_MLCOMMENT;
             if (*p == mce[0] && *(p+1) == mce[1]) {
+                if (sizeof(row->hl) < i + 2) {
+                    row->hl = realloc(row->hl, i + 2);
+                    row->hl[i + 1] = 0;
+                }
                 row->hl[i+1] = HL_MLCOMMENT;
                 p += 2; i += 2;
                 in_comment = 0;
@@ -492,6 +510,10 @@ void editorUpdateSyntax(erow *row) {
                 continue;
             }
         } else if (*p == mcs[0] && *(p+1) == mcs[1]) {
+            if (sizeof(row->hl) < i + 2) {
+                row->hl = realloc(row->hl, i + 2);
+                row->hl[i + 1] = 0;
+            }
             row->hl[i] = HL_MLCOMMENT;
             row->hl[i+1] = HL_MLCOMMENT;
             p += 2; i += 2;
@@ -502,8 +524,16 @@ void editorUpdateSyntax(erow *row) {
 
 
         if (in_string) {
+            if (sizeof(row->hl) < i + 2) {
+                row->hl = realloc(row->hl, i + 2);
+                row->hl[i + 1] = 0;
+            }
             row->hl[i] = HL_STRING;
             if (*p == '\\') {
+                if (sizeof(row->hl) < i + 3) {
+                    row->hl = realloc(row->hl, i + 3);
+                    row->hl[i + 2] = 0;
+                }
                 row->hl[i+1] = HL_STRING;
                 p += 2; i += 2;
                 prev_sep = 0;
@@ -516,6 +546,10 @@ void editorUpdateSyntax(erow *row) {
         } else {
             if (*p == '"' || *p == '\'') {
                 in_string = *p;
+                if (sizeof(row->hl) < i + 2) {
+                    row->hl = realloc(row->hl, i + 2);
+                    row->hl[i + 1] = 0;
+                }
                 row->hl[i] = HL_STRING;
                 p++; i++;
                 prev_sep = 0;
@@ -548,8 +582,9 @@ void editorUpdateSyntax(erow *row) {
                 int kw2 = keywords[j][klen-1] == '|';
                 if (kw2) klen--;
 
-                if (!memcmp(p,keywords[j],klen) &&
-                    is_separator(*(p+klen)))
+
+                if ((strlen(p) >= klen) && (!memcmp(p,keywords[j],klen) &&
+                    is_separator(*(p+klen))))
                 {
                     /* Keyword */
                     memset(row->hl+i,kw2 ? HL_KEYWORD2 : HL_KEYWORD1,klen);
@@ -572,7 +607,7 @@ void editorUpdateSyntax(erow *row) {
     /* Propagate syntax change to the next row if the open commen
      * state changed. This may recursively affect all the following rows
      * in the file. */
-    int oc = editorRowHasOpenComment(row);
+    oc = editorRowHasOpenComment(row);
     if (row->hl_oc != oc && row->idx+1 < E.numrows)
         editorUpdateSyntax(&E.row[row->idx+1]);
     row->hl_oc = oc;
@@ -631,7 +666,7 @@ void editorUpdateRow(erow *row) {
         printf("Some line of the edited file is too long for kilo\n");
         exit(1);
     }
-    row->render = malloc(row->size + tabs*8 + nonprint*9 + 1);
+    row->render = malloc(row->size + tabs*8 + nonprint + 1);
     idx = 0;
     for (j = 0; j < row->size; j++) {
         if (row->chars[j] == TAB) {
@@ -696,10 +731,8 @@ void editorDelRow(int at) {
 /* Clear the entire buffer */
 void editorReset(void) {
     int j;
-    for (j = E.numrows - 1; j > 0; j--) {
-        editorDelRow(E.row+j);
-    }
-    E.numrows = 0;
+    while (E.numrows > 0)
+        editorDelRow(E.numrows-1);
     E.dirty = 0;
 }
 
@@ -1123,6 +1156,8 @@ void editorRefreshScreen(void) {
                 memset(E.row[at].hl, HL_ERROR, E.row[at].rsize);
                 editorUpdateSyntax(row);
             }
+            free(err_msg);
+            err_msg = NULL;
         }
         free(buf);
     }

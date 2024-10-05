@@ -6,7 +6,7 @@ ldadd+=lib/tinycc/libtcc.a
 
 ifdef ASAN
 	cflags += -O0 -ggdb -DDEBUG=1 -fno-omit-frame-pointer -fsanitize=address
-	ldflags += -fsanitize=address
+	ldflags += -fsanitize=address -static-libasan
 #	tinycc_config += --extra-ldflags="${ldflags}"
 endif
 
