@@ -32,8 +32,11 @@
 #include <rpc.h>
 #pragma comment(lib, "rpcrt4.lib")
 #pragma comment(lib, "shlwapi.lib")
+#else
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #endif
-
 extern void _err(const char *fmt, ...);
 
 // Function to get the length of a file in bytes
@@ -114,6 +117,67 @@ bool rm_recursive(char *path) {
   }
   return true;
 }
+
+#ifndef LIBC_MINGW32
+char *dir_load(const char *path)
+{
+    struct stat sb;
+    struct dirent *de;
+    DIR *dir;
+    FILE *fd;
+    char *content = NULL;
+    char *full_content = NULL;
+
+    if (stat(path, &sb) != 0) {
+        _err("Error: %s",path);
+        _err("%s",strerror(errno));
+        return NULL;
+    }
+    if (!S_ISDIR(sb.st_mode)) {
+        _err("Error: %s is not a directory",path);
+        return NULL;
+    }
+    dir = opendir(path);
+    if (dir == NULL) {
+        _err("Error: opendir %s",path);
+        _err("%s",strerror(errno));
+        return NULL;
+    }
+    for (de = readdir(dir); de != NULL; de = readdir(dir)) {
+        if (de->d_type == DT_REG) {
+            char fullpath[256];
+            snprintf(fullpath,255,"%s/%s",path,de->d_name);
+            content = file_load(fullpath);
+            if (content == NULL) {
+                _err("Error: file_load %s",fullpath);
+                return NULL;
+            }
+            if (full_content == NULL) {
+                full_content = content;
+            } else {
+                full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
+                if (full_content == NULL) {
+                    _err("Error: realloc full_content");
+                    return NULL;
+                }
+                strcat(full_content, content);
+            }
+        }
+    }
+    return full_content;
+}
+
+#else
+char *dir_load(const char *path)
+{
+    /* FIXME */
+    _err("Error: dir_load not implemented on Windows");
+    return NULL;
+}
+
+
+#endif
+
 
 #ifdef LIBC_MINGW32
 ///////////////
