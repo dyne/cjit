@@ -145,22 +145,49 @@ char *dir_load(const char *path)
     }
     for (de = readdir(dir); de != NULL; de = readdir(dir)) {
         if (de->d_type == DT_REG) {
-            char fullpath[256];
-            snprintf(fullpath,255,"%s/%s",path,de->d_name);
-            content = file_load(fullpath);
-            if (content == NULL) {
-                _err("Error: file_load %s",fullpath);
-                return NULL;
-            }
-            if (full_content == NULL) {
-                full_content = content;
-            } else {
-                full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
-                if (full_content == NULL) {
-                    _err("Error: realloc full_content");
+            int name_len = strlen(de->d_name);
+            /* Only add C files */
+            if ((de->d_name[name_len - 1] == 'c') &&
+                    (de->d_name[name_len - 2] == '.')) {
+                char fullpath[256];
+                snprintf(fullpath,255,"%s/%s",path,de->d_name);
+                content = file_load(fullpath);
+                if (content == NULL) {
+                    _err("Error: file_load %s",fullpath);
                     return NULL;
                 }
-                strcat(full_content, content);
+                if (full_content == NULL) {
+                    full_content = content;
+                } else {
+                    full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
+                    if (full_content == NULL) {
+                        _err("Error: realloc full_content");
+                        return NULL;
+                    }
+                    strcat(full_content, content);
+                }
+            }
+        } else if (de->d_type == DT_DIR) {
+            /* Exclude '.', '..' and hidden directories */
+            if (de->d_name[0] != '.') {
+                /* Recurse into subdirectories */
+                char fullpath[256];
+                snprintf(fullpath,255,"%s/%s",path,de->d_name);
+                content = dir_load(fullpath);
+                if (content == NULL) {
+                    _err("Error: dir_load %s",fullpath);
+                    return NULL;
+                }
+                if (full_content == NULL) {
+                    full_content = content;
+                } else {
+                    full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
+                    if (full_content == NULL) {
+                        _err("Error: realloc full_content");
+                        return NULL;
+                    }
+                    strcat(full_content, content);
+                }
             }
         }
     }
