@@ -74,6 +74,21 @@ extern char *win32_mkdtemp();
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 
+// from kilo.c
+extern void initEditor(void);
+extern void editorRefreshScreen(void);
+extern void editorSetStatusMessage(const char *fmt, ...);
+extern void editorSetCompilerCallback(int (*cb)(void *, char *, int, char **));
+extern void editorSetCheckCallback(int (*cb)(void *, char *, char **));
+extern void editorSetCompilerContext(void *ctx);
+extern void editorProcessKeypress(int fd);
+extern void enableRawMode(int fd);
+extern void disableRawMode(int fd);
+extern void enableGetCharMode(int fd);
+extern void disableGetCharMode(int fd);
+extern void editorInsertRow(int at, const char *s, size_t len);
+
+
 static void error_callback(void *ctx, const char *msg);
 
 #ifdef REPL_SUPPORTED
@@ -215,7 +230,7 @@ static int cjit_check_buffer(void *tcs, char *code, char **err_msg)
     res = cjit_compile_and_run(TCC, code, 0, NULL, 0, err_msg);
     if (res != 0) {
         if(*err_msg) {
-            if (strlen(err_msg) > ERR_MAX -1) {
+            if (strlen(*err_msg) > ERR_MAX -1) {
                 (*err_msg)[ERR_MAX - 1] = 0;
             }
             char *p = strchr(*err_msg, '\n');
