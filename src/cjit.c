@@ -858,7 +858,6 @@ int main(int argc, char **argv) {
   // const char *progname = "cjit";
   static bool verbose = false;
   static bool version = false;
-  static bool directory = false;
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
   char *code = NULL;
@@ -867,7 +866,6 @@ int main(int argc, char **argv) {
   static const struct cflag options[] = {
     CFLAG(bool, "verbose", 'v', &verbose, "Verbosely show progress"),
     CFLAG(bool, "version", 'V', &version, "Show build version"),
-    CFLAG(bool, "directory", 'd', &directory, "Execute program spread over multiple files in the directory"),
     CFLAG_HELP,
     CFLAG_END
   };
@@ -929,13 +927,24 @@ int main(int argc, char **argv) {
   }
   _err("Source to execute: %s",code_path);
 
-  if (directory) {
-      _err("(it is a directory path)");
-      tcc_add_include_path(TCC, code_path);
-      code = dir_load(code_path);
+
+#ifndef LIBC_MINGW32 // POSIX only
+  struct stat st;
+  if (stat(code_path, &st) == -1) {
+    _err("File not found: %s",code_path);
+    goto endgame;
+  }
+  if (S_ISDIR(st.st_mode)) {
+    _err("%s: it is a directory path. Recursively adding all sources.", code_path);
+    tcc_add_include_path(TCC, code_path);
+    code = dir_load(code_path);
   } else {
     code = file_load(code_path);
   }
+#else
+  /* FIXME: Add Windows support for directory */
+  code = file_load(code_path);
+#endif
 
   char *err_msg = NULL;
   if(!code) {
