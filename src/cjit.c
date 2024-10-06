@@ -1082,7 +1082,6 @@ int main(int argc, char **argv) {
   if(!write_to_file(tmpdir,"tgmath.h",(char*)&lib_tinycc_include_tgmath_h,lib_tinycc_include_tgmath_h_len)) goto endgame;
   if(!write_to_file(tmpdir,"varargs.h",(char*)&lib_tinycc_include_varargs_h,lib_tinycc_include_varargs_h_len)) goto endgame;
 #if defined(LIBC_MINGW32)
-  #if defined(LIBC_MINGW32)
   if(!write_to_file(tmpdir,"_mingw.h",(char*)&lib_tinycc_win32_include__mingw_h,lib_tinycc_win32_include__mingw_h_len)) goto endgame;
   if(!write_to_file(tmpdir,"assert.h",(char*)&lib_tinycc_win32_include_assert_h,lib_tinycc_win32_include_assert_h_len)) goto endgame;
   if(!write_to_file(tmpdir,"conio.h",(char*)&lib_tinycc_win32_include_conio_h,lib_tinycc_win32_include_conio_h_len)) goto endgame;
