@@ -40,4 +40,4 @@ src/embed-libtcc1.c:
 
 src/embed-headers.c:
 	$(info Embedding tinycc headers)
-	bash build/embed-headers.sh
+	bash build/embed-headers.sh win
