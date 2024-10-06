@@ -35,8 +35,10 @@ done
 if [ "$1" = "win" ]; then
   echo "// ${win_includes}" >> $dst
   ipath=`echo "lib/tinycc/win32/include" | sed 's/\//_/g; s/\./_/g'`
-  echo "#if defined(LIBC_MINGW32)" >> $externs
-  echo "#if defined(LIBC_MINGW32)" >> $calls
+  ([ "$1" = "code" ] || [ "$2" = "code" ]) && {
+    echo "#if defined(LIBC_MINGW32)" >> $externs
+    echo "#if defined(LIBC_MINGW32)" >> $calls
+  }
   for l in $(ls ${win_includes} | sed 's|lib/tinycc/win32/include/||'); do
     [ -z "$l" ] && continue
     [ "${l:0:1}" = "#" ] && continue
@@ -51,8 +53,10 @@ if [ "$1" = "win" ]; then
       echo "if(!write_to_file(tmpdir,\"${l_win_slash}\",(char*)&${ipath}_${hname},${ipath}_${hname}_len)) goto endgame;" >> $calls
     }
   done
-  echo "#endif" >> $externs
-  echo "#endif" >> $calls
+  ([ "$1" = "code" ] || [ "$2" = "code" ]) && {
+    echo "#endif" >> $externs
+    echo "#endif" >> $calls
+  }
 fi
 
 sed -i 's/unsigned char/const char/' $dst
