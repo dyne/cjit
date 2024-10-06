@@ -131,20 +131,24 @@ static int file_load_ftw(const char *pathname,
     FILE *fd;
     char *content = NULL;
     if (type == FTW_F) {
-        content = file_load(pathname);
-        if (content == NULL) {
-            _err("Error: file_load %s",pathname);
-            return -1;
-        }
-        if (full_content == NULL) {
-            full_content = content;
-        } else {
-            full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
-            if (full_content == NULL) {
-                _err("Error: realloc full_content");
+        size_t pathlen = strlen(pathname);
+        if (pathname[pathlen-1] == 'c' &&
+            pathname[pathlen-2] == '.') {
+            content = file_load(pathname);
+            if (content == NULL) {
+                _err("Error: file_load %s",pathname);
                 return -1;
             }
-            strcat(full_content, content);
+            if (full_content == NULL) {
+                full_content = content;
+            } else {
+                full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
+                if (full_content == NULL) {
+                    _err("Error: realloc full_content");
+                    return -1;
+                }
+                strcat(full_content, content);
+            }
         }
     }
     return 0;
