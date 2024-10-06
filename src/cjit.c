@@ -857,6 +857,7 @@ int main(int argc, char **argv) {
   // const char *progname = "cjit";
   static bool verbose = false;
   static bool version = false;
+  static char *extra_cflags = NULL;
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
   int res = 1;
@@ -874,6 +875,12 @@ int main(int argc, char **argv) {
   if (!TCC) {
     _err("Could not initialize tcc");
     exit(1);
+  }
+  // get the extra cflags from the CFLAGS env variable
+  if(getenv("CFLAGS")) {
+    extra_cflags = getenv("CFLAGS");
+    _err("CFLAGS: %s",extra_cflags);
+    tcc_set_options(TCC, extra_cflags);
   }
 
   // initialize the tmpdir for execution
