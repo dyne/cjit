@@ -32,8 +32,11 @@
 #include <rpc.h>
 #pragma comment(lib, "rpcrt4.lib")
 #pragma comment(lib, "shlwapi.lib")
+#else
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #endif
-
 extern void _err(const char *fmt, ...);
 
 // Function to get the length of a file in bytes
@@ -67,6 +70,8 @@ char* file_load(const char *filename) {
         fclose(file);
         return NULL;
     }
+
+    _err("Loading source file %s",filename);
 
     fread(contents, 1, length, file);
     contents[length] = '\0'; // Null-terminate the string
@@ -118,6 +123,77 @@ bool rm_recursive(char *path) {
   }
   return true;
 }
+
+#ifndef LIBC_MINGW32
+
+static char *full_content = NULL;
+
+
+static int file_load_ftw(const char *pathname,
+                         const struct stat *sbuf,
+                         int type, struct FTW *ftwb) {
+    FILE *fd;
+    char *content = NULL;
+    if (type == FTW_F) {
+        size_t pathlen = strlen(pathname);
+        if (pathname[pathlen-1] == 'c' &&
+            pathname[pathlen-2] == '.') {
+            content = file_load(pathname);
+            if (content == NULL) {
+                _err("Error: file_load %s",pathname);
+                return -1;
+            }
+            if (full_content == NULL) {
+                full_content = content;
+            } else {
+                full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
+                if (full_content == NULL) {
+                    _err("Error: realloc full_content");
+                    return -1;
+                }
+                strcat(full_content, content);
+            }
+        }
+    }
+    return 0;
+}
+
+/* dir_load: nftw version */
+char *dir_load(const char *path)
+{
+    struct stat sb;
+    FILE *fd;
+    char *content = NULL;
+
+    if (stat(path, &sb) != 0) {
+        _err("Error: %s",path);
+        _err("%s",strerror(errno));
+        return NULL;
+    }
+    if (!S_ISDIR(sb.st_mode)) {
+        _err("Error: %s is not a directory",path);
+        return NULL;
+    }
+    if (nftw(path, file_load_ftw, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS) < 0) {
+        _err("Error: nftw path %s",path);
+        _err("%s",strerror(errno));
+        return NULL;
+    }
+    return full_content;
+}
+
+
+#else
+char *dir_load(const char *path)
+{
+    /* FIXME */
+    _err("Error: dir_load not implemented on Windows");
+    return NULL;
+}
+
+
+#endif
+
 
 #ifdef LIBC_MINGW32
 ///////////////

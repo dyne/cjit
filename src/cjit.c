@@ -226,6 +226,7 @@ extern unsigned int lib_tinycc_win32_include_winapi_ws2tcpip_h_len;
 // from file.c
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
+extern char* dir_load(const char *path);
 extern bool write_to_file(char *path, char *filename, char *buf, unsigned int len);
 extern bool rm_recursive(char *path);
 #ifdef LIBC_MINGW32
@@ -235,6 +236,21 @@ extern char *win32_mkdtemp();
 // from io.c
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
+
+// from kilo.c
+extern void initEditor(void);
+extern void editorRefreshScreen(void);
+extern void editorSetStatusMessage(const char *fmt, ...);
+extern void editorSetCompilerCallback(int (*cb)(void *, char *, int, char **));
+extern void editorSetCheckCallback(int (*cb)(void *, char *, char **));
+extern void editorSetCompilerContext(void *ctx);
+extern void editorProcessKeypress(int fd);
+extern int enableRawMode(int fd);
+extern void disableRawMode(int fd);
+extern int enableGetCharMode(int fd);
+extern void disableGetCharMode(int fd);
+extern void editorInsertRow(int at, const char *s, size_t len);
+
 
 static void error_callback(void *ctx, const char *msg);
 
@@ -377,7 +393,7 @@ static int cjit_check_buffer(void *tcs, char *code, char **err_msg)
     res = cjit_compile_and_run(TCC, code, 0, NULL, 0, err_msg);
     if (res != 0) {
         if(*err_msg) {
-            if (strlen(err_msg) > ERR_MAX -1) {
+            if (strlen(*err_msg) > ERR_MAX -1) {
                 (*err_msg)[ERR_MAX - 1] = 0;
             }
             char *p = strchr(*err_msg, '\n');
@@ -1006,6 +1022,7 @@ int main(int argc, char **argv) {
   static bool version = false;
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
+  char *code = NULL;
   int res = 1;
 
   static const struct cflag options[] = {
@@ -1152,7 +1169,26 @@ int main(int argc, char **argv) {
       goto endgame;
   }
   _err("Source to execute: %s",code_path);
-  char *code = file_load(code_path);
+
+
+#ifndef LIBC_MINGW32 // POSIX only
+  struct stat st;
+  if (stat(code_path, &st) == -1) {
+    _err("File not found: %s",code_path);
+    goto endgame;
+  }
+  if (S_ISDIR(st.st_mode)) {
+    _err("%s: it is a directory path. Recursively adding all sources.", code_path);
+    tcc_add_include_path(TCC, code_path);
+    code = dir_load(code_path);
+  } else {
+    code = file_load(code_path);
+  }
+#else
+  /* FIXME: Add Windows support for directory */
+  code = file_load(code_path);
+#endif
+
   char *err_msg = NULL;
   if(!code) {
     _err("File not found: %s",code_path);

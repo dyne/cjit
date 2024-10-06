@@ -83,7 +83,7 @@ struct editorSyntax {
 typedef struct erow {
     int idx;            /* Row index in the file, zero-based. */
     int size;           /* Size of the row, excluding the null term. */
-    int rsize;          /* Size of the rendered row. */
+    unsigned rsize;          /* Size of the rendered row. */
     char *chars;        /* Row content. */
     char *render;       /* Row content "rendered" for screen (for TABs). */
     unsigned char *hl;  /* Syntax highlight type for each character in render.*/
@@ -110,7 +110,7 @@ struct editorConfig {
     time_t statusmsg_time;
     struct editorSyntax *syntax;    /* Current syntax highlight, or NULL. */
     int (*compiler_cb)(void *, const char *, int, char **);
-    int (*check_cb)(void *, const char *, char *);
+    int (*check_cb)(void *, const char *, char **);
     void *compiler_cb_ctx;
     int keep_scratchpad;
     int exiting;
@@ -430,7 +430,7 @@ int is_separator(int c) {
  * that starts at this row or at one before, and does not end at the end
  * of the row but spawns to the next row. */
 int editorRowHasOpenComment(erow *row) {
-    if ((!row->rsize < 3) || (sizeof(row->hl) < row->rsize - 1))
+    if ((!(row->rsize < 3)) || (sizeof(row->hl) < row->rsize - 1))
         return 0;
     if (row->hl) {
         if ((row->hl[row->size - 1] == HL_MLCOMMENT)) {
@@ -730,7 +730,6 @@ void editorDelRow(int at) {
 
 /* Clear the entire buffer */
 void editorReset(void) {
-    int j;
     while (E.numrows > 0)
         editorDelRow(E.numrows-1);
     E.dirty = 0;
@@ -1122,9 +1121,8 @@ void editorRefreshScreen(void) {
     abFree(&ab);
     /* Check for errors on new line */
     if (E.check_cb) {
-        int err_line = 0;
         char *err_msg = NULL;
-        unsigned buflen;
+        int buflen;
         char *buf = editorRowsToString(&buflen);
         int ret;
         buf[buflen] = (char)0;
@@ -1366,7 +1364,6 @@ void editorMoveCursor(int key) {
 void editorProcessKeypress(int fd) {
     /* When the file is modified, requires Ctrl-q to be pressed N times
      * before actually quitting. */
-    static int quit_times = KILO_QUIT_TIMES;
     int c = editorReadKey(fd);
     switch(c) {
     case ENTER:         /* Enter */
@@ -1443,8 +1440,6 @@ void editorProcessKeypress(int fd) {
         editorInsertChar(c);
         break;
     }
-
-    quit_times = KILO_QUIT_TIMES; /* Reset it to the original value. */
 }
 
 int editorFileWasModified(void) {
@@ -1492,7 +1487,7 @@ void editorSetCompilerCallback(int (*cb)(void *ctx, const char *code, int argc, 
     E.compiler_cb = cb;
 }
 
-void editorSetCheckCallback(int (*cb)(void *ctx, const char *code)) {
+void editorSetCheckCallback(int (*cb)(void *ctx, const char *code, char **err_msg)) {
     E.check_cb = cb;
 }
 
