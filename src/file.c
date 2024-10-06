@@ -71,6 +71,8 @@ char* file_load(const char *filename) {
         return NULL;
     }
 
+    _err("Loading source file %s",filename);
+
     fread(contents, 1, length, file);
     contents[length] = '\0'; // Null-terminate the string
     fclose(file);
@@ -119,14 +121,41 @@ bool rm_recursive(char *path) {
 }
 
 #ifndef LIBC_MINGW32
+
+static char *full_content = NULL;
+
+
+static int file_load_ftw(const char *pathname,
+                         const struct stat *sbuf,
+                         int type, struct FTW *ftwb) {
+    FILE *fd;
+    char *content = NULL;
+    if (type == FTW_F) {
+        content = file_load(pathname);
+        if (content == NULL) {
+            _err("Error: file_load %s",pathname);
+            return -1;
+        }
+        if (full_content == NULL) {
+            full_content = content;
+        } else {
+            full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
+            if (full_content == NULL) {
+                _err("Error: realloc full_content");
+                return -1;
+            }
+            strcat(full_content, content);
+        }
+    }
+    return 0;
+}
+
+/* dir_load: nftw version */
 char *dir_load(const char *path)
 {
     struct stat sb;
-    struct dirent *de;
-    DIR *dir;
     FILE *fd;
     char *content = NULL;
-    char *full_content = NULL;
 
     if (stat(path, &sb) != 0) {
         _err("Error: %s",path);
@@ -137,62 +166,14 @@ char *dir_load(const char *path)
         _err("Error: %s is not a directory",path);
         return NULL;
     }
-    dir = opendir(path);
-    if (dir == NULL) {
-        _err("Error: opendir %s",path);
+    if (nftw(path, file_load_ftw, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS) < 0) {
+        _err("Error: nftw path %s",path);
         _err("%s",strerror(errno));
         return NULL;
     }
-    for (de = readdir(dir); de != NULL; de = readdir(dir)) {
-        if (de->d_type == DT_REG) {
-            int name_len = strlen(de->d_name);
-            /* Only add C files */
-            if ((de->d_name[name_len - 1] == 'c') &&
-                    (de->d_name[name_len - 2] == '.')) {
-                char fullpath[256];
-                snprintf(fullpath,255,"%s/%s",path,de->d_name);
-                content = file_load(fullpath);
-                if (content == NULL) {
-                    _err("Error: file_load %s",fullpath);
-                    return NULL;
-                }
-                if (full_content == NULL) {
-                    full_content = content;
-                } else {
-                    full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
-                    if (full_content == NULL) {
-                        _err("Error: realloc full_content");
-                        return NULL;
-                    }
-                    strcat(full_content, content);
-                }
-            }
-        } else if (de->d_type == DT_DIR) {
-            /* Exclude '.', '..' and hidden directories */
-            if (de->d_name[0] != '.') {
-                /* Recurse into subdirectories */
-                char fullpath[256];
-                snprintf(fullpath,255,"%s/%s",path,de->d_name);
-                content = dir_load(fullpath);
-                if (content == NULL) {
-                    _err("Error: dir_load %s",fullpath);
-                    return NULL;
-                }
-                if (full_content == NULL) {
-                    full_content = content;
-                } else {
-                    full_content = realloc(full_content, strlen(full_content) + strlen(content) + 1);
-                    if (full_content == NULL) {
-                        _err("Error: realloc full_content");
-                        return NULL;
-                    }
-                    strcat(full_content, content);
-                }
-            }
-        }
-    }
     return full_content;
 }
+
 
 #else
 char *dir_load(const char *path)
