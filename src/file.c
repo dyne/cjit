@@ -121,7 +121,7 @@ bool rm_recursive(char *path) {
 char *win32_mkdtemp() {
     static char tempDir[MAX_PATH];
     char tempPath[MAX_PATH];
-    char *filename = "CJIT-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    char filename [] = "CJIT-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
     // Get the temporary path
     if (GetTempPath(MAX_PATH, tempPath) == 0) {
         _err("Failed to get temporary path");
