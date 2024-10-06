@@ -82,9 +82,9 @@ extern void editorSetCompilerCallback(int (*cb)(void *, char *, int, char **));
 extern void editorSetCheckCallback(int (*cb)(void *, char *, char **));
 extern void editorSetCompilerContext(void *ctx);
 extern void editorProcessKeypress(int fd);
-extern void enableRawMode(int fd);
+extern int enableRawMode(int fd);
 extern void disableRawMode(int fd);
-extern void enableGetCharMode(int fd);
+extern int enableGetCharMode(int fd);
 extern void disableGetCharMode(int fd);
 extern void editorInsertRow(int at, const char *s, size_t len);
 
