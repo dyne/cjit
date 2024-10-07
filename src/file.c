@@ -84,8 +84,12 @@ bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
   FILE *fd;
   size_t written;
   char fullpath[256];
+#if defined(LIBC_MINGW32)
+  snprintf(fullpath,255,"%s\\%s",path,filename);
+#else
   snprintf(fullpath,255,"%s/%s",path,filename);
-  fd = fopen(fullpath,"w");
+#endif
+  fd = fopen(fullpath,"wb");
   if(!fd) {
     _err("Error: fopen file %s",fullpath);
     _err("%s",strerror(errno));
@@ -104,11 +108,27 @@ bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
 static int rm_ftw(const char *pathname,
                   const struct stat *sbuf,
                   int type, struct FTW *ftwb) {
+#ifndef LIBC_MINGW32
   if(remove(pathname) < 0) {
-        _err("Error: remove path %s",pathname);
-        _err("%s",strerror(errno));
-        return -1;
+    _err("Error: remove path %s",pathname);
+    _err("%s",strerror(errno));
+    return -1;
   }
+#else
+  if (type == FTW_F) {
+    if(DeleteFile(pathname) == 0) {
+      _err("Error: DeleteFile path %s",pathname);
+      _err("%s",strerror(errno));
+      return -1;
+    }
+  } else if (type == FTW_D) {
+    if(RemoveDirectory(pathname) == 0) {
+      _err("Error: RemoveDirectory path %s",pathname);
+      _err("%s",strerror(errno));
+      return -1;
+    }
+  }
+#endif
   return 0;
 }
 bool rm_recursive(char *path) {
@@ -196,8 +216,11 @@ char *dir_load(const char *path)
 // WINDOWS SHIT
 char *win32_mkdtemp() {
     static char tempDir[MAX_PATH];
+    static char sysTempDir[MAX_PATH];
+    static char secTempDir[MAX_PATH];
+    static char winTempDir[MAX_PATH];
     char tempPath[MAX_PATH];
-    char *filename = "CJIT-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    char filename [] = "CJIT-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
     // Get the temporary path
     if (GetTempPath(MAX_PATH, tempPath) == 0) {
         _err("Failed to get temporary path");
@@ -221,6 +244,21 @@ char *win32_mkdtemp() {
     // Create the temporary directory
     if (CreateDirectory(tempDir, NULL) == 0) {
         _err("Failed to create temporary dir: %s",tempDir);
+        return NULL;
+    }
+    PathCombine(sysTempDir, tempDir, "sys");
+    if (CreateDirectory(sysTempDir, NULL) == 0) {
+        _err("Failed to create sys dir in temporary dir: %s",sysTempDir);
+        return NULL;
+    }
+    PathCombine(secTempDir, tempDir, "sec_api");
+    if (CreateDirectory(secTempDir, NULL) == 0) {
+        _err("Failed to create sec_api dir in temporary dir: %s",secTempDir);
+        return NULL;
+    }
+    PathCombine(winTempDir, tempDir, "winapi");
+    if (CreateDirectory(winTempDir, NULL) == 0) {
+        _err("Failed to create winapi dir in temporary dir: %s",winTempDir);
         return NULL;
     }
     return(tempDir);
