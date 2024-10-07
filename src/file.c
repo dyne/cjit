@@ -89,7 +89,7 @@ bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
 #else
   snprintf(fullpath,255,"%s/%s",path,filename);
 #endif
-  fd = fopen(fullpath,"w");
+  fd = fopen(fullpath,"wb");
   if(!fd) {
     _err("Error: fopen file %s",fullpath);
     _err("%s",strerror(errno));
