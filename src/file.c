@@ -108,11 +108,27 @@ bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
 static int rm_ftw(const char *pathname,
                   const struct stat *sbuf,
                   int type, struct FTW *ftwb) {
+#ifndef LIBC_MINGW32
   if(remove(pathname) < 0) {
-        _err("Error: remove path %s",pathname);
-        _err("%s",strerror(errno));
-        return -1;
+    _err("Error: remove path %s",pathname);
+    _err("%s",strerror(errno));
+    return -1;
   }
+#else
+  if (type == FTW_F) {
+    if(DeleteFile(pathname) == 0) {
+      _err("Error: DeleteFile path %s",pathname);
+      _err("%s",strerror(errno));
+      return -1;
+    }
+  } else if (type == FTW_D) {
+    if(RemoveDirectory(pathname) == 0) {
+      _err("Error: RemoveDirectory path %s",pathname);
+      _err("%s",strerror(errno));
+      return -1;
+    }
+  }
+#endif
   return 0;
 }
 bool rm_recursive(char *path) {
