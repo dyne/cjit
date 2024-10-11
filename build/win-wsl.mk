@@ -18,7 +18,8 @@ ldflags += -static-libgcc
 all: deps cjit.exe
 
 cjit.exe: ${SOURCES}
-	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
+	./build/stamp-exe.sh
+	$(cc) $(cflags) -o $@ $(SOURCES) cjit.res ${ldflags} ${ldadd}
 
 #	upx-ucl -q $@
 # somehow upx compression helps the binary to function: it
