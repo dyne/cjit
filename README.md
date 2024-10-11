@@ -20,8 +20,12 @@ implementation is used inside CJIT.
 
 We provide ready to execute binary builds as releases on github.
 
-- [cgit - Windows x86 64bit](https://github.com/dyne/cjit/releases/latest/download/cjit.exe) ⚠️ (WIP)
+- [cgit - Windows x86 64bit](https://github.com/dyne/cjit/releases/latest/download/cjit.exe)
 - [cgit - Linux ELF x86 64bit](https://github.com/dyne/cjit/releases/latest/download/cjit)
+
+Beware windows defender will warn you that there is a virus in the file.
+
+There isn't, this is the [latest release analysis on VirusTotal](https://www.virustotal.com/gui/file/77054b14b5960eaa655bb5c3d5f4f1ddd3ddbd9756136f029074bbef83e168fd/).
 
 ## Quick start
 
@@ -30,7 +34,7 @@ Paste this into your terminal
 curl -sLo cjit https://github.com/dyne/cjit/releases/latest/download/cjit
 chmod +x cjit
 cat << EOF > hello.c
-#!./cjit
+#!/usr/bin/env cjit
 #include <stdio.h>
 #include <stdlib.h>
 int main(int argc, char **argv) {
@@ -44,18 +48,30 @@ You can now play around with `hello.c` and write your own C code, which can be s
 ```
 ./cjit hello.c
 ```
+If you install `cjit` into your path then you can `chmod +x hello.c` and execute it directly: the hash bang on first line is supported.
 
-## Build dependencies
 
-On GNU+Linux systems make sure to have installed:
+## Build from source
 
+There are various build targets, just type `make` to have a list:
 ```
-musl musl-dev musl-tools
+✨ Welcome to the CJIT build system
+🛟 Usage: make <target>
+👇 List of targets:
+ _
+ ------           __ Production targets
+ musl-linux       🗿 Build a fully static cjit using musl-libc on Linux
+ linux-x86        🐧 Build a dynamically linked cjit using libs found on Linux x86
+ win-wsl          🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
+ _
+ ------           __ Debugging targets
+ linux-asan       🔬 Build using the address sanitizer to detect memory leaks
+ _
+ ------           __ Testing targets
+ check            🧪 Run all tests using the currently built binary ./cjit
+ _
+ clean            🧹 Clean the source from all built objects
 ```
-
-This is the first target chosen for development, others will come soon
-with different build-time dependencies: mingw cross, dynamic
-executable, etc.
 
 ## License
 
