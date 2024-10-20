@@ -15,5 +15,5 @@ command -v xxd > /dev/null || {
 
 echo "// $lib" > $dst
 xxd -i $lib >> $dst
-sed -i 's/unsigned char lib_tinycc_libtcc1_a/const unsigned char libtcc1/' $dst
-sed -i 's/unsigned int lib_tinycc_libtcc1_a_len/const unsigned int libtcc1_len/' $dst
+gsed -i 's/unsigned char lib_tinycc_libtcc1_a/const unsigned char libtcc1/' $dst
+gsed -i 's/unsigned int lib_tinycc_libtcc1_a_len/const unsigned int libtcc1_len/' $dst

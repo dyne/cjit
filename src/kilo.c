@@ -1364,6 +1364,7 @@ void editorMoveCursor(int key) {
 void editorProcessKeypress(int fd) {
     /* When the file is modified, requires Ctrl-q to be pressed N times
      * before actually quitting. */
+        char ed_cmd[200]="/usr/bin/editor ";
     int c = editorReadKey(fd);
     switch(c) {
     case ENTER:         /* Enter */
@@ -1383,7 +1384,6 @@ void editorProcessKeypress(int fd) {
         editorSave();
         break;
     case CTRL_E:        /* Ctrl-e */
-        char ed_cmd[200]="/usr/bin/editor ";
         E.dirty++;
         editorSave();
         strcat(ed_cmd, E.filename);
