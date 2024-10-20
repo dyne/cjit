@@ -30,6 +30,9 @@ linux-x86: ## 🐧 Build a dynamically linked cjit using libs found on Linux x86
 win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
 	$(MAKE) -f build/win-wsl.mk
 
+osx: ## Build cjit.command for Apple/OSX using clang static
+	$(MAKE) -f build/osx.mk
+
 _: ##
 ------: ## __ Debugging targets
 

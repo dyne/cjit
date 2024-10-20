@@ -40,12 +40,12 @@ ifdef CONFIG_WIN32
  NATIVE_TARGET = $(ARCH)-win$(if $(findstring arm,$(ARCH)),ce,32)
 else
  CFG = -unx
- LIBS+=-lm
+# LIBS+=-lm
  ifneq ($(CONFIG_ldl),no)
-  LIBS+=-ldl
+#  LIBS+=-ldl
  endif
  ifneq ($(CONFIG_pthread),no)
-  LIBS+=-lpthread
+#  LIBS+=-lpthread
  endif
  # make libtcc as static or dynamic library?
  ifeq ($(CONFIG_static),no)
