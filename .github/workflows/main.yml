@@ -183,6 +183,22 @@ jobs:
           path: |
             cjit.exe
 
+  osx-native-test:
+    name: 🍎 OSX native test
+    needs: [semantic-release]
+    runs-on: "macos-latest"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native Apple/OSX command executable
+        run: |
+          make osx
+      - name: Upload artifact apple-osx
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-osx-native
+          path: |
+            cjit.command
+
   draft-binary-release:
     name: 📦 Pack release
     needs: [semantic-release, musl-release, win-native-release]
