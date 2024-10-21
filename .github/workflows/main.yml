@@ -94,6 +94,22 @@ jobs:
         run: |
           .\cjit.exe test\hello.c
 
+  osx-native-test:
+    name: 🍎 OSX native test
+    needs: [reuse, c-lint]
+    runs-on: "macos-latest"
+    steps:
+      - uses: actions/checkout@v4
+      # - name: install dependencies
+      #   run: |
+      #     choco install --no-progress -r -y upx
+      - name: Build native Apple/OSX command executable
+        run: |
+          gmake osx
+      - name: Run tests
+        run: |
+          .\cjit.command test\hello.c
+
   semantic-release:
     name: 🤖 Semantic release
     needs: [musl-test]
