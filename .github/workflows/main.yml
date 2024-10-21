@@ -85,11 +85,7 @@ jobs:
       #     choco install --no-progress -r -y upx
       - name: Build native windows exe for x86_64
         run: |
-          cd .\lib\tinycc
-          bash configure --targetos=WIN32 --config-backtrace=no
-          make libtcc.a libtcc1.a
-          cd ..\..
-          make -f build/win-native.mk
+          make win-native
       - name: Run tests
         run: |
           .\cjit.exe test\hello.c
@@ -105,7 +101,7 @@ jobs:
       #     choco install --no-progress -r -y upx
       - name: Build native Apple/OSX command executable
         run: |
-          make osx
+          make apple-osx
       - name: Run tests
         run: |
           ./cjit.command test/hello.c
@@ -147,10 +143,10 @@ jobs:
             build/release-intro.md
       - name: Install build deps
         run: |
-          sudo apt install -qy make musl-tools musl-dev gcc-mingw-w64
+          sudo apt install -qy make musl-tools musl-dev
       - name: Build x86_64 with musl-system
         run: |
-          make musl-linux
+          make musl-linux RELEASE=1
       - name: Upload artifact linux-amd64
         uses: actions/upload-artifact@v4
         with:
@@ -166,16 +162,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # - name: install dependencies
-      #   run: |
-      #     choco install --no-progress -r -y upx
       - name: Build native windows exe for x86_64
         run: |
-          cd .\lib\tinycc
-          bash configure --targetos=WIN32 --config-backtrace=no
-          make libtcc.a libtcc1.a
-          cd ..\..
-          make -f build/win-native.mk
+          make win-native RELEASE=1
       - name: Upload artifact windows-amd64
         uses: actions/upload-artifact@v4
         with:
@@ -183,15 +172,15 @@ jobs:
           path: |
             cjit.exe
 
-  osx-native-test:
-    name: 🍎 OSX native test
+  osx-native-release:
+    name: 🍎 OSX native binary release build
     needs: [semantic-release]
     runs-on: "macos-latest"
     steps:
       - uses: actions/checkout@v4
       - name: Build native Apple/OSX command executable
         run: |
-          make osx
+          make apple-osx RELEASE=1
       - name: Upload artifact apple-osx
         uses: actions/upload-artifact@v4
         with:

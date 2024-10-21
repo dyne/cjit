@@ -30,7 +30,11 @@ linux-x86: ## 🐧 Build a dynamically linked cjit using libs found on Linux x86
 win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
 	$(MAKE) -f build/win-wsl.mk
 
-osx: ## Build cjit.command for Apple/OSX using clang static
+win-native: ## 🪟 Build cjit.exe for WIN64 on Windows Server
+	cd ./lib/tinycc; bash configure --targetos=WIN32 --config-backtrace=no; make libtcc.a libtcc1.a
+	$(MAKE) -f build/win-native.mk
+
+apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
 	$(MAKE) -f build/osx.mk
 
 _: ##
