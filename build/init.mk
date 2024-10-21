@@ -13,22 +13,21 @@ endif
 
 CFLAGS ?= -Og -ggdb -DDEBUG=1 -Wall -Wextra
 
+cflags_stack_protect := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
+
 ifdef RELEASE
-	CFLAGS := -O2 -fomit-frame-pointer
+	CFLAGS := -O2 -fomit-frame-pointer ${cflags_stack_protect}
 endif
 
 cflags := ${CFLAGS} -Isrc -Ilib/tinycc
 
-cflags_stack_protect := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
-
 SOURCES := src/io.o src/file.o src/cflag.o src/cjit.o \
- src/embed-libtcc1.o src/embed-headers.o src/kilo.o
+           src/embed-libtcc1.o src/embed-headers.o
 
 ldadd := lib/tinycc/libtcc.a
 
-embed_libtcc1 := lib/tinycc/libtcc1.a
-
 tinycc_config ?= --cc=${cc} --extra-cflags="${cflags}" --extra-ldflags="${ldflags}"
+
 ifdef DEBUG
 	tinycc_config += --debug
 endif

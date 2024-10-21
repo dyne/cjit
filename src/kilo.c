@@ -31,8 +31,6 @@
  *
  */
 
-
-#ifdef REPL_SUPPORTED
 #ifdef __linux__
 #define _POSIX_C_SOURCE 200809L
 #endif
@@ -1494,5 +1492,3 @@ void editorSetCheckCallback(int (*cb)(void *ctx, const char *code, char **err_ms
 void editorSetCompilerContext(void *ctx) {
     E.compiler_cb_ctx = ctx;
 }
-
-#endif //REPL_SUPPORTED
