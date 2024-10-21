@@ -59,8 +59,9 @@ if [ "$1" = "win" ]; then
   }
 fi
 
-sed -i 's/unsigned char/const char/' $dst
-sed -i 's/unsigned int/const unsigned int/' $dst
+sed_inplace() { if [[ "$OSTYPE" == "darwin"* ]]; then sed -i'' "$*"; else sed -i "$*"; fi }
+sed_inplace -e 's/unsigned char/const char/' $dst
+sed_inplace -e 's/unsigned int/const unsigned int/' $dst
 
 ([ "$1" = "code" ] || [ "$2" = "code" ]) && {
   >&2 echo "Externs to declare:"

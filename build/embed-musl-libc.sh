@@ -15,5 +15,6 @@ command -v xxd > /dev/null || {
 
 echo "// $lib" > $dst
 xxd -i $lib >> $dst
-sed -i 's/unsigned char _lib_x86_64_linux_musl_libc_so/const unsigned char musl_libc/' $dst
-sed -i 's/unsigned int _lib_x86_64_linux_musl_libc_so_len/const unsigned int musl_libc_len/' $dst
+# sed_inplace() { if [[ "$OSTYPE" == "darwin"* ]]; then sed -i'' "$*"; else sed -i $*; fi }
+# sed_inplace -e 's/unsigned char _lib_x86_64_linux_musl_libc_so/const unsigned char musl_libc/' $dst
+# sed_inplace -e 's/unsigned int _lib_x86_64_linux_musl_libc_so_len/const unsigned int musl_libc_len/' $dst

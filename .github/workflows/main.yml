@@ -105,10 +105,10 @@ jobs:
       #     choco install --no-progress -r -y upx
       - name: Build native Apple/OSX command executable
         run: |
-          gmake osx
+          make osx
       - name: Run tests
         run: |
-          .\cjit.command test\hello.c
+          ./cjit.command test/hello.c
 
   semantic-release:
     name: 🤖 Semantic release
