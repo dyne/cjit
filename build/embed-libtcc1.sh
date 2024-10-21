@@ -15,5 +15,6 @@ command -v xxd > /dev/null || {
 
 echo "// $lib" > $dst
 xxd -i $lib >> $dst
-gsed -i 's/unsigned char lib_tinycc_libtcc1_a/const unsigned char libtcc1/' $dst
-gsed -i 's/unsigned int lib_tinycc_libtcc1_a_len/const unsigned int libtcc1_len/' $dst
+# sed_inplace() { if [[ "$OSTYPE" == "darwin"* ]]; then sed -i'' "$*"; else sed -i w$*; fi }
+# sed_inplace -e 's/unsigned char lib_tinycc_libtcc1_a/const unsigned char libtcc1/' $dst
+# sed_inplace -e 's/unsigned int lib_tinycc_libtcc1_a_len/const unsigned int libtcc1_len/' $dst
