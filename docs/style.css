@@ -4,6 +4,13 @@
   padding: 20px 14px;
 }
 
+.homepage .box {
+  display: flex;
+  align-items:center;
+  margin: auto;
+  padding: 4px 10%;
+}
+
 .homepage .hero {
   align-items: center;
   display: flex;
