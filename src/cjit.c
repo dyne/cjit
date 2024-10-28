@@ -51,6 +51,11 @@ extern void _err(const char *fmt, ...);
 extern bool gen_exec_headers(char *tmpdir);
 
 // from repl.c
+#ifdef LIBC_MINGW32
+extern int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv);
+#else
+extern int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv);
+#endif
 extern int cjit_cli_tty(TCCState *TCC);
 #ifdef REPL_SUPPORTED
 extern int cjit_compile_and_run(TCCState *TCC, const char *code, int argc, char **argv, int rn, char **err_msg);
@@ -62,63 +67,6 @@ void handle_error(void *n, const char *m) {
   (void)n;
   _err("%s",m);
 }
-
-#ifdef LIBC_MINGW32
-int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
-  int res = 1;
-  int (*_ep)(int, char**);
-  _ep = tcc_get_symbol(TCC, ep);
-  if (!_ep) {
-    _err("Symbol not found in source: %s","main");
-    return -1;
-  }
-  _err("Execution start\n---");
-  res = _ep(argc, argv);
-  return(res);
-}
-
-#else // LIBC_MINGW32
-int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv)
-{
-  pid_t pid;
-  int res = 1;
-  int (*_ep)(int, char**);
-  _ep = tcc_get_symbol(TCC, ep);
-  if (!_ep) {
-    _err("Symbol not found in source: %s","main");
-    return -1;
-  }
-  _err("Start execution\n---------------");
-  pid = fork();
-  if (pid == 0) {
-      res = _ep(argc, argv);
-      exit(res);
-  } else {
-      int status;
-      int ret;
-      ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
-      if (ret != pid){
-          _err("Wait error in source: %s","main");
-      }
-      if (WIFEXITED(status)) {
-          res = WEXITSTATUS(status);
-          _err("Process has returned %d", res);
-      } else if (WIFSIGNALED(status)) {
-          res = WTERMSIG(status);
-          _err("Process terminated with signal %d", WTERMSIG(status));
-      } else if (WIFSTOPPED(status)) {
-          res = WSTOPSIG(status);
-          _err("Process has returned %d", WSTOPSIG(status));
-      } else if (WIFSTOPPED(status)) {
-          res = WSTOPSIG(status);
-          _err("Process stopped with signal", WSTOPSIG(status));
-      } else {
-          _err("wait: unknown status: %d", status);
-      }
-  }
-  return res;
-}
-#endif // LIBC_MINGW32
 
 int main(int argc, char **argv) {
   TCCState *TCC;
