@@ -61,6 +61,8 @@ extern int enableGetCharMode(int fd);
 extern void disableGetCharMode(int fd);
 extern void editorInsertRow(int at, const char *s, size_t len);
 
+// from exec-headers.c
+extern bool gen_exec_headers(char *tmpdir);
 
 static void error_callback(void *ctx, const char *msg);
 
