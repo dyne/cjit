@@ -1,6 +1,6 @@
 # Native windows build using mingw
 #
-# tinycc is built separately by hand:
+# tinycc is built separately by caller:
 #   cd .\lib\tinycc
 #   bash configure --targetos=WIN32 --config-backtrace=no
 #   make libtcc.a libtcc1.a
@@ -8,22 +8,17 @@
 # then run this directly:
 #   make -f build/win-native.mk
 
+# use only SOURCES from init
+include build/init.mk
+
 SHELL := C:\Program Files\Git\bin\bash.exe
 
+# redefine compilation flags
 cc := gcc
-
 cflags := -O2 -fomit-frame-pointer -Isrc -Ilib/tinycc
 cflags += -DLIBC_MINGW32
-
-SOURCES := src/io.o src/file.o src/cflag.o \
-	src/cjit.o src/embed-libtcc1.o src/embed-headers.o
-
-ldflags += -static-libgcc
-
+ldflags := -static-libgcc
 ldadd := lib/tinycc/libtcc.a -lshlwapi
-
-# The libtcc is built by the calling GNUmakefile
-# to: lib/tinycc/libtcc.a
 
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}

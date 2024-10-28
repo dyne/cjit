@@ -13,16 +13,18 @@ endif
 
 CFLAGS ?= -Og -ggdb -DDEBUG=1 -Wall -Wextra
 
+cflags_includes := -Isrc -Ilib/tinycc
 cflags_stack_protect := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
 
 ifdef RELEASE
 	CFLAGS := -O2 -fomit-frame-pointer ${cflags_stack_protect}
 endif
 
-cflags := ${CFLAGS} -Isrc -Ilib/tinycc
+cflags := ${CFLAGS} ${cflags_includes}
 
 SOURCES := src/io.o src/file.o src/cflag.o src/cjit.o \
-           src/embed-libtcc1.o src/embed-headers.o
+           src/embed-libtcc1.o src/embed-headers.o \
+           src/exec-headers.o
 
 ldadd := lib/tinycc/libtcc.a
 
