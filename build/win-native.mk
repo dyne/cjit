@@ -15,9 +15,6 @@ cc := gcc
 cflags := -O2 -fomit-frame-pointer -Isrc -Ilib/tinycc
 cflags += -DLIBC_MINGW32
 
-SOURCES := src/io.o src/file.o src/cflag.o \
-	src/cjit.o src/embed-libtcc1.o src/embed-headers.o
-
 ldflags += -static-libgcc
 
 ldadd := lib/tinycc/libtcc.a -lshlwapi
