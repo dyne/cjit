@@ -71,7 +71,7 @@ char* file_load(const char *filename) {
         return NULL;
     }
 
-    _err("Loading source file %s",filename);
+    // _err("Loading source file %s",filename);
 
     fread(contents, 1, length, file);
     contents[length] = '\0'; // Null-terminate the string
