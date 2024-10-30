@@ -224,11 +224,38 @@
   text-align: center;
   margin-top: 40px;
   font-weight: 500;
+  line-height: 2.0;
   color: var(--vp-c-text-2)
 }
 
-.homepage .footer-text a {
+.homepage .footer-text a .tribe{
   font-weight: 700;
+  border-radius:8px;
+  padding:5px;
+  background-color:black;
+  color: white;
+}
+
+.homepage .footer-text .ras {
+  color: black;
+  border-radius:8px;
+  padding:3px;
+  margin:0px;
+  background-color:green;
+}
+
+.homepage .footer-text .tas {
+  color: black;
+  border-radius:8px;
+  padding:3px;
+  background-color:yellow;
+}
+
+.homepage .footer-text .oft {
+  color: black;
+  border-radius:8px;
+  padding:5px;
+  background-color:red;
 }
 
 .slangroom-editor-container {
