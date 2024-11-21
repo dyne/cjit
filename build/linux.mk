@@ -8,6 +8,7 @@ SOURCES += src/kilo.o
 
 ifdef ASAN
 	cflags := -Og -ggdb -DDEBUG=1 -fno-omit-frame-pointer -fsanitize=address
+	cflags += ${cflags_includes} ${cflags_gnu} -DREPL_SUPPORTED
 	ldflags := -fsanitize=address -static-libasan
 #	tinycc_config += --extra-ldflags="${ldflags}"
 endif
