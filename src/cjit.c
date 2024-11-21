@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <ctype.h>
 
 #ifndef LIBC_MINGW32
 #include <sys/types.h>
@@ -36,6 +37,7 @@
 
 #include <ketopt.h>
 
+/////////////
 // from file.c
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
@@ -44,14 +46,11 @@ extern bool rm_recursive(char *path);
 #ifdef LIBC_MINGW32
 extern char *win32_mkdtemp();
 #endif
-
 // from io.c
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
-
 // from exec-headers.c
 extern bool gen_exec_headers(char *tmpdir);
-
 // from repl.c
 #ifdef LIBC_MINGW32
 extern int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv);
@@ -68,6 +67,34 @@ extern int cjit_cli_kilo(TCCState *TCC);
 void handle_error(void *n, const char *m) {
   (void)n;
   _err("%s",m);
+}
+
+#define MAX_ARG_STRING 1024
+int parse_value(char *str) {
+  int i = 0;
+  int value_pos = 0;
+  bool equal_found = false;
+  while (str[i] != '\0') {
+    if (equal_found && str[i] == '=') {
+      return -1; // can't include equal twice
+    }
+    if (str[i] == '=') {
+      str[i]=0x0;
+      value_pos = i + 1;
+      equal_found = true;
+      continue;
+    }
+    if (!isalnum(str[i]) && str[i] != '_') {
+      return -1; // Invalid character found
+    }
+    i++;
+    if(i>MAX_ARG_STRING) {
+      return -1; // string too long
+    }
+  }
+  if(equal_found)
+    return(value_pos);
+  else return(0);
 }
 
 int main(int argc, char **argv) {
@@ -102,8 +129,17 @@ int main(int argc, char **argv) {
       tcc_delete(TCC);
       exit(0); // print version and exit
     } else if (c == 'D') { // define
-      _err("define: %s",opt.arg);
-      tcc_define_symbol(TCC, opt.arg, NULL); // TODO: sym=var
+      int _res;
+      _res = parse_value(opt.arg);
+      if(_res==0) { // -Dsym (no key=value)
+        tcc_define_symbol(TCC, opt.arg, NULL);
+      } else if(_res>0) { // -Dkey=value
+        tcc_define_symbol(TCC, opt.arg, &opt.arg[_res]);
+      } else { // invalid char
+        _err("Invalid char used in -D define symbol: %s", opt.arg);
+        tcc_delete(TCC);
+        exit(1);
+      }
     } else if (c == 'L') { // library path
       _err("lib path: %s",opt.arg);
       tcc_add_library_path(TCC,tmpdir);
