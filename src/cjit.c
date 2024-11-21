@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #ifndef LIBC_MINGW32
 #include <sys/types.h>
@@ -31,10 +32,7 @@
 #include <sys/poll.h>
 #endif
 
-#include <cflag.h>
 #include <libtcc.h>
-#include <unistd.h>
-
 #include <ketopt.h>
 
 /////////////
@@ -59,7 +57,6 @@ extern int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv);
 #endif
 extern int cjit_cli_tty(TCCState *TCC);
 #ifdef REPL_SUPPORTED
-extern int cjit_compile_and_run(TCCState *TCC, const char *code, int argc, char **argv, int rn, char **err_msg);
 extern int cjit_cli_kilo(TCCState *TCC);
 #endif
 /////////////
@@ -102,16 +99,14 @@ int main(int argc, char **argv) {
   // const char *progname = "cjit";
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
+  bool live_mode = false;
   int res = 1;
-
   _err("CJIT %s by Dyne.org",VERSION);
-
   TCC = tcc_new();
   if (!TCC) {
     _err("Could not initialize tcc");
     exit(1);
   }
-
   // get the extra cflags from the CFLAGS env variable
   // they are overridden by explicit command-line options
   if(getenv("CFLAGS")) {
@@ -120,10 +115,13 @@ int main(int argc, char **argv) {
     _err("CFLAGS: %s",extra_cflags);
     tcc_set_options(TCC, extra_cflags);
   }
-
+  static ko_longopt_t longopts[] = {
+    { "live", ko_no_argument, 301 },
+    { NULL, 0, 0 }
+  };
   ketopt_t opt = KETOPT_INIT;
   int i, c;
-  while ((c = ketopt(&opt, argc, argv, 1, "vD:L:l:C:I:", NULL)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "vD:L:l:C:I:", longopts)) >= 0) {
     if (c == 'v') {
       _err("Running version: %s\n",VERSION);
       tcc_delete(TCC);
@@ -146,16 +144,17 @@ int main(int argc, char **argv) {
     } else if (c == 'l') { // library link
       _err("lib: %s",opt.arg);
       tcc_add_library(TCC, opt.arg);
-    } else if (c == 'C') { // library link
+    } else if (c == 'C') { // cflags compiler options
       _err("cflags: %s",opt.arg);
       tcc_set_options(TCC, opt.arg);
-    } else if (c == 'I') { // library link
+    } else if (c == 'I') { // include paths in cflags
       tcc_add_include_path(TCC,opt.arg);
+    } else if (c == 301) { //
+      live_mode = true;
     }
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
     else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
   }
-
   // initialize the tmpdir for execution
 #ifndef LIBC_MINGW32
   tmpdir = mkdtemp(tmptemplate);
@@ -169,7 +168,6 @@ int main(int argc, char **argv) {
   tcc_set_lib_path(TCC,tmpdir);
   tcc_add_library_path(TCC,tmpdir);
   tcc_add_include_path(TCC,tmpdir);
-
   if( !gen_exec_headers(tmpdir) ) goto endgame;
 
   // set output in memory for just in time execution
@@ -179,61 +177,30 @@ int main(int argc, char **argv) {
   tcc_add_libc_symbols(TCC);
 #endif
 
-//   if (argc == 0) {
-//       printf("No input file: running in interactive mode\n");
-// #ifdef REPL_SUPPORTED
-//       res = cjit_cli_kilo(TCC);
-// #else
-//       res = cjit_cli_tty(TCC);
-// #endif
-//       goto endgame;
-//   }
-//   _err("Source: %s",code_path);
-
+  if (argc == 0 ) {
+    _err("No input file: live mode");
+    live_mode = true;
+  }
+  if(live_mode) {
+#ifdef REPL_SUPPORTED
+    res = cjit_cli_kilo(TCC);
+#else
+    res = cjit_cli_tty(TCC);
+#endif
+    goto endgame;
+  }
 
   _err("Source code:");
   for (i = opt.ind; i < argc; ++i) {
     const char *code_path = argv[i];
-    // TODO: load entire directory
-// #ifndef LIBC_MINGW32 // POSIX only
-//     struct stat st;
-//     if (stat(code_path, &st) == -1) {
-//       _err("File not found: %s",code_path);
-//       goto endgame;
-//     }
-//     if (S_ISDIR(st.st_mode)) {
-//       _err("+ %s (dir)", code_path);
-//       tcc_add_include_path(TCC, code_path);
-//       code = dir_load(code_path);
-//   } else {
-//     code = file_load(code_path);
-//   }
-// #else
-//   /* TODO: Add Windows support for directory */
-//   code = file_load(code_path);
-// #endif
     _err("+ %s",code_path);
-    // TODO: check if file exists
     tcc_add_file(TCC, code_path);
   }
-
-// #ifdef REPL_SUPPORTED
-//   _err("Start execution\n---------------");
-//   res = cjit_compile_and_run(TCC, code, argc, argv, 1, &err_msg);
-//   if (err_msg) {
-//         _err(err_msg);
-//   }
-// #else
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
-  // if (tcc_compile_string(TCC, code) == -1) return 1;
-  // free(code); // safe: bytecode compiled is in TCC now
-  // code = NULL;
-  // _err("Compilation successful");
-
-  // relocate the code
+  // relocate the code (link symbols)
   if (tcc_relocate(TCC) < 0) {
-    _err("TCC relocation error");
+    _err("TCC symbol relocation error (some library missing?)");
     goto endgame;
   }
 
@@ -242,15 +209,10 @@ int main(int argc, char **argv) {
 #else
   res = cjit_exec_win(TCC, "main", argc, argv);
 #endif
-// #endif // REPL_SUPPORTED
-
-  // if( tcc_run(TCC,argc,argv) == -1) res=1; else res=0;
 
   endgame:
   // free TCC
   if(TCC) tcc_delete(TCC);
-  if(tmpdir) {
-    rm_recursive(tmpdir);
-  }
+  if(tmpdir) rm_recursive(tmpdir);
   exit(res);
 }
