@@ -46,7 +46,7 @@ int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
   int (*_ep)(int, char**);
   _ep = tcc_get_symbol(TCC, ep);
   if (!_ep) {
-    _err("Symbol not found in source: %s","main");
+    _err("Symbol not found in source: %s",ep);
     return -1;
   }
   _err("Execution start\n---");
@@ -61,7 +61,7 @@ int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv) {
   int (*_ep)(int, char**);
   _ep = tcc_get_symbol(TCC, ep);
   if (!_ep) {
-    _err("Symbol not found in source: %s","main");
+    _err("Symbol not found in source: %s",ep);
     return -1;
   }
   _err("Start execution\n---------------");
