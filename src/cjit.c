@@ -94,6 +94,20 @@ int parse_value(char *str) {
   else return(0);
 }
 
+const char cli_help[] =
+  "\n"
+  "Synopsis: cjit [options] files(*)\n"
+  "  (*) can be any source (.c) or built object (dll, dylib, .so)\n"
+  "Options:\n"
+  " -h \t print this help\n"
+  " -v \t print version information\n"
+  " -D sym\t define a macro symbol or key=value\n"
+  " -C \t set compiler flags (default from env var CFLAGS)\n"
+  " -I dir\t also search folder 'dir' for header files\n"
+  " -l lib\t search the library named 'lib' when linking\n"
+  " -L dir\t also search inside folder 'dir' for -l libs\n"
+  " --live\t run interactive editor for live coding\n";
+
 int main(int argc, char **argv) {
   TCCState *TCC = NULL;
   // const char *progname = "cjit";
@@ -116,16 +130,28 @@ int main(int argc, char **argv) {
     tcc_set_options(TCC, extra_cflags);
   }
   static ko_longopt_t longopts[] = {
+    { "help", ko_no_argument, 100 },
     { "live", ko_no_argument, 301 },
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
   int i, c;
-  while ((c = ketopt(&opt, argc, argv, 1, "vD:L:l:C:I:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "hvD:L:l:C:I:", longopts)) >= 0) {
     if (c == 'v') {
-      _err("Running version: %s\n",VERSION);
+      // _err("Running version: %s\n",VERSION);
+      // version is always shown
+#ifdef LIBC_MINGW32
+      _err("Built with MINGW32 libc");
+#endif
+#ifdef LIBC_MUSL
+      _err("Built with Musl libc");
+#endif
       tcc_delete(TCC);
-      exit(0); // print version and exit
+      exit(0); // print and exit
+    } else if (c=='h' || c==100) { // help
+      _err(cli_help,VERSION);
+      tcc_delete(TCC);
+      exit(0); // print and exit
     } else if (c == 'D') { // define
       int _res;
       _res = parse_value(opt.arg);
