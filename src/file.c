@@ -81,6 +81,9 @@ char* file_load(const char *filename) {
 }
 
 char *load_stdin() {
+#ifdef LIBC_MINGW32
+  return NULL;
+#else
   char *code = NULL;
   char *line = NULL;
   size_t len = 0;
@@ -104,6 +107,7 @@ char *load_stdin() {
     line = NULL;
   }
   return(code);
+#endif
 }
 
 bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
