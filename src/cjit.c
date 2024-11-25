@@ -226,7 +226,11 @@ int main(int argc, char **argv) {
 
   char *stdin_code = NULL;
   if(opt.ind >= argc) {
-    _err("No files specified on commandline, reading code from stdin\n");
+#ifdef LIBC_MINGW32
+    _err("No files specified on commandline");
+    goto endgame;
+#endif
+    _err("No files specified on commandline, reading code from stdin");
     stdin_code = load_stdin(); // allocated returned buffer, needs free
     if(!stdin_code) {
       _err("Error reading from standard input");
@@ -244,6 +248,10 @@ int main(int argc, char **argv) {
       _err("%c %s",(*code_path=='-'?'|':'+'),
            (*code_path=='-'?"standard input":code_path));
       if(*code_path=='-') { // stdin explicit
+#ifdef LIBC_MINGW32
+        _err("Code from standard input not supported on Windows");
+        goto endgame;
+#endif
         stdin_code = load_stdin(); // allocated returned buffer, needs free
         if(!stdin_code) {
           _err("Error reading from standard input");

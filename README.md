@@ -54,7 +54,7 @@ There are various build targets, just type `make` to have a list:
  apple-osx        🍎 Build cjit.command for Apple/OSX using clang static
  _
  ------           __ Debugging targets
- linux-asan       🔬 Build using the address sanitizer to detect memory leaks
+ debug-asan       🔬 Build using the address sanitizer to detect memory leaks
  _
  ------           __ Testing targets
  check            🧪 Run all tests using the currently built binary ./cjit
