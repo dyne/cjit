@@ -80,6 +80,32 @@ char* file_load(const char *filename) {
     return contents;
 }
 
+char *load_stdin() {
+  char *code = NULL;
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t rd;
+  fflush(stdout);
+  fflush(stderr);
+  while(1) {
+    rd = getline(&line, &len, stdin);
+    if(rd == -1) { // ctrl+d
+      free(line);
+      break;
+    }
+    code = realloc(code, (code?strlen(code):0) + len + 1);
+    if (!code) {
+      _err("Memory allocation error");
+      free(line);
+      return NULL;
+    }
+    strcat(code, line);
+    free(line);
+    line = NULL;
+  }
+  return(code);
+}
+
 bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
   FILE *fd;
   size_t written;

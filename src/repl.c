@@ -338,73 +338,64 @@ int cjit_cli_tty(TCCState *TCC) {
         _err("Memory allocation error");
         return 2;
     }
-    // don't add automatic main preamble if in a pipe
-    if (isatty(fileno(stdin)))
-        strcpy(code, intro);
-    else
-        _err("Not running from a terminal though.\n");
-
+    strcpy(code, intro);
 #ifdef LIBC_MINGW32
     _err("Missing source code argument");
 #else // LIBC_MINGW32
     while (1) {
-        // don't print prompt if we are in a pipe
-        if (isatty(fileno(stdin)))
-            printf("cjit> ");
-        fflush(stdout);
-        rd = getline(&line, &len, stdin);
-        if (rd == -1) {
-            /* This is CTRL + D */
-            code = realloc(code, strlen(code) + 4);
-            if (!code) {
-                _err("Memory allocation error");
-                res = 2;
-                break;
-            }
-            free(line);
-            line = NULL;
-            if (isatty(fileno(stdin)))
-                strcat(code, "\n}\n");
-
-            // run the code from main
-#ifdef VERBOSE_CLI
-            _err("Compiling code\n");
-            _err("-----------------------------------\n");
-            _err("%s\n", code);
-            _err("-----------------------------------\n");
-#endif // VERBOSE_CLI
-            if (tcc_compile_string(TCC, code) < 0) {
-                _err("Code runtime error in source\n");
-                res = 1;
-                break;
-            }
-            if (tcc_relocate(TCC) < 0) {
-                _err("Code relocation error in source\n");
-                res = 1;
-                break;
-            }
-#ifdef VERBOSE_CLI
-            _err("Running code\n");
-            _err("-----------------------------------\n");
-#endif // VERBOSE_CLI
-#ifndef LIBC_MINGW32
-            res = cjit_exec_fork(TCC, "main", 0, NULL);
-#else // LIBC_MINGW32
-            res = cjit_exec_win(TCC, "main", 0, NULL);
-#endif // LIBC_MINGW32
-            free(code);
-            code = NULL;
-            break;
-        }
-        code = realloc(code, strlen(code) + len + 1);
+      printf("cjit> ");
+      fflush(stdout);
+      rd = getline(&line, &len, stdin);
+      if (rd == -1) {
+        /* This is CTRL + D */
+        code = realloc(code, strlen(code) + 4);
         if (!code) {
-            _err("Memory allocation error");
-            res = 2;
-            break;
+          _err("Memory allocation error");
+          res = 2;
+          break;
         }
-        strcat(code, line);
         free(line);
         line = NULL;
+        strcat(code, "\n}\n");
+        // run the code from main
+#ifdef VERBOSE_CLI
+        _err("Compiling code\n");
+        _err("-----------------------------------\n");
+        _err("%s\n", code);
+        _err("-----------------------------------\n");
+#endif // VERBOSE_CLI
+        if (tcc_compile_string(TCC, code) < 0) {
+          _err("Code runtime error in source\n");
+          res = 1;
+          break;
+        }
+        if (tcc_relocate(TCC) < 0) {
+          _err("Code relocation error in source\n");
+          res = 1;
+          break;
+        }
+#ifdef VERBOSE_CLI
+        _err("Running code\n");
+        _err("-----------------------------------\n");
+#endif // VERBOSE_CLI
+#ifndef LIBC_MINGW32
+        res = cjit_exec_fork(TCC, "main", 0, NULL);
+#else // LIBC_MINGW32
+        res = cjit_exec_win(TCC, "main", 0, NULL);
+#endif // LIBC_MINGW32
+        free(code);
+        code = NULL;
+        break;
+      }
+      code = realloc(code, strlen(code) + len + 1);
+      if (!code) {
+        _err("Memory allocation error");
+        res = 2;
+        break;
+      }
+      strcat(code, line);
+      free(line);
+      line = NULL;
     }
 #endif // LIBC_MINGW32
     return res;

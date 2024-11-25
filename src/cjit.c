@@ -39,6 +39,7 @@
 // from file.c
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
+extern char *load_stdin();
 extern char* dir_load(const char *path);
 extern bool rm_recursive(char *path);
 #ifdef LIBC_MINGW32
@@ -181,7 +182,10 @@ int main(int argc, char **argv) {
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
     else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
   }
+  //////////////////////////////////////
   // initialize the tmpdir for execution
+  // from here onwards use goto endgame
+  // as the main and only exit
 #ifndef LIBC_MINGW32
   tmpdir = mkdtemp(tmptemplate);
 #else
@@ -204,10 +208,14 @@ int main(int argc, char **argv) {
 #endif
 
   if (argc == 0 ) {
-    _err("No input file: live mode");
+    _err("No input file: live mode!");
     live_mode = true;
   }
   if(live_mode) {
+    if (!isatty(fileno(stdin))) {
+      _err("Live mode only available in terminal (tty not found)");
+      goto endgame;
+    }
 #ifdef REPL_SUPPORTED
     res = cjit_cli_kilo(TCC);
 #else
@@ -216,11 +224,38 @@ int main(int argc, char **argv) {
     goto endgame;
   }
 
-  _err("Source code:");
-  for (i = opt.ind; i < argc; ++i) {
-    const char *code_path = argv[i];
-    _err("+ %s",code_path);
-    tcc_add_file(TCC, code_path);
+  char *stdin_code = NULL;
+  if(opt.ind >= argc) {
+    _err("No files specified on commandline, reading code from stdin\n");
+    stdin_code = load_stdin(); // allocated returned buffer, needs free
+    if(!stdin_code) {
+      _err("Error reading from standard input");
+      goto endgame;
+    }
+    if( tcc_compile_string(TCC,stdin_code) < 0) {
+      _err("Code runtime error in stdin");
+      free(stdin_code);
+      goto endgame;
+    }
+  } else  {
+    _err("Source code:");
+    for (i = opt.ind; i < argc; ++i) {
+      const char *code_path = argv[i];
+      _err("%c %s",(*code_path=='-'?'|':'+'),
+           (*code_path=='-'?"standard input":code_path));
+      if(*code_path=='-') { // stdin explicit
+        stdin_code = load_stdin(); // allocated returned buffer, needs free
+        if(!stdin_code) {
+          _err("Error reading from standard input");
+        } else if( tcc_compile_string(TCC,stdin_code) < 0) {
+          _err("Code runtime error in stdin");
+          free(stdin_code);
+          goto endgame;
+        } else free(stdin_code);
+      } else { // load any file path
+        tcc_add_file(TCC, code_path);
+      }
+    }
   }
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
