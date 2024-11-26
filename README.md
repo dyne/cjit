@@ -1,6 +1,6 @@
 [![CJIT logo](https://repository-images.githubusercontent.com/864503934/7d36d2ce-bbd6-4adf-863b-3e37b35216e1)](https://dyne.org/cjit)
 
-CJIT is a lightweight, free and open source C interpreter that lets you run C code instantly, without needing to build it first.
+CJIT is a C interpreter based on tinyCC that compiles C code in-memory and runs it live. It is released as a small, all-in-one executable that can do a lot, including call functions from any installed library on Linux, Windows, and MacOSX.
 
 More info on [Dyne.org/CJIT](https://dyne.org/cjit).
 
