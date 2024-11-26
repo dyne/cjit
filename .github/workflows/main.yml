@@ -206,13 +206,13 @@ jobs:
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx RELEASE=1
-          mv cjit.command cjit-Darwin-x86_64
+          mv cjit.command cjit-Darwin-arm64
       - name: Upload artifact apple-osx
         uses: actions/upload-artifact@v4
         with:
           name: release-osx-native
           path: |
-            cjit-Darwin-x86_64
+            cjit-Darwin-arm64
 
   draft-binary-release:
     name: 📦 Pack release
