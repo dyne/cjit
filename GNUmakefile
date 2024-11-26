@@ -49,6 +49,10 @@ _: ##
 check: ## 🧪 Run all tests using the currently built binary ./cjit
 	$(if $(wildcard ./cjit),,$(error CJIT is not yet built))
 	./cjit test/hello.c
+	./cjit test/cflags.c -DALLOWED
+	./cjit test/cflags.c -DALLOWED=1
+	CFLAGS="-DALLOWED" ./cjit test/cflags.c
+	./cjit test/multifile/*
 
 _: ##
 clean: ## 🧹 Clean the source from all built objects
