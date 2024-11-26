@@ -39,6 +39,62 @@
 #endif
 extern void _err(const char *fmt, ...);
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+
+bool append_path(char **stored_path, const char *new_path) {
+  // TODO: sanitize input checking only path chars are there
+  // support both / and \ for windows
+  if (*stored_path == NULL) {
+    // If stored_path is NULL, allocate memory and copy new_path
+    *stored_path = malloc(strlen(new_path) + 1);
+    if (*stored_path == NULL) {
+      _err("Memory allocation failed");
+      return(false);
+    }
+    strcpy(*stored_path, new_path);
+  } else {
+    // If stored_path is not NULL, append new_path separated by ':'
+    size_t new_length = strlen(*stored_path) + strlen(new_path) + 2;
+    char *temp = realloc(*stored_path, new_length);
+    if (temp == NULL) {
+      _err("Memory allocation failed");
+      return(false);
+    }
+    *stored_path = temp;
+    strcat(*stored_path, ":");
+    strcat(*stored_path, new_path);
+  }
+  return(true);
+}
+
+bool prepend_path(char **stored_path, const char *new_path) {
+  if (*stored_path == NULL) {
+    // If stored_path is NULL, allocate memory and copy new_path
+    *stored_path = malloc(strlen(new_path) + 1);
+    if (*stored_path == NULL) {
+      _err("Memory allocation failed");
+      return(false);
+    }
+    strcpy(*stored_path, new_path);
+  } else {
+    // If stored_path is not NULL, prepend new_path separated by ':'
+    size_t new_length = strlen(*stored_path) + strlen(new_path) + 2;
+    char *temp = malloc(new_length);
+    if (temp == NULL) {
+      _err("Memory allocation failed");
+      return(false);
+    }
+    strcpy(temp, new_path);
+    strcat(temp, ":");
+    strcat(temp, *stored_path);
+    free(*stored_path);
+    *stored_path = temp;
+  }
+}
+
 // Function to get the length of a file in bytes
 long file_size(const char *filename) {
     FILE *file = fopen(filename, "rb");

@@ -37,6 +37,8 @@
 
 /////////////
 // from file.c
+extern bool append_path(char **stored_path, const char *new_path);
+extern bool prepend_path(char **stored_path, const char *new_path);
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
 extern char *load_stdin();
@@ -68,7 +70,7 @@ void handle_error(void *n, const char *m) {
 }
 
 #define MAX_ARG_STRING 1024
-int parse_value(char *str) {
+static int parse_value(char *str) {
   int i = 0;
   int value_pos = 0;
   bool equal_found = false;
@@ -107,13 +109,18 @@ const char cli_help[] =
   " -I dir\t also search folder 'dir' for header files\n"
   " -l lib\t search the library named 'lib' when linking\n"
   " -L dir\t also search inside folder 'dir' for -l libs\n"
+  " -e fun\t entry point function (default 'main')\n"
   " --live\t run interactive editor for live coding\n";
 
 int main(int argc, char **argv) {
   TCCState *TCC = NULL;
   // const char *progname = "cjit";
+  char *stored_lib_paths = NULL;
+  char *stored_inc_paths = NULL;
   char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
+  const char *default_main = "main";
+  char *entry = (char*)default_main;
   bool live_mode = false;
   int res = 1;
   _err("CJIT %s by Dyne.org",VERSION);
@@ -137,7 +144,7 @@ int main(int argc, char **argv) {
   };
   ketopt_t opt = KETOPT_INIT;
   int i, c;
-  while ((c = ketopt(&opt, argc, argv, 1, "hvD:L:l:C:I:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "hvD:L:l:C:I:e:", longopts)) >= 0) {
     if (c == 'v') {
       // _err("Running version: %s\n",VERSION);
       // version is always shown
@@ -167,7 +174,11 @@ int main(int argc, char **argv) {
       }
     } else if (c == 'L') { // library path
       _err("lib path: %s",opt.arg);
-      tcc_add_library_path(TCC,tmpdir);
+      if(! append_path(&stored_lib_paths, opt.arg) ) {
+        _err("Error in lib path -L option argument");
+        tcc_delete(TCC);
+        exit(1);
+      }
     } else if (c == 'l') { // library link
       _err("lib: %s",opt.arg);
       tcc_add_library(TCC, opt.arg);
@@ -175,7 +186,17 @@ int main(int argc, char **argv) {
       _err("cflags: %s",opt.arg);
       tcc_set_options(TCC, opt.arg);
     } else if (c == 'I') { // include paths in cflags
-      tcc_add_include_path(TCC,opt.arg);
+      _err("inc path: %s",opt.arg);
+      if(! append_path(&stored_inc_paths, opt.arg) ) {
+        _err("Error in lib path -I option argument");
+        tcc_delete(TCC);
+        exit(1);
+      }
+    } else if (c == 'e') { // entry point (default main)
+      _err("entry: %s",opt.arg);
+      if(entry!=default_main) free(entry);
+      entry = malloc(strlen(opt.arg)+1);
+      strcpy(entry,opt.arg);
     } else if (c == 301) { //
       live_mode = true;
     }
@@ -195,10 +216,22 @@ int main(int argc, char **argv) {
     _err("Error creating temp dir %s: %s",tmptemplate,strerror(errno));
     goto endgame;
   }
-  tcc_set_lib_path(TCC,tmpdir);
-  tcc_add_library_path(TCC,tmpdir);
-  tcc_add_include_path(TCC,tmpdir);
+  tcc_set_lib_path(TCC,tmpdir); // TCC specific lib path
+
+  if(! prepend_path(&stored_lib_paths,tmpdir) ) {
+    _err("Error prepending tmpdir library path: %s",tmpdir);
+    goto endgame;
+  }
+  if(! prepend_path(&stored_inc_paths,tmpdir) ) {
+    _err("Error prepending tmpdir include path: %s",tmpdir);
+    goto endgame;
+  }
+
   if( !gen_exec_headers(tmpdir) ) goto endgame;
+
+  // finally set paths
+  tcc_add_library_path(TCC, stored_lib_paths);
+  tcc_add_include_path(TCC, stored_inc_paths);
 
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
@@ -274,14 +307,17 @@ int main(int argc, char **argv) {
   }
 
 #ifndef LIBC_MINGW32
-  res = cjit_exec_fork(TCC, "main", argc, argv);
+  res = cjit_exec_fork(TCC, entry, argc, argv);
 #else
-  res = cjit_exec_win(TCC, "main", argc, argv);
+  res = cjit_exec_win(TCC, entry, argc, argv);
 #endif
 
   endgame:
   // free TCC
   if(TCC) tcc_delete(TCC);
   if(tmpdir) rm_recursive(tmpdir);
+  if(stored_inc_paths) free(stored_inc_paths);
+  if(stored_lib_paths) free(stored_lib_paths);
+  if(entry!=default_main) free(entry);
   exit(res);
 }
