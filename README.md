@@ -1,4 +1,4 @@
-[![CJIT logo](docs/cjit-logotype.png)](https://dyne.org/cjit)
+[![CJIT logo](https://repository-images.githubusercontent.com/864503934/7d36d2ce-bbd6-4adf-863b-3e37b35216e1)](https://dyne.org/cjit)
 
 CJIT is a lightweight, free and open source C interpreter that lets you run C code instantly, without needing to build it first.
 
