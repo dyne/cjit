@@ -93,6 +93,7 @@ bool prepend_path(char **stored_path, const char *new_path) {
     free(*stored_path);
     *stored_path = temp;
   }
+  return(true);
 }
 
 // Function to get the length of a file in bytes

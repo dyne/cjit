@@ -31,14 +31,9 @@
 #include <poll.h>
 #endif
 
-// from cjit.c
-extern int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv);
-extern int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv);
-
 // from io.c
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
-
 
 #ifdef LIBC_MINGW32
 int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
