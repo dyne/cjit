@@ -15,8 +15,8 @@ There isn't, this is the [0.6.2 release analysis on VirusTotal](https://www.viru
 ## Quick start
 
 Paste this into your terminal
-```sh
-curl -sLo cjit https://github.com/dyne/cjit/releases/latest/download/cjit
+```bash
+curl -sLo cjit https://github.com/dyne/cjit/releases/latest/download/cjit-$(uname)-$(uname -m)
 chmod +x cjit
 cat << EOF > hello.c
 #!/usr/bin/env cjit
