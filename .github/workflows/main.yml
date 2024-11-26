@@ -147,13 +147,13 @@ jobs:
       - name: Build x86_64 on Linux
         run: |
           make linux-x86 RELEASE=1
-          mv cjit cjit.x86_64.ELF
+          mv cjit cjit-Linux-x86_64
       - name: Upload artifact linux-amd64
         uses: actions/upload-artifact@v4
         with:
           name: release-shared-linux-x86_64
           path: |
-            cjit.x86_64.ELF
+            cjit-Linux-x86_64
 
   musl-release:
     name: 🐧 Musl Linux binary release build
@@ -171,13 +171,13 @@ jobs:
       - name: Build x86_64 with musl-system
         run: |
           make musl-linux RELEASE=1
-          mv cjit cjit.static-x86_64.ELF
+          mv cjit cjit-Linux-x86_64-static
       - name: Upload artifact linux-amd64
         uses: actions/upload-artifact@v4
         with:
           name: release-musl-linux-x86_64
           path: |
-            cjit.static-x86_64.ELF
+            cjit-Linux-x86_64-static
 
   win-native-release:
     name: 🪟 Windows native binary release build
@@ -206,12 +206,13 @@ jobs:
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx RELEASE=1
+          mv cjit.command cjit-Darwin-x86_64
       - name: Upload artifact apple-osx
         uses: actions/upload-artifact@v4
         with:
           name: release-osx-native
           path: |
-            cjit.command
+            cjit-Darwin-x86_64
 
   draft-binary-release:
     name: 📦 Pack release
