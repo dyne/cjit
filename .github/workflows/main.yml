@@ -108,7 +108,7 @@ jobs:
 
   semantic-release:
     name: 🤖 Semantic release
-    needs: [musl-test]
+    needs: [musl-test, osx-native-test, win-native-test]
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
@@ -124,6 +124,36 @@ jobs:
             @semantic-release/changelog
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release docs artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: |
+            build/release-intro.md
+
+  linux-release:
+    name: 🐧 Linux shared binary release build
+    runs-on: ubuntu-latest
+    needs: [semantic-release]
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install build deps
+        run: |
+          sudo apt install -qy make
+      - name: Build x86_64 on Linux
+        run: |
+          make linux-x86 RELEASE=1
+          mv cjit cjit.x86_64.ELF
+      - name: Upload artifact linux-amd64
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-shared-linux-x86_64
+          path: |
+            cjit.x86_64.ELF
 
   musl-release:
     name: 🐧 Musl Linux binary release build
@@ -135,24 +165,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Upload release docs artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: documentation
-          path: |
-            build/release-intro.md
       - name: Install build deps
         run: |
           sudo apt install -qy make musl-tools musl-dev
       - name: Build x86_64 with musl-system
         run: |
           make musl-linux RELEASE=1
+          mv cjit cjit.static-x86_64.ELF
       - name: Upload artifact linux-amd64
         uses: actions/upload-artifact@v4
         with:
           name: release-musl-linux-x86_64
           path: |
-            cjit
+            cjit.static-x86_64.ELF
 
   win-native-release:
     name: 🪟 Windows native binary release build
@@ -190,7 +215,7 @@ jobs:
 
   draft-binary-release:
     name: 📦 Pack release
-    needs: [semantic-release, musl-release, win-native-release]
+    needs: [semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
     runs-on: ubuntu-latest
     steps:
       - name: download binary artifacts
@@ -215,7 +240,7 @@ jobs:
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
-    needs: [semantic-release, musl-release, win-native-release]
+    needs: [semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
     runs-on: ubuntu-latest
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
