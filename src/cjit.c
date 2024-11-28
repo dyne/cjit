@@ -110,7 +110,8 @@ const char cli_help[] =
   " -l lib\t search the library named 'lib' when linking\n"
   " -L dir\t also search inside folder 'dir' for -l libs\n"
   " -e fun\t entry point function (default 'main')\n"
-  " --live\t run interactive editor for live coding\n";
+  " --live\t run interactive editor for live coding\n"
+  " --tgen\t create the runtime temporary dir and exit\n";
 
 int main(int argc, char **argv) {
   TCCState *TCC = NULL;
@@ -140,6 +141,7 @@ int main(int argc, char **argv) {
   static ko_longopt_t longopts[] = {
     { "help", ko_no_argument, 100 },
     { "live", ko_no_argument, 301 },
+    { "tgen", ko_no_argument, 401 },
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
@@ -173,7 +175,6 @@ int main(int argc, char **argv) {
         exit(1);
       }
     } else if (c == 'L') { // library path
-      _err("lib path: %s",opt.arg);
       if(! append_path(&stored_lib_paths, opt.arg) ) {
         _err("Error in lib path -L option argument");
         tcc_delete(TCC);
@@ -186,12 +187,8 @@ int main(int argc, char **argv) {
       _err("cflags: %s",opt.arg);
       tcc_set_options(TCC, opt.arg);
     } else if (c == 'I') { // include paths in cflags
-      _err("inc path: %s",opt.arg);
-      if(! append_path(&stored_inc_paths, opt.arg) ) {
-        _err("Error in lib path -I option argument");
-        tcc_delete(TCC);
-        exit(1);
-      }
+      tcc_add_include_path(TCC, opt.arg);
+      _err("inc: %s",opt.arg);
     } else if (c == 'e') { // entry point (default main)
       _err("entry: %s",opt.arg);
       if(entry!=default_main) free(entry);
@@ -199,6 +196,16 @@ int main(int argc, char **argv) {
       strcpy(entry,opt.arg);
     } else if (c == 301) { //
       live_mode = true;
+    } else if (c == 401) { //
+#ifndef LIBC_MINGW32
+      tmpdir = mkdtemp(tmptemplate);
+#else
+      tmpdir = win32_mkdtemp();
+#endif
+      gen_exec_headers(tmpdir);
+      _err("Temporary dir created: %s",tmpdir);
+      tcc_delete(TCC);
+      exit(0);
     }
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
     else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
@@ -229,9 +236,12 @@ int main(int argc, char **argv) {
 
   if( !gen_exec_headers(tmpdir) ) goto endgame;
 
+  tcc_add_include_path(TCC, tmpdir);
+  _err("inc: %s",tmpdir);
+
   // finally set paths
+  _err("lib paths: %s",stored_lib_paths);
   tcc_add_library_path(TCC, stored_lib_paths);
-  tcc_add_include_path(TCC, stored_inc_paths);
 
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
