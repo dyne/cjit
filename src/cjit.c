@@ -123,7 +123,9 @@ int main(int argc, char **argv) {
   const char *default_main = "main";
   char *entry = (char*)default_main;
   bool live_mode = false;
+  int arg_separator = 0;
   int res = 1;
+  int i, c;
   _err("CJIT %s by Dyne.org",VERSION);
   TCC = tcc_new();
   if (!TCC) {
@@ -145,7 +147,6 @@ int main(int argc, char **argv) {
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
-  int i, c;
   while ((c = ketopt(&opt, argc, argv, 1, "hvD:L:l:C:I:e:", longopts)) >= 0) {
     if (c == 'v') {
       // _err("Running version: %s\n",VERSION);
@@ -209,6 +210,9 @@ int main(int argc, char **argv) {
     }
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
     else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
+    else if (c == '-') { // -- separator
+      arg_separator = opt.ind+1; break;
+    }
   }
   //////////////////////////////////////
   // initialize the tmpdir for execution
@@ -267,6 +271,9 @@ int main(int argc, char **argv) {
     goto endgame;
   }
 
+  // number of args at the left hand of arg separator, or all of them
+  int left_args = arg_separator? arg_separator: argc;
+
   char *stdin_code = NULL;
   if(opt.ind >= argc) {
 #ifdef LIBC_MINGW32
@@ -284,9 +291,10 @@ int main(int argc, char **argv) {
       free(stdin_code);
       goto endgame;
     }
-  } else  {
+  } else if(opt.ind < left_args) {
+    // process files on commandline before separator
     _err("Source code:");
-    for (i = opt.ind; i < argc; ++i) {
+    for (i = opt.ind; i < left_args; ++i) {
       const char *code_path = argv[i];
       _err("%c %s",(*code_path=='-'?'|':'+'),
            (*code_path=='-'?"standard input":code_path));
@@ -316,10 +324,13 @@ int main(int argc, char **argv) {
     goto endgame;
   }
 
+  // number of args at the left hand of arg separator, or all of them
+  int right_args = argc-left_args;//arg_separator? argc-arg_separator : 0;
+  char **right_argv = &argv[left_args];//arg_separator?&argv[arg_separator]:0
 #ifndef LIBC_MINGW32
-  res = cjit_exec_fork(TCC, entry, argc, argv);
+  res = cjit_exec_fork(TCC, entry, right_args, right_argv);
 #else
-  res = cjit_exec_win(TCC, entry, argc, argv);
+  res = cjit_exec_win(TCC, entry, right_args, right_argv);
 #endif
 
   endgame:

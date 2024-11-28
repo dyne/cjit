@@ -69,7 +69,7 @@ static int ketopt(ketopt_t *s, int argc, char *argv[], int permute, const char *
 		if (argv[s->i][2] == '\0') { /* a bare "--" */
 			ketopt_permute(argv, s->i, s->n_args);
 			++s->i, s->ind = s->i - s->n_args;
-			return -1;
+			return('-');
 		}
 		s->opt = 0, opt = '?', s->pos = -1;
 		if (longopts) { /* parse long options */

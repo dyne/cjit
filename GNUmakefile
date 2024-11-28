@@ -53,6 +53,7 @@ check: ## 🧪 Run all tests using the currently built binary ./cjit
 	./cjit test/cflags.c -DALLOWED=1
 	CFLAGS="-DALLOWED" ./cjit test/cflags.c
 	./cjit test/multifile/*
+	./cjit test/cargs.c -- a b c
 
 _: ##
 clean: ## 🧹 Clean the source from all built objects
