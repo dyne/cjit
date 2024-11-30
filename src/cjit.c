@@ -43,15 +43,15 @@ extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
 extern char *load_stdin();
 extern char* dir_load(const char *path);
-extern bool rm_recursive(char *path);
+
 #ifdef LIBC_MINGW32
 extern char *win32_mkdtemp();
+#else
+extern char *posix_mkdtemp();
 #endif
 // from io.c
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
-// from exec-headers.c
-extern bool gen_exec_headers(char *tmpdir);
 // from repl.c
 #ifdef LIBC_MINGW32
 extern int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv);
@@ -118,7 +118,6 @@ int main(int argc, char **argv) {
   // const char *progname = "cjit";
   char *stored_lib_paths = NULL;
   char *stored_inc_paths = NULL;
-  char tmptemplate[] = "/tmp/CJIT-exec.XXXXXX";
   char *tmpdir = NULL;
   const char *default_main = "main";
   char *entry = (char*)default_main;
@@ -199,12 +198,11 @@ int main(int argc, char **argv) {
       live_mode = true;
     } else if (c == 401) { //
 #ifndef LIBC_MINGW32
-      tmpdir = mkdtemp(tmptemplate);
+      tmpdir = posix_mkdtemp();
 #else
       tmpdir = win32_mkdtemp();
 #endif
-      gen_exec_headers(tmpdir);
-      _err("Temporary dir created: %s",tmpdir);
+      _err("Temporary exec dir: %s",tmpdir);
       tcc_delete(TCC);
       exit(0);
     }
@@ -219,12 +217,12 @@ int main(int argc, char **argv) {
   // from here onwards use goto endgame
   // as the main and only exit
 #ifndef LIBC_MINGW32
-  tmpdir = mkdtemp(tmptemplate);
+  tmpdir = posix_mkdtemp();
 #else
   tmpdir = win32_mkdtemp();
 #endif
   if(!tmpdir) {
-    _err("Error creating temp dir %s: %s",tmptemplate,strerror(errno));
+    _err("Error creating temp dir: %s",strerror(errno));
     goto endgame;
   }
   tcc_set_lib_path(TCC,tmpdir); // TCC specific lib path
@@ -237,8 +235,6 @@ int main(int argc, char **argv) {
     _err("Error prepending tmpdir include path: %s",tmpdir);
     goto endgame;
   }
-
-  if( !gen_exec_headers(tmpdir) ) goto endgame;
 
   tcc_add_include_path(TCC, tmpdir);
   _err("inc: %s",tmpdir);
@@ -336,7 +332,6 @@ int main(int argc, char **argv) {
   endgame:
   // free TCC
   if(TCC) tcc_delete(TCC);
-  if(tmpdir) rm_recursive(tmpdir);
   if(stored_inc_paths) free(stored_inc_paths);
   if(stored_lib_paths) free(stored_lib_paths);
   if(entry!=default_main) free(entry);

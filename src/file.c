@@ -39,9 +39,8 @@
 #endif
 extern void _err(const char *fmt, ...);
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// from exec-headers.c
+extern bool gen_exec_headers(char *tmpdir);
 
 
 bool append_path(char **stored_path, const char *new_path) {
@@ -297,37 +296,40 @@ char *dir_load(const char *path)
 
 #endif
 
-
 #ifdef LIBC_MINGW32
 ///////////////
 // WINDOWS SHIT
+int dir_exists(const char *path) {
+	DWORD attributes = GetFileAttributes(path);
+	if (attributes == INVALID_FILE_ATTRIBUTES) {
+		// The path does not exist
+		return 0;
+	} else if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
+		// The path exists and is a directory
+		return 1;
+	} else {
+		_err("Temp dir is a file, cannot overwrite: %s",path);
+		// The path exists but is not a directory
+		return 0;
+	}
+}
+
 char *win32_mkdtemp() {
     static char tempDir[MAX_PATH];
-    static char sysTempDir[MAX_PATH];
-    static char secTempDir[MAX_PATH];
-    static char winTempDir[MAX_PATH];
+    char sysTempDir[MAX_PATH];
+    char secTempDir[MAX_PATH];
+    char winTempDir[MAX_PATH];
     char tempPath[MAX_PATH];
-    char filename [] = "CJIT-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    char filename [64];
+    snprintf(filename,63,"CJIT-%s",VERSION);
     // Get the temporary path
     if (GetTempPath(MAX_PATH, tempPath) == 0) {
         _err("Failed to get temporary path");
         return NULL;
     }
-    // else
-    //   _err("Temporary path is %s",tempPath);
-    // randomize the temp dir name
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    size_t charset_size = sizeof(charset) - 1;
-    char *str = &filename[5];
-    // Seed the random number generator
-    srand((unsigned int)time(NULL));
-    for (size_t i = 0; i < 16; i++) {
-        int key = rand() % charset_size;
-        *str = charset[key];
-        str++;
-    }
-    *str = '\0'; // Null-terminate the string
     PathCombine(tempDir, tempPath, filename);
+    // return already if found existing
+    if(dir_exists(tempDir)) return(tempDir);
     // Create the temporary directory
     if (CreateDirectory(tempDir, NULL) == 0) {
         _err("Failed to create temporary dir: %s",tempDir);
@@ -348,6 +350,31 @@ char *win32_mkdtemp() {
         _err("Failed to create winapi dir in temporary dir: %s",winTempDir);
         return NULL;
     }
+    if(!gen_exec_headers(tempDir)) return(NULL);
     return(tempDir);
+}
+#else // POSIX
+bool dir_exists(const char *path) {
+	struct stat info;
+	if (stat(path, &info) != 0) {
+		// stat() failed; the path does not exist
+		return false;
+	} else if (info.st_mode & S_IFDIR) {
+		// The path exists and is a directory
+		return true;
+	} else {
+		_err("Temp dir is a file, cannot overwrite: %s",path);
+		// The path exists but is not a directory
+		return false;
+	}
+}
+
+char *posix_mkdtemp() {
+	static char tpath[260];
+	snprintf(tpath,259,"/tmp/cjit-%s",VERSION);
+	if(dir_exists(tpath)) return(tpath);
+	mkdir(tpath,0755);
+	if(! gen_exec_headers(tpath) ) return(NULL);
+	return(&tpath[0]);
 }
 #endif
