@@ -1,0 +1,56 @@
+# Copyright 2023-2024 Dyne.org foundation
+# SPDX-FileCopyrightText: 2023-2024 Dyne.org foundation
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# stop search for .editorconfig in parent directories
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+
+
+[**/*.[ch]]
+indent_style = tab
+indent_size = 8
+
+[Makefile]
+indent_style = tab
+
+[src/lua/*.lua]
+indent_style = space
+indent_size = 4
+
+[test/**/*.lua]
+indent_style = space
+indent_size = 4
+
+[test/**/*.bats]
+indent_style = space
+indent_size = 4
+
+[src/lua/crypto_ethereum.lua]
+indent_style = space
+indent_size = 3
+
+[src/lua/zencode.lua]
+indent_style = tab
+indent_size = 4
+
+[src/lua/zencode_array.lua]
+indent_style = tab
+indent_size = 4
+
+[src/lua/zencode_data.lua]
+indent_style = space
+indent_size = 2
+
+[**/*.go]
+indent_style = tab
+indent_size = 4
+
+[docs/doc_needed/*.lua]
+indent_style = space
+indent_size = 4
