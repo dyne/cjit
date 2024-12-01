@@ -107,6 +107,7 @@ const char cli_help[] =
   "Options:\n"
   " -h \t print this help\n"
   " -v \t print version information\n"
+  " -q \t stay quiet and only print errors and output\n"
   " -D sym\t define a macro symbol or key=value\n"
   " -C \t set compiler flags (default from env var CFLAGS)\n"
   " -I dir\t also search folder 'dir' for header files\n"
@@ -125,10 +126,10 @@ int main(int argc, char **argv) {
   const char *default_main = "main";
   char *entry = (char*)default_main;
   bool live_mode = false;
+  bool quiet = false;
   int arg_separator = 0;
   int res = 1;
   int i, c;
-  _err("CJIT %s by Dyne.org",VERSION);
   TCC = tcc_new();
   if (!TCC) {
     _err("Could not initialize tcc");
@@ -149,8 +150,12 @@ int main(int argc, char **argv) {
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
-  while ((c = ketopt(&opt, argc, argv, 1, "hvD:L:l:C:I:e:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:", longopts)) >= 0) {
+	  if(c == 'q') {
+		  quiet = true;
+	  }
     if (c == 'v') {
+	    _err("CJIT %s by Dyne.org",VERSION);
       // _err("Running version: %s\n",VERSION);
       // version is always shown
 #ifdef LIBC_MINGW32
@@ -184,16 +189,16 @@ int main(int argc, char **argv) {
         exit(1);
       }
     } else if (c == 'l') { // library link
-      _err("lib: %s",opt.arg);
+	    if(!quiet)_err("lib: %s",opt.arg);
       tcc_add_library(TCC, opt.arg);
     } else if (c == 'C') { // cflags compiler options
-      _err("cflags: %s",opt.arg);
+	    if(!quiet)_err("cflags: %s",opt.arg);
       tcc_set_options(TCC, opt.arg);
     } else if (c == 'I') { // include paths in cflags
-      _err("inc: %s",opt.arg);
+	    if(!quiet)_err("inc: %s",opt.arg);
       tcc_add_include_path(TCC, opt.arg);
     } else if (c == 'e') { // entry point (default main)
-      _err("entry: %s",opt.arg);
+	    if(!quiet)_err("entry: %s",opt.arg);
       if(entry!=default_main) free(entry);
       entry = malloc(strlen(opt.arg)+1);
       strcpy(entry,opt.arg);
@@ -201,7 +206,7 @@ int main(int argc, char **argv) {
 #ifdef LIBC_MINGW32
 	    _err("Live mode not supported in Windows");
 #else
-	    _err("Live mode activated");
+	    if(!quiet)_err("Live mode activated");
 	    live_mode = true;
 #endif
     } else if (c == 401) { //
@@ -210,7 +215,7 @@ int main(int argc, char **argv) {
 #else
       tmpdir = win32_mkdtemp();
 #endif
-      _err("Temporary exec dir: %s",tmpdir);
+      if(!quiet)_err("Temporary exec dir: %s",tmpdir);
       tcc_delete(TCC);
       exit(0);
     }
@@ -220,6 +225,8 @@ int main(int argc, char **argv) {
       arg_separator = opt.ind+1; break;
     }
   }
+  if(!quiet)_err("CJIT %s by Dyne.org",VERSION);
+
   //////////////////////////////////////
   // initialize the tmpdir for execution
   // from here onwards use goto endgame
@@ -283,7 +290,7 @@ int main(int argc, char **argv) {
     _err("No files specified on commandline");
     goto endgame;
 #endif
-    _err("No files specified on commandline, reading code from stdin");
+    if(!quiet)_err("No files specified on commandline, reading code from stdin");
     stdin_code = load_stdin(); // allocated returned buffer, needs free
     if(!stdin_code) {
       _err("Error reading from standard input");
@@ -296,10 +303,10 @@ int main(int argc, char **argv) {
     }
   } else if(opt.ind < left_args) {
     // process files on commandline before separator
-    _err("Source code:");
+	  if(!quiet)_err("Source code:");
     for (i = opt.ind; i < left_args; ++i) {
       const char *code_path = argv[i];
-      _err("%c %s",(*code_path=='-'?'|':'+'),
+      if(!quiet)_err("%c %s",(*code_path=='-'?'|':'+'),
            (*code_path=='-'?"standard input":code_path));
       if(*code_path=='-') { // stdin explicit
 #ifdef LIBC_MINGW32
