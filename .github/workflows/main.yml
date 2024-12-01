@@ -248,3 +248,19 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           delete_release: false
           repo: dyne/cjit
+
+  virustotal:
+    name: 🦠 Virus scan of released binaries
+    needs: [semantic-release, osx-native-release, win-native-release]
+    runs-on: ubuntu-latest
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
+    steps:
+      - name: VirusTotal Scan
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+          update_release_body: true
+          files: |
+            .exe$
+            .dll$
+            *Darwin*
