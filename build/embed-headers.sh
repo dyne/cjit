@@ -57,15 +57,16 @@ if [ "$1" = "win" ]; then
     echo "#endif" >> $externs
     echo "#endif" >> $calls
   }
-fi
-
-# sed inplace is not portable
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i'' -e 's/unsigned char/const char/' $dst
-  sed -i'' -e 's/unsigned int/const unsigned int/' $dst
 else
-  sed -i -e 's/unsigned char/const char/' $dst
-  sed -i -e 's/unsigned int/const unsigned int/' $dst
+  # must add const in linux or darwin
+  # sed inplace is not portable
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i'' -e 's/unsigned char/const char/' $dst
+    sed -i'' -e 's/unsigned int/const unsigned int/' $dst
+  else
+    sed -i -e 's/unsigned char/const char/' $dst
+    sed -i -e 's/unsigned int/const unsigned int/' $dst
+  fi
 fi
 
 ([ "$1" = "code" ] || [ "$2" = "code" ]) && {
