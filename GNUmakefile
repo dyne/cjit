@@ -48,12 +48,7 @@ _: ##
 
 check: CJIT ?= ./cjit
 check: ## 🧪 Run all tests using the currently built binary ./cjit
-	$(if $(wildcard ${CJIT}),,$(error CJIT is not yet built: ${CJIT}))
-	${CJIT} test/hello.c
-	${CJIT} test/cflags.c -DALLOWED
-	${CJIT} test/cflags.c -DALLOWED=1
-	${CJIT} test/multifile/*
-	${CJIT} test/cargs.c -- a b c
+	./test/bats/bin/bats test
 
 _: ##
 clean: ## 🧹 Clean the source from all built objects

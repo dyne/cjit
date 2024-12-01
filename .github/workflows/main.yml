@@ -85,7 +85,7 @@ jobs:
           make win-native
       - name: Run tests
         run: |
-          make check CJIT=./cjit.exe
+          make check
 
   osx-native-test:
     name: 🍎 OSX native test
@@ -98,7 +98,7 @@ jobs:
           make apple-osx
       - name: Run tests
         run: |
-          ./cjit.command test/hello.c
+          make check
 
   semantic-release:
     name: 🤖 Semantic release
