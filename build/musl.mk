@@ -4,7 +4,7 @@ include build/init.mk
 
 cflags := -Wall -static -O2 ${cflags_stack_protect}
 cflags += -Isrc -Ilib/tinycc -DLIBC_MUSL -nostdlib
-cflags += -DREPL_SUPPORTED
+cflags += -DKILO_SUPPORTED
 
 ldadd := lib/tinycc/libtcc.a /usr/lib/x86_64-linux-musl/crt1.o /usr/lib/x86_64-linux-musl/libc.a
 
