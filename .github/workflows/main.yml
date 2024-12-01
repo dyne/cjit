@@ -80,15 +80,12 @@ jobs:
     runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v4
-      # - name: install dependencies
-      #   run: |
-      #     choco install --no-progress -r -y upx
       - name: Build native windows exe for x86_64
         run: |
           make win-native
       - name: Run tests
         run: |
-          .\cjit.exe test\hello.c
+          make check CJIT=./cjit.exe
 
   osx-native-test:
     name: 🍎 OSX native test
@@ -96,9 +93,6 @@ jobs:
     runs-on: "macos-latest"
     steps:
       - uses: actions/checkout@v4
-      # - name: install dependencies
-      #   run: |
-      #     choco install --no-progress -r -y upx
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx

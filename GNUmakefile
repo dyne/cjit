@@ -46,14 +46,14 @@ debug-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
 _: ##
 ------: ## __ Testing targets
 
+check: CJIT ?= ./cjit
 check: ## 🧪 Run all tests using the currently built binary ./cjit
-	$(if $(wildcard ./cjit),,$(error CJIT is not yet built))
-	./cjit test/hello.c
-	./cjit test/cflags.c -DALLOWED
-	./cjit test/cflags.c -DALLOWED=1
-	CFLAGS="-DALLOWED" ./cjit test/cflags.c
-	./cjit test/multifile/*
-	./cjit test/cargs.c -- a b c
+	$(if $(wildcard ${CJIT}),,$(error CJIT is not yet built: ${CJIT}))
+	${CJIT} test/hello.c
+	${CJIT} test/cflags.c -DALLOWED
+	${CJIT} test/cflags.c -DALLOWED=1
+	${CJIT} test/multifile/*
+	${CJIT} test/cargs.c -- a b c
 
 _: ##
 clean: ## 🧹 Clean the source from all built objects
