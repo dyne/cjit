@@ -48,6 +48,7 @@ extern char* dir_load(const char *path);
 extern char *win32_mkdtemp();
 // from win-compat.c
 extern void win_compat_usleep(unsigned int microseconds);
+extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
 #else
 extern char *posix_mkdtemp();
 #endif
@@ -61,7 +62,7 @@ extern int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv);
 extern int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv);
 #endif
 extern int cjit_cli_tty(TCCState *TCC);
-#ifdef REPL_SUPPORTED
+#ifdef KILO_SUPPORTED
 extern int cjit_cli_kilo(TCCState *TCC);
 #endif
 /////////////
@@ -189,15 +190,20 @@ int main(int argc, char **argv) {
       _err("cflags: %s",opt.arg);
       tcc_set_options(TCC, opt.arg);
     } else if (c == 'I') { // include paths in cflags
-      tcc_add_include_path(TCC, opt.arg);
       _err("inc: %s",opt.arg);
+      tcc_add_include_path(TCC, opt.arg);
     } else if (c == 'e') { // entry point (default main)
       _err("entry: %s",opt.arg);
       if(entry!=default_main) free(entry);
       entry = malloc(strlen(opt.arg)+1);
       strcpy(entry,opt.arg);
     } else if (c == 301) { //
-      live_mode = true;
+#ifdef LIBC_MINGW32
+	    _err("Live mode not supported in Windows");
+#else
+	    _err("Live mode activated");
+	    live_mode = true;
+#endif
     } else if (c == 401) { //
 #ifndef LIBC_MINGW32
       tmpdir = posix_mkdtemp();
@@ -239,10 +245,9 @@ int main(int argc, char **argv) {
   }
 
   tcc_add_include_path(TCC, tmpdir);
-  _err("inc: %s",tmpdir);
 
   // finally set paths
-  _err("lib paths: %s",stored_lib_paths);
+  // _err("lib paths: %s",stored_lib_paths);
   tcc_add_library_path(TCC, stored_lib_paths);
 
   // set output in memory for just in time execution
@@ -261,7 +266,7 @@ int main(int argc, char **argv) {
       _err("Live mode only available in terminal (tty not found)");
       goto endgame;
     }
-#ifdef REPL_SUPPORTED
+#ifdef KILO_SUPPORTED
     res = cjit_cli_kilo(TCC);
 #else
     res = cjit_cli_tty(TCC);
@@ -320,6 +325,7 @@ int main(int argc, char **argv) {
 #ifdef LIBC_MINGW32
   // add symbols for windows compatibility
   tcc_add_symbol(TCC, "usleep", &win_compat_usleep);
+  tcc_add_symbol(TCC, "getline", &win_compat_getline);
 #endif
 
   // relocate the code (link symbols)

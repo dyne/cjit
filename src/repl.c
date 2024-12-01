@@ -91,7 +91,7 @@ int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv) {
 }
 #endif // LIBC_MINGW32
 
-#ifdef REPL_SUPPORTED
+#ifdef KILO_SUPPORTED
 
 // from kilo.c
 extern void initEditor(void);
@@ -270,7 +270,7 @@ int cjit_cli_kilo(TCCState *TCC) {
         char *code = NULL;
         _err("Not running from a terminal, executing source from STDIN\n");
         do {
-            rd = getline(&line, &len, stdin);
+	    rd = getline(&line, &len, stdin);
             if (rd > 0) {
                 if (!code)
                     code = strdup(line);
@@ -319,7 +319,7 @@ int cjit_cli_kilo(TCCState *TCC) {
     return res;
 }
 
-#endif // REPL_SUPPORTED
+#endif // KILO_SUPPORTED
 
 
 int cjit_cli_tty(TCCState *TCC) {
