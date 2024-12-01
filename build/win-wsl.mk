@@ -16,6 +16,8 @@ ldflags += -static-libgcc
 tinycc_config += --targetos=WIN32 --config-backtrace=no --enable-cross
 tinycc_config += --ar=${ar}
 
+SOURCES += src/win-compat.o
+
 all: deps cjit.exe
 
 cjit.exe: ${SOURCES}

@@ -46,6 +46,8 @@ extern char* dir_load(const char *path);
 
 #ifdef LIBC_MINGW32
 extern char *win32_mkdtemp();
+// from win-compat.c
+extern void win_compat_usleep(unsigned int microseconds);
 #else
 extern char *posix_mkdtemp();
 #endif
@@ -314,6 +316,12 @@ int main(int argc, char **argv) {
   }
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
+
+#ifdef LIBC_MINGW32
+  // add symbols for windows compatibility
+  tcc_add_symbol(TCC, "usleep", &win_compat_usleep);
+#endif
+
   // relocate the code (link symbols)
   if (tcc_relocate(TCC) < 0) {
     _err("TCC symbol relocation error (some library missing?)");

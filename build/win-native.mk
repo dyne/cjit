@@ -19,6 +19,7 @@ cflags := -O2 -fomit-frame-pointer -Isrc -Ilib/tinycc
 cflags += -DLIBC_MINGW32
 ldflags := -static-libgcc
 ldadd := lib/tinycc/libtcc.a -lshlwapi
+SOURCES += src/win-compat.o
 
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
