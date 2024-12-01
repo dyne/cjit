@@ -1,0 +1,18 @@
+# setup paths for BATS test units
+setup() {
+    bats_require_minimum_version 1.5.0
+    T="$BATS_TEST_DIRNAME"
+    R=`cd "$T"/.. && pwd`
+#    TMP="$BATS_TEST_TMPDIR"
+    load "$T"/test_helper/bats_support/load
+    load "$T"/test_helper/bats_assert/load
+	#    load "$T"/test_helper/bats-file/load
+#    ZTMP="$BATS_FILE_TMPDIR"
+	[ "$CJIT" == "" ] && CJIT="${R}/cjit"
+	[ -r "$CJIT" ] || CJIT="${R}/cjit.exe"
+	[ -r "$CJIT" ] || CJIT="${R}/cjit-`uname`-`uname -m`"
+	[ "$TCC" == "" ] && TCC="${R}/lib/tinycc/tcc"
+	[ -r "$TCC" ]    || TCC="${R}/lib/tinycc/tcc.exe"
+
+    cd $T
+}
