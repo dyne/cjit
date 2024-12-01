@@ -14,29 +14,13 @@ There isn't, this is the [0.6.2 release analysis on VirusTotal](https://www.viru
 
 ## Quick start
 
-Paste this into your terminal
-```bash
-curl -sLo cjit https://github.com/dyne/cjit/releases/latest/download/cjit-$(uname)-$(uname -m)
-chmod +x cjit
-cat << EOF > hello.c
-#!/usr/bin/env cjit
-#include <stdio.h>
-#include <stdlib.h>
-int main(int argc, char **argv) {
-  fprintf(stderr,"Hello, World!\n");
-  exit(0);
-}
-EOF
+Just download the CJIT executable for your system and run it with c source files as well dynamic libraries as arguments:
+
 ```
-You can now play around with `hello.c` and write your own C code, which can be simply executed with this command:
+./cjit.exe mysource.c mylib.dll
 ```
-./cjit hello.c
-```
-If you install `cjit` into your path then you can execute scripts directly:
-```
-#!/usr/bin/env cjit
-```
-this hash-bang on first line is supported!
+
+### [Read the CJIT Manual](https://dyne.org/docs/cjit)
 
 ## Build from source
 
