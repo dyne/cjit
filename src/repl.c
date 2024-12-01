@@ -44,7 +44,7 @@ int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
     _err("Symbol not found in source: %s",ep);
     return -1;
   }
-  _err("Execution start\n---");
+  // _err("Execution start\n---");
   res = _ep(argc, argv);
   return(res);
 }
@@ -59,7 +59,7 @@ int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv) {
     _err("Symbol not found in source: %s",ep);
     return -1;
   }
-  _err("Start execution\n---------------");
+  // _err("Start execution\n---------------");
   pid = fork();
   if (pid == 0) {
       res = _ep(argc, argv);
