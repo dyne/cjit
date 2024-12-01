@@ -2,17 +2,17 @@
 setup() {
     bats_require_minimum_version 1.5.0
     T="$BATS_TEST_DIRNAME"
-    R=`cd "$T"/.. && pwd`
-#    TMP="$BATS_TEST_TMPDIR"
+	#    R=`cd "$T"/.. && pwd`
+	R=`pwd`
     load "$T"/test_helper/bats_support/load
     load "$T"/test_helper/bats_assert/load
-	#    load "$T"/test_helper/bats-file/load
-#    ZTMP="$BATS_FILE_TMPDIR"
-	[ "$CJIT" == "" ] && CJIT="${R}/cjit"
+	CJIT="${R}/cjit"
 	[ -r "$CJIT" ] || CJIT="${R}/cjit.exe"
-	[ -r "$CJIT" ] || CJIT="${R}/cjit-`uname`-`uname -m`"
-	[ "$TCC" == "" ] && TCC="${R}/lib/tinycc/tcc"
+	[ -r "$CJIT" ] || CJIT="${R}/cjit.command"
+	[ -r "$CJIT" ] || {
+	  >&2 echo "CJIT is not built, cannot run test suite"
+	  exit 1
+	}
+	TCC="${R}/lib/tinycc/tcc"
 	[ -r "$TCC" ]    || TCC="${R}/lib/tinycc/tcc.exe"
-
-    cd $T
 }
