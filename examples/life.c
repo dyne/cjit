@@ -1,23 +1,19 @@
 #!/usr/bin/env cjit
 #include <stdio.h>
 #include <stdlib.h>
-
-#define X 121
-#define Y 51
-
+#define X 80
+#define Y 42
 // Conway's Game of Life
 // make conway && ./conway
 // change X and Y for display area
-
 typedef struct {
   void* cur;
   void* nxt;
 } game_t;
-
 void fmt_tick (void* board) {
-  int* bd = (int*) board;
-  system("clear");
-  int i, j, v;
+  register int* bd = (int*) board;
+  printf("\033[2J\033[1;1H");
+  register int i, j, v;
   for (j = 1; j < Y; j++) {
     printf("\n");
     for (i = 0; i < X; i++) {
@@ -25,7 +21,6 @@ void fmt_tick (void* board) {
     }
   }
 }
-
 void clearboard (void* board) {
   int* bd = (int*) board;
   int i, j, v;
@@ -35,7 +30,6 @@ void clearboard (void* board) {
     }
   }
 }
-
 void tick (game_t* game) {
   int* cur = (int*)game->cur;
   clearboard((void*)game->nxt);
@@ -68,7 +62,6 @@ void tick (game_t* game) {
   game->cur = (void*)nxt;
   game->nxt = (void*)cur;
 }
-
 void seed (void* board) {
   int* bd = (int*) board;
   int i, j, v;
@@ -79,9 +72,8 @@ void seed (void* board) {
     }
   }
 }
-
 int main () {
-  system("clear");
+  printf("\033[2J\033[1;1H");
   game_t gm;
   game_t* game = &gm;
   void* seedboard = malloc(X*Y*4);
@@ -90,14 +82,11 @@ int main () {
   clearboard(gameboard);
   game->cur = seedboard;
   game->nxt = gameboard;
-  int generations = 0;
   while (1) {
     tick(game);
-    generations++;
-    printf("\ngeneration: %d\n", generations);
-    usleep(75000);
+    printf("\n");
+    usleep(15000);
   }
-  // Superfluous!
   free(seedboard);
   free(gameboard);
   return 0;
