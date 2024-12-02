@@ -73,13 +73,13 @@ int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv) {
       }
       if (WIFEXITED(status)) {
           res = WEXITSTATUS(status);
-          _err("Process has returned %d", res);
+          //_err("Process has returned %d", res);
       } else if (WIFSIGNALED(status)) {
           res = WTERMSIG(status);
           _err("Process terminated with signal %d", WTERMSIG(status));
       } else if (WIFSTOPPED(status)) {
           res = WSTOPSIG(status);
-          _err("Process has returned %d", WSTOPSIG(status));
+          //_err("Process has returned %d", WSTOPSIG(status));
       } else if (WIFSTOPPED(status)) {
           res = WSTOPSIG(status);
           _err("Process stopped with signal", WSTOPSIG(status));
@@ -193,7 +193,7 @@ int cjit_compile_and_run(TCCState *TCC, const char *code, int argc, char **argv,
           _err("Process terminated with signal %d", WTERMSIG(status));
       } else if (WIFSTOPPED(status)) {
           res = WSTOPSIG(status);
-          _err("Process has returned %d", WSTOPSIG(status));
+          //_err("Process has returned %d", WSTOPSIG(status));
       } else if (WIFSTOPPED(status)) {
           res = WSTOPSIG(status);
           _err("Process stopped with signal", WSTOPSIG(status));

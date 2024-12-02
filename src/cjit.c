@@ -342,8 +342,8 @@ int main(int argc, char **argv) {
   }
 
   // number of args at the left hand of arg separator, or all of them
-  int right_args = argc-left_args;//arg_separator? argc-arg_separator : 0;
-  char **right_argv = &argv[left_args];//arg_separator?&argv[arg_separator]:0
+  int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
+  char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
 #ifndef LIBC_MINGW32
   res = cjit_exec_fork(TCC, entry, right_args, right_argv);
 #else
