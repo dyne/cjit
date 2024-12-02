@@ -7,19 +7,11 @@ CURRENT_YEAR := $(shell date +%Y)
 CC ?= gcc
 cc := ${CC}
 
-ifdef CCACHE
-	cc := ccache ${cc}
-endif
-
-CFLAGS ?= -Og -ggdb -DDEBUG=1 -Wall -Wextra
-
 cflags_includes := -Isrc -Ilib/tinycc
 cflags_gnu := -DLIBC_GNU -D_GNU_SOURCE
 cflags_stack_protect := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
 
-ifdef RELEASE
-	CFLAGS := -O2 -fomit-frame-pointer ${cflags_stack_protect}
-endif
+CFLAGS ?= -O2 -fomit-frame-pointer ${cflags_stack_protect}
 
 cflags := ${CFLAGS} ${cflags_includes}
 
