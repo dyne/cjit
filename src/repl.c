@@ -32,6 +32,7 @@
 #endif
 
 // from io.c
+extern void _info(const char *fmt, ...);
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 
@@ -59,7 +60,7 @@ int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv) {
     _err("Symbol not found in source: %s",ep);
     return -1;
   }
-  _err("Start execution\n---------------");
+  _info("Start execution\n---------------");
   pid = fork();
   if (pid == 0) {
       res = _ep(argc, argv);

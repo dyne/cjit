@@ -50,8 +50,16 @@ extern char *win32_mkdtemp();
 extern char *posix_mkdtemp();
 #endif
 // from io.c
+extern void _info(const char *fmt, ...);
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
+extern bool get_no_info_output();
+extern void set_no_info_output(bool val);
+extern bool get_no_output();
+extern void set_no_output(bool val);
+extern bool get_no_error_output();
+extern void set_no_error_output(bool val);
+
 // from repl.c
 #ifdef LIBC_MINGW32
 extern int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv);
@@ -62,6 +70,8 @@ extern int cjit_cli_tty(TCCState *TCC);
 #ifdef REPL_SUPPORTED
 extern int cjit_cli_kilo(TCCState *TCC);
 #endif
+// from cjit.c
+void determine_quiet_and_silent(int argc, char **argv);
 /////////////
 
 void handle_error(void *n, const char *m) {
@@ -110,6 +120,9 @@ const char cli_help[] =
   " -l lib\t search the library named 'lib' when linking\n"
   " -L dir\t also search inside folder 'dir' for -l libs\n"
   " -e fun\t entry point function (default 'main')\n"
+  " -n \t no-info : no banners or other house keeping info.\n"
+  " -q \t quiet : no-info, no routine output and no libtcc warnings.\n"
+  " -s \t silent : quiet and no error outout.  Should it fail, fail silently.\n"
   " --live\t run interactive editor for live coding\n"
   " --tgen\t create the runtime temporary dir and exit\n";
 
@@ -125,7 +138,8 @@ int main(int argc, char **argv) {
   int arg_separator = 0;
   int res = 1;
   int i, c;
-  _err("CJIT %s by Dyne.org",VERSION);
+  determine_quiet_and_silent(argc, argv);
+  _info("CJIT %s by Dyne.org",VERSION);
   TCC = tcc_new();
   if (!TCC) {
     _err("Could not initialize tcc");
@@ -136,7 +150,7 @@ int main(int argc, char **argv) {
   if(getenv("CFLAGS")) {
     char *extra_cflags = NULL;
     extra_cflags = getenv("CFLAGS");
-    _err("CFLAGS: %s",extra_cflags);
+    _info("CFLAGS: %s",extra_cflags);
     tcc_set_options(TCC, extra_cflags);
   }
   static ko_longopt_t longopts[] = {
@@ -146,15 +160,15 @@ int main(int argc, char **argv) {
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
-  while ((c = ketopt(&opt, argc, argv, 1, "hvD:L:l:C:I:e:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "nqshvD:L:l:C:I:e:", longopts)) >= 0) {
     if (c == 'v') {
-      // _err("Running version: %s\n",VERSION);
+      // _info("Running version: %s\n",VERSION);
       // version is always shown
 #ifdef LIBC_MINGW32
-      _err("Built with MINGW32 libc");
+      _info("Built with MINGW32 libc");
 #endif
 #ifdef LIBC_MUSL
-      _err("Built with Musl libc");
+      _info("Built with Musl libc");
 #endif
       tcc_delete(TCC);
       exit(0); // print and exit
@@ -181,19 +195,23 @@ int main(int argc, char **argv) {
         exit(1);
       }
     } else if (c == 'l') { // library link
-      _err("lib: %s",opt.arg);
+      _info("lib: %s",opt.arg);
       tcc_add_library(TCC, opt.arg);
     } else if (c == 'C') { // cflags compiler options
-      _err("cflags: %s",opt.arg);
+      _info("cflags: %s",opt.arg);
       tcc_set_options(TCC, opt.arg);
     } else if (c == 'I') { // include paths in cflags
       tcc_add_include_path(TCC, opt.arg);
-      _err("inc: %s",opt.arg);
+      _info("inc: %s",opt.arg);
     } else if (c == 'e') { // entry point (default main)
-      _err("entry: %s",opt.arg);
+      _info("entry: %s",opt.arg);
       if(entry!=default_main) free(entry);
       entry = malloc(strlen(opt.arg)+1);
       strcpy(entry,opt.arg);
+    } else if (c == 'q') {
+      tcc_set_no_warnings(TCC, true);
+    } else if (c == 's') {
+      tcc_set_no_warnings(TCC, true);
     } else if (c == 301) { //
       live_mode = true;
     } else if (c == 401) { //
@@ -202,7 +220,7 @@ int main(int argc, char **argv) {
 #else
       tmpdir = win32_mkdtemp();
 #endif
-      _err("Temporary exec dir: %s",tmpdir);
+      _info("Temporary exec dir: %s",tmpdir);
       tcc_delete(TCC);
       exit(0);
     }
@@ -237,10 +255,10 @@ int main(int argc, char **argv) {
   }
 
   tcc_add_include_path(TCC, tmpdir);
-  _err("inc: %s",tmpdir);
+  _info("inc: %s",tmpdir);
 
   // finally set paths
-  _err("lib paths: %s",stored_lib_paths);
+  _info("lib paths: %s",stored_lib_paths);
   tcc_add_library_path(TCC, stored_lib_paths);
 
   // set output in memory for just in time execution
@@ -251,7 +269,7 @@ int main(int argc, char **argv) {
 #endif
 
   if (argc == 0 ) {
-    _err("No input file: live mode!");
+    _info("No input file: live mode!");
     live_mode = true;
   }
   if(live_mode) {
@@ -289,10 +307,10 @@ int main(int argc, char **argv) {
     }
   } else if(opt.ind < left_args) {
     // process files on commandline before separator
-    _err("Source code:");
+    _info("Source code:");
     for (i = opt.ind; i < left_args; ++i) {
       const char *code_path = argv[i];
-      _err("%c %s",(*code_path=='-'?'|':'+'),
+      _info("%c %s",(*code_path=='-'?'|':'+'),
            (*code_path=='-'?"standard input":code_path));
       if(*code_path=='-') { // stdin explicit
 #ifdef LIBC_MINGW32
@@ -336,4 +354,26 @@ int main(int argc, char **argv) {
   if(stored_lib_paths) free(stored_lib_paths);
   if(entry!=default_main) free(entry);
   exit(res);
+}
+
+void determine_quiet_and_silent(int argc, char **argv) {
+  int i;
+  for (i = 1; i < argc; i++) {
+    char *arg = argv[i];
+    if ((arg[0] == '-') && (arg[1] != '-')) {
+      if (strrchr(arg, 'n') != NULL) {
+        // no-info
+        set_no_info_output(true);
+      } else if (strrchr(arg, 'q') != NULL) {
+        // quiet
+        set_no_info_output(true);
+        set_no_output(true);
+      } else if (strrchr(arg, 's') != NULL) {
+        // silent
+        set_no_info_output(true);
+        set_no_output(true);
+        set_no_error_output(true);
+      }
+    }
+  }
 }

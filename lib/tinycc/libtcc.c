@@ -659,6 +659,8 @@ PUB_FUNC void _tcc_error(const char *fmt, ...)
 
 PUB_FUNC void _tcc_warning(const char *fmt, ...)
 {
+    if (tcc_state->no_warnings) return;
+
     va_list ap;
     va_start(ap, fmt);
     error1(ERROR_WARN, fmt, ap);
@@ -2214,6 +2216,14 @@ PUB_FUNC void tcc_print_stats(TCCState *s1, unsigned total_time)
 #endif
     fprintf(stderr, " %d max (bytes)\n", mem_max_size);
 #endif
+}
+
+LIBTCCAPI int tcc_get_no_warnings(TCCState *s, int value) {
+    return s->no_warnings;
+}
+
+LIBTCCAPI void tcc_set_no_warnings(TCCState *s, int value) {
+    s->no_warnings = value;
 }
 
 #if ONE_SOURCE

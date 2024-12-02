@@ -109,6 +109,10 @@ LIBTCCAPI void *_tcc_setjmp(TCCState *s1, void *jmp_buf, void *top_func, void *l
 typedef int TCCBtFunc(void *udata, void *pc, const char *file, int line, const char* func, const char *msg);
 LIBTCCAPI void tcc_set_backtrace_func(TCCState *s1, void* userdata, TCCBtFunc*);
 
+/* Allow user to disable warnings 1, enable warnings 0*/
+LIBTCCAPI void tcc_set_no_warnings(TCCState *s, int value);
+LIBTCCAPI int tcc_get_no_warnings(TCCState *s, int value);
+
 #ifdef __cplusplus
 }
 #endif

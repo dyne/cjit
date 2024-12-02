@@ -756,6 +756,7 @@ struct sym_attr {
 
 struct TCCState {
     unsigned char verbose; /* if true, display some information during compilation */
+    unsigned char no_warnings; /* if true, do not display warning messages */
     unsigned char nostdinc; /* if true, no standard headers are added */
     unsigned char nostdlib; /* if true, no standard libraries are added */
     unsigned char nocommon; /* if true, do not use common symbols for .bss data */
