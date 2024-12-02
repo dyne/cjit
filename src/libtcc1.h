@@ -106,6 +106,8 @@ extern char *lib_tinycc_win32_include_sec_api_stralign_s_h;
 extern unsigned int lib_tinycc_win32_include_sec_api_stralign_s_h_len;
 extern char *lib_tinycc_win32_include_sec_api_string_s_h;
 extern unsigned int lib_tinycc_win32_include_sec_api_string_s_h_len;
+extern char *lib_tinycc_win32_include_sec_api_sys_timeb_s_h;
+extern unsigned int lib_tinycc_win32_include_sec_api_sys_timeb_s_h_len;
 extern char *lib_tinycc_win32_include_sec_api_tchar_s_h;
 extern unsigned int lib_tinycc_win32_include_sec_api_tchar_s_h_len;
 extern char *lib_tinycc_win32_include_sec_api_time_s_h;

@@ -76,6 +76,7 @@ bool gen_exec_headers(char *tmpdir) {
   if(!write_to_file(tmpdir,"sec_api\\stdlib_s.h",(char*)&lib_tinycc_win32_include_sec_api_stdlib_s_h,lib_tinycc_win32_include_sec_api_stdlib_s_h_len)) return(false);
   if(!write_to_file(tmpdir,"sec_api\\stralign_s.h",(char*)&lib_tinycc_win32_include_sec_api_stralign_s_h,lib_tinycc_win32_include_sec_api_stralign_s_h_len)) return(false);
   if(!write_to_file(tmpdir,"sec_api\\string_s.h",(char*)&lib_tinycc_win32_include_sec_api_string_s_h,lib_tinycc_win32_include_sec_api_string_s_h_len)) return(false);
+  if(!write_to_file(tmpdir,"sec_api\\sys\\timeb_s.h",(char*)&lib_tinycc_win32_include_sec_api_sys_timeb_s_h,lib_tinycc_win32_include_sec_api_sys_timeb_s_h_len)) return(false);
   if(!write_to_file(tmpdir,"sec_api\\tchar_s.h",(char*)&lib_tinycc_win32_include_sec_api_tchar_s_h,lib_tinycc_win32_include_sec_api_tchar_s_h_len)) return(false);
   if(!write_to_file(tmpdir,"sec_api\\time_s.h",(char*)&lib_tinycc_win32_include_sec_api_time_s_h,lib_tinycc_win32_include_sec_api_time_s_h_len)) return(false);
   if(!write_to_file(tmpdir,"sec_api\\wchar_s.h",(char*)&lib_tinycc_win32_include_sec_api_wchar_s_h,lib_tinycc_win32_include_sec_api_wchar_s_h_len)) return(false);
