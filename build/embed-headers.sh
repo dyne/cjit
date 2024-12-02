@@ -46,7 +46,7 @@ if [ "$1" = "win" ]; then
     xxd -i "lib/tinycc/win32/include/${l}" >> $dst
     l_win_slash=`echo $l | sed 's|/|\\\\\\\\|g;'`
     hname=`echo $l | sed 's|/|_|g; s|\.|_|g'`
-    ([ "$1" = "code" ] || [ "$2" = "code" ]) && {
+    ([ "$2" = "code" ]) && {
       # print on stderr something handy to paste in code
       echo "extern char *${ipath}_${hname};" >> $externs
       echo "extern unsigned int ${ipath}_${hname}_len;" >> $externs
