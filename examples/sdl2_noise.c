@@ -1,17 +1,17 @@
 #!/usr/bin/env cjit
 #pragma comment(lib, "SDL2")
 #define SDL_DISABLE_IMMINTRIN_H 1
+#define SDL_MAIN_HANDLED 1
 
 #include <SDL2/SDL.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-   // #include <time.h>
 
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
 
-int main() {
+int main(int argc, char **argv) {
 	// Initialize SDL
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
 		fprintf(stderr, "Failed to initialize SDL: %s\n", SDL_GetError());
@@ -26,9 +26,6 @@ int main() {
 	SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888,
 						 SDL_TEXTUREACCESS_STREAMING,
 						 WINDOW_WIDTH, WINDOW_HEIGHT);
-
-	// Seed random number generator
-	//    srand(time(NULL));
 
 	int running = 1;
 	SDL_Event event;
