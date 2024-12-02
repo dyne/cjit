@@ -255,12 +255,16 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
+      - name: download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: |
+            cjit-bin
       - name: VirusTotal Scan
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
           update_release_body: true
           files: |
-            .exe$
-            .dll$
-            *Darwin*
+            cjit-bin/release-win-native-x86_64/*
+            cjit-bin/release-osx-native/*
