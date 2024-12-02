@@ -176,6 +176,7 @@ jobs:
   win-native-release:
     name: 🪟 Windows native binary release build
     needs: [semantic-release]
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v4
@@ -194,6 +195,7 @@ jobs:
   osx-native-release:
     name: 🍎 OSX native binary release build
     needs: [semantic-release]
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: "macos-latest"
     steps:
       - uses: actions/checkout@v4
