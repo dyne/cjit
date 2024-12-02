@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 includes=lib/tinycc/include
-win_includes="lib/tinycc/win32/include/*.h lib/tinycc/win32/include/**/*.h"
+win_includes="lib/tinycc/win32/include/*.h lib/tinycc/win32/include/winapi/*.h lib/tinycc/win32/include/sys/*.h lib/tinycc/win32/include/sec_api/*.h lib/tinycc/win32/include/sec_api/sys/*.h"
 dst=src/embed-headers.c
 
 >&2 echo "To print out code on console run:"
@@ -35,7 +35,7 @@ done
 if [ "$1" = "win" ]; then
   echo "// ${win_includes}" >> $dst
   ipath=`echo "lib/tinycc/win32/include" | sed 's/\//_/g; s/\./_/g'`
-  ([ "$1" = "code" ] || [ "$2" = "code" ]) && {
+  ([ "$2" = "code" ]) && {
     echo "#if defined(LIBC_MINGW32)" >> $externs
     echo "#if defined(LIBC_MINGW32)" >> $calls
   }
@@ -53,7 +53,7 @@ if [ "$1" = "win" ]; then
       echo "if(!write_to_file(tmpdir,\"${l_win_slash}\",(char*)&${ipath}_${hname},${ipath}_${hname}_len)) goto endgame;" >> $calls
     }
   done
-  ([ "$1" = "code" ] || [ "$2" = "code" ]) && {
+  ([ "$2" = "code" ]) && {
     echo "#endif" >> $externs
     echo "#endif" >> $calls
   }
