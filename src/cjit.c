@@ -37,8 +37,6 @@
 
 /////////////
 // from file.c
-extern bool append_path(char **stored_path, const char *new_path);
-extern bool prepend_path(char **stored_path, const char *new_path);
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
 extern char *load_stdin();
@@ -120,8 +118,6 @@ const char cli_help[] =
 int main(int argc, char **argv) {
   TCCState *TCC = NULL;
   // const char *progname = "cjit";
-  char *stored_lib_paths = NULL;
-  char *stored_inc_paths = NULL;
   char *tmpdir = NULL;
   const char *default_main = "main";
   char *entry = (char*)default_main;
@@ -183,14 +179,11 @@ int main(int argc, char **argv) {
         exit(1);
       }
     } else if (c == 'L') { // library path
-      if(! append_path(&stored_lib_paths, opt.arg) ) {
-        _err("Error in lib path -L option argument");
-        tcc_delete(TCC);
-        exit(1);
-      }
+	    if(!quiet)_err("lib path: %s",opt.arg);
+	    tcc_add_library_path(TCC, opt.arg);
     } else if (c == 'l') { // library link
 	    if(!quiet)_err("lib: %s",opt.arg);
-      tcc_add_library(TCC, opt.arg);
+	    tcc_add_library(TCC, opt.arg);
     } else if (c == 'C') { // cflags compiler options
 	    if(!quiet)_err("cflags: %s",opt.arg);
       tcc_set_options(TCC, opt.arg);
@@ -240,22 +233,11 @@ int main(int argc, char **argv) {
     _err("Error creating temp dir: %s",strerror(errno));
     goto endgame;
   }
-  tcc_set_lib_path(TCC,tmpdir); // TCC specific lib path
-
-  if(! prepend_path(&stored_lib_paths,tmpdir) ) {
-    _err("Error prepending tmpdir library path: %s",tmpdir);
-    goto endgame;
-  }
-  if(! prepend_path(&stored_inc_paths,tmpdir) ) {
-    _err("Error prepending tmpdir include path: %s",tmpdir);
-    goto endgame;
-  }
-
-  tcc_add_include_path(TCC, tmpdir);
 
   // finally set paths
-  // _err("lib paths: %s",stored_lib_paths);
-  tcc_add_library_path(TCC, stored_lib_paths);
+  tcc_add_include_path(TCC, tmpdir);
+  tcc_add_library_path(TCC, tmpdir);
+  // tcc_set_lib_path(TCC,tmpdir); // this overrides all?
 
   // set output in memory for just in time execution
   tcc_set_output_type(TCC, TCC_OUTPUT_MEMORY);
@@ -353,8 +335,6 @@ int main(int argc, char **argv) {
   endgame:
   // free TCC
   if(TCC) tcc_delete(TCC);
-  if(stored_inc_paths) free(stored_inc_paths);
-  if(stored_lib_paths) free(stored_lib_paths);
   if(entry!=default_main) free(entry);
   exit(res);
 }
