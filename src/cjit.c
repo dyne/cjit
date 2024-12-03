@@ -236,6 +236,14 @@ int main(int argc, char **argv) {
 
   // finally set paths
   tcc_add_include_path(TCC, tmpdir);
+#ifdef LIBC_MINGW32
+  {
+	  char tmp_winapi[512];
+	  snprintf(tmp_winapi,511,"%s/winapi",tmpdir);
+	  tcc_add_include_path(TCC, tmp_winapi);
+	  tcc_add_library_path(TCC, "C:\\Windows\\System32");
+  }
+#endif
   tcc_add_library_path(TCC, tmpdir);
   // tcc_set_lib_path(TCC,tmpdir); // this overrides all?
 
