@@ -296,10 +296,9 @@ void matrix_multiply(float* result, const float* a, const float* b) {
         }
     }
 }
-
-void matrix_perspective(float* matrix, float fov, float aspect, float near, float far) {
+void matrix_perspective(float* matrix, float fov, float aspect, float near_val, float far_val) {
     float f = 1.0f / tanf(fov / 2.0f);
-    float depth_diff = far - near;
+    float depth_diff = far_val - near_val;
 
     matrix[0] = f / aspect;
     matrix[1] = 0.0f;
@@ -313,12 +312,12 @@ void matrix_perspective(float* matrix, float fov, float aspect, float near, floa
 
     matrix[8] = 0.0f;
     matrix[9] = 0.0f;
-    matrix[10] = -(far + near) / depth_diff;
+    matrix[10] = -(far_val + near_val) / depth_diff;
     matrix[11] = -1.0f;
 
     matrix[12] = 0.0f;
     matrix[13] = 0.0f;
-    matrix[14] = -(2.0f * far * near) / depth_diff;
+    matrix[14] = -(2.0f * far_val * near_val) / depth_diff;
     matrix[15] = 0.0f;
 }
 
