@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 includes=lib/tinycc/include
-win_includes="lib/tinycc/win32/include/*.h lib/tinycc/win32/include/winapi/*.h lib/tinycc/win32/include/sys/*.h lib/tinycc/win32/include/sec_api/*.h lib/tinycc/win32/include/sec_api/sys/*.h"
+win_includes="lib/tinycc/win32/include/*.h lib/tinycc/win32/include/winapi/*.h lib/tinycc/win32/include/sys/*.h lib/tinycc/win32/include/sec_api/*.h lib/tinycc/win32/include/sec_api/sys/*.h lib/tinycc/win32/include/tcc/*"
 dst=src/embed-headers.c
 
 >&2 echo "To print out code on console run:"
