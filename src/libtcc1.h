@@ -128,6 +128,8 @@ extern char *lib_tinycc_win32_include_stdlib_h;
 extern unsigned int lib_tinycc_win32_include_stdlib_h_len;
 extern char *lib_tinycc_win32_include_string_h;
 extern unsigned int lib_tinycc_win32_include_string_h_len;
+extern char *lib_tinycc_win32_include_tcc_tcc_libm_h;
+extern unsigned int lib_tinycc_win32_include_tcc_tcc_libm_h_len;
 extern char *lib_tinycc_win32_include_sys_fcntl_h;
 extern unsigned int lib_tinycc_win32_include_sys_fcntl_h_len;
 extern char *lib_tinycc_win32_include_sys_file_h;

@@ -87,6 +87,7 @@ bool gen_exec_headers(char *tmpdir) {
   if(!write_to_file(tmpdir,"stdio.h",(char*)&lib_tinycc_win32_include_stdio_h,lib_tinycc_win32_include_stdio_h_len)) return(false);
   if(!write_to_file(tmpdir,"stdlib.h",(char*)&lib_tinycc_win32_include_stdlib_h,lib_tinycc_win32_include_stdlib_h_len)) return(false);
   if(!write_to_file(tmpdir,"string.h",(char*)&lib_tinycc_win32_include_string_h,lib_tinycc_win32_include_string_h_len)) return(false);
+  if(!write_to_file(tmpdir,"tcc\\tcc_libm.h",(char*)&lib_tinycc_win32_include_tcc_tcc_libm_h,lib_tinycc_win32_include_tcc_tcc_libm_h_len)) return(false);
   if(!write_to_file(tmpdir,"sys\\fcntl.h",(char*)&lib_tinycc_win32_include_sys_fcntl_h,lib_tinycc_win32_include_sys_fcntl_h_len)) return(false);
   if(!write_to_file(tmpdir,"sys\\file.h",(char*)&lib_tinycc_win32_include_sys_file_h,lib_tinycc_win32_include_sys_file_h_len)) return(false);
   if(!write_to_file(tmpdir,"sys\\locking.h",(char*)&lib_tinycc_win32_include_sys_locking_h,lib_tinycc_win32_include_sys_locking_h_len)) return(false);

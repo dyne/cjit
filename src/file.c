@@ -318,6 +318,7 @@ char *win32_mkdtemp() {
     static char tempDir[MAX_PATH];
     char sysTempDir[MAX_PATH];
     char secTempDir[MAX_PATH];
+    char tccTempDir[MAX_PATH];
     char sysSecTempDir[MAX_PATH];
     char winTempDir[MAX_PATH];
     char tempPath[MAX_PATH];
@@ -349,6 +350,11 @@ char *win32_mkdtemp() {
     PathCombine(sysSecTempDir, secTempDir, "sys");
     if (CreateDirectory(sysSecTempDir, NULL) == 0) {
         _err("Failed to create sec_api/sys dir in temporary dir: %s",sysSecTempDir);
+        return NULL;
+    }
+    PathCombine(tccTempDir, tempDir, "tcc");
+    if (CreateDirectory(tccTempDir, NULL) == 0) {
+        _err("Failed to create tcc dir in temporary dir: %s",tccTempDir);
         return NULL;
     }
     PathCombine(winTempDir, tempDir, "winapi");

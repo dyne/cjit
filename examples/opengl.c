@@ -184,28 +184,6 @@ opengl_load_functions(void)
     return true;
 }
 
-#ifndef M_PI
-#define M_PI 3.141592653589793
-#endif
-
-const float SQUARE[] = {
-    -1.0f,  1.0f,
-    -1.0f, -1.0f,
-     1.0f,  1.0f,
-     1.0f, -1.0f
-};
-
-static void
-print_usage(const char* arg0)
-{
-    printf("usage: %s [options]\n", arg0);
-    printf("\n");
-    printf("Options:\n");
-    printf("  -h --help        print this help\n");
-    printf("  -f --fullscreen  fullscreen window\n");
-    printf("  -v --vsync       enable vsync\n");
-}
-
 static bool
 opengl_shader_compile_source(GLuint shader, const GLchar* source)
 {
@@ -260,12 +238,120 @@ opengl_shader_link_program(GLuint program, GLuint vertex_shader, GLuint fragment
     return false;
 }
 
-int
-main(int argc, char* argv[])
-{
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifndef M_PI
+#define M_PI 3.141592653589793
+#endif
+
+const float CUBE_VERTICES[] = {
+    // Front face
+    -0.5f, -0.5f,  0.5f,
+     0.5f, -0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+    -0.5f,  0.5f,  0.5f,
+
+    // Back face
+    -0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,
+    -0.5f,  0.5f, -0.5f
+};
+
+const unsigned int CUBE_INDICES[] = {
+    // Front face
+    0, 1, 2, 2, 3, 0,
+    // Right face
+    1, 5, 6, 6, 2, 1,
+    // Back face
+    5, 4, 7, 7, 6, 5,
+    // Left face
+    4, 0, 3, 3, 7, 4,
+    // Top face
+    3, 2, 6, 6, 7, 3,
+    // Bottom face
+    4, 5, 1, 1, 0, 4
+};
+
+// Matrix utility functions
+void matrix_identity(float* matrix) {
+    for (int i = 0; i < 16; i++) {
+        matrix[i] = (i % 5 == 0) ? 1.0f : 0.0f;
+    }
+}
+
+void matrix_multiply(float* result, const float* a, const float* b) {
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 4; col++) {
+            result[row * 4 + col] =
+                a[row * 4 + 0] * b[0 * 4 + col] +
+                a[row * 4 + 1] * b[1 * 4 + col] +
+                a[row * 4 + 2] * b[2 * 4 + col] +
+                a[row * 4 + 3] * b[3 * 4 + col];
+        }
+    }
+}
+
+void matrix_perspective(float* matrix, float fov, float aspect, float near, float far) {
+    float f = 1.0f / tanf(fov / 2.0f);
+    float depth_diff = far - near;
+
+    matrix[0] = f / aspect;
+    matrix[1] = 0.0f;
+    matrix[2] = 0.0f;
+    matrix[3] = 0.0f;
+
+    matrix[4] = 0.0f;
+    matrix[5] = f;
+    matrix[6] = 0.0f;
+    matrix[7] = 0.0f;
+
+    matrix[8] = 0.0f;
+    matrix[9] = 0.0f;
+    matrix[10] = -(far + near) / depth_diff;
+    matrix[11] = -1.0f;
+
+    matrix[12] = 0.0f;
+    matrix[13] = 0.0f;
+    matrix[14] = -(2.0f * far * near) / depth_diff;
+    matrix[15] = 0.0f;
+}
+
+void matrix_rotate_x(float* matrix, float angle) {
+    matrix_identity(matrix);
+    matrix[5] = cosf(angle);
+    matrix[6] = -sinf(angle);
+    matrix[9] = sinf(angle);
+    matrix[10] = cosf(angle);
+}
+
+void matrix_rotate_y(float* matrix, float angle) {
+    matrix_identity(matrix);
+    matrix[0] = cosf(angle);
+    matrix[2] = sinf(angle);
+    matrix[8] = -sinf(angle);
+    matrix[10] = cosf(angle);
+}
+
+static void print_usage(const char* arg0) {
+    printf("usage: %s [options]\n", arg0);
+    printf("\n");
+    printf("Options:\n");
+    printf("  -h --help        print this help\n");
+    printf("  -f --fullscreen  fullscreen window\n");
+    printf("  -v --vsync       enable vsync\n");
+}
+
+int main(int argc, char* argv[]) {
     bool fullscreen = false;
     bool vsync = false;
 
+    // Parse command line arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
@@ -279,41 +365,30 @@ main(int argc, char* argv[])
         }
     }
 
+    // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "failed to init SDL2: %s\n", SDL_GetError());
         return EXIT_FAILURE;
     }
 
-    printf("Platform:        %s\n", SDL_GetPlatform());
-    printf("CPU Count:       %d\n", SDL_GetCPUCount());
-    printf("System RAM:      %d MB\n", SDL_GetSystemRAM());
-    printf("Supports SSE:    %s\n", SDL_HasSSE() ? "true" : "false");
-    printf("Supports SSE2:   %s\n", SDL_HasSSE2() ? "true" : "false");
-    printf("Supports SSE3:   %s\n", SDL_HasSSE3() ? "true" : "false");
-    printf("Supports SSE4.1: %s\n", SDL_HasSSE41() ? "true" : "false");
-    printf("Supports SSE4.2: %s\n", SDL_HasSSE42() ? "true" : "false");
-
-    // Request at least 32-bit color
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-
-    // Request a double-buffered, OpenGL 3.3 (or higher) core profile
+    // Set OpenGL attributes
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 
+    // Create window
     unsigned long flags = SDL_WINDOW_OPENGL;
     if (fullscreen) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
     SDL_Window* window = SDL_CreateWindow(
-        "SDL2 OpenGL Demo",
+        "Improved SDL2 OpenGL Pride Gradient Cube Demo",
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        640,
-        640,
+        800, 600,
         flags);
 
     if (window == NULL) {
@@ -322,7 +397,7 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // SDL_GLContext is an alias for "void*"
+    // Create OpenGL context
     SDL_GLContext context = SDL_GL_CreateContext(window);
     if (context == NULL) {
         fprintf(stderr, "failed to create OpenGL context: %s\n", SDL_GetError());
@@ -331,71 +406,106 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    printf("OpenGL Vendor:   %s\n", glGetString(GL_VENDOR));
-    printf("OpenGL Renderer: %s\n", glGetString(GL_RENDERER));
-    printf("OpenGL Version:  %s\n", glGetString(GL_VERSION));
-    printf("GLSL Version:    %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-
-    // Enable v-sync (set 1 to enable, 0 to disable)
+    // Set VSync
     SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
-    // Load the modern OpenGL funcs
+    // Load OpenGL functions (assuming this is defined elsewhere)
     opengl_load_functions();
 
-
-    // Do modern OpenGL stuff
+    // Vertex Shader
     const GLchar *vs_source =
-        "#version 330\n"
-        "layout(location = 0) in vec2 point;\n"
-        "uniform float angle;\n"
+        "#version 330 core\n"
+        "layout(location = 0) in vec3 aPos;\n"
+        "out vec3 fragPos;\n"
+        "uniform mat4 model;\n"
+        "uniform mat4 view;\n"
+        "uniform mat4 projection;\n"
         "void main() {\n"
-        "    mat2 rotate = mat2(cos(angle), -sin(angle),\n"
-        "                       sin(angle), cos(angle));\n"
-        "    gl_Position = vec4(0.75 * rotate * point, 0.0, 1.0);\n"
+        "    fragPos = aPos;\n"
+        "    gl_Position = projection * view * model * vec4(aPos, 1.0);\n"
         "}\n";
+
+    // Fragment Shader
     const GLchar *fs_source =
-        "#version 330\n"
+        "#version 330 core\n"
+        "in vec3 fragPos;\n"
         "out vec4 color;\n"
         "void main() {\n"
-        "    color = vec4(1, 0.15, 0.15, 0);\n"
+        "    vec3 absPos = abs(fragPos);\n"
+        "    float edgeFactor = 1.0 - max(max(absPos.x, absPos.y), absPos.z) * 2.0;\n"
+        "    edgeFactor = clamp(edgeFactor, 0.0, 1.0);\n"
+        "\n"
+        "    vec3 baseColor;\n"
+        "    if (fragPos.y > 0.4) {\n"
+        "        baseColor = vec3(1.0, 0.0, 0.0);\n"  // Red (top red)\n"
+        "    } else if (fragPos.y < -0.4) {\n"
+        "        baseColor = vec3(1.0, 0.5, 0.0);\n"  // Orange (bottom orange)\n"
+        "    } else if (fragPos.x > 0.4) {\n"
+        "        baseColor = vec3(1.0, 1.0, 0.0);\n"  // Yellow (right yellow)\n"
+        "    } else if (fragPos.x < -0.4) {\n"
+        "        baseColor = vec3(0.0, 0.8, 0.0);\n"  // Green (left green)\n"
+        "    } else if (fragPos.z > 0.4) {\n"
+        "        baseColor = vec3(0.0, 0.0, 1.0);\n"  // Blue (front blue)\n"
+        "    } else {\n"
+        "        baseColor = vec3(0.5, 0.0, 0.5);\n"  // Purple (back purple)\n"
+        "    }\n"
+        "\n"
+        "    color = vec4(mix(baseColor, vec3(1.0), edgeFactor), 1.0);\n"
         "}\n";
 
+    // Compile shaders
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
     opengl_shader_compile_source(vs, vs_source);
     opengl_shader_compile_source(fs, fs_source);
 
+    // Create and link shader program
     GLuint prog = glCreateProgram();
     opengl_shader_link_program(prog, vs, fs);
 
-    GLint uniform_angle = glGetUniformLocation(prog, "angle");
+    // Get uniform locations
+    GLint modelLoc = glGetUniformLocation(prog, "model");
+    GLint viewLoc = glGetUniformLocation(prog, "view");
+    GLint projectionLoc = glGetUniformLocation(prog, "projection");
 
-    glDeleteShader(fs);
     glDeleteShader(vs);
+    glDeleteShader(fs);
 
-
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(SQUARE), SQUARE, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    GLuint vao;
+    // Create and bind buffers
+    GLuint vbo, ebo, vao;
     glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
     glBindVertexArray(vao);
+
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTICES), CUBE_VERTICES, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(CUBE_INDICES), CUBE_INDICES, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
     glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 
-    long frame_count = 0;
+    // Enable depth testing and multisampling
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_MULTISAMPLE);
+    glDepthFunc(GL_LESS);
+
+    // Frame timing variables
+    const int TARGET_FPS = 60;
+    const int FRAME_DELAY = 1000 / TARGET_FPS;
     unsigned long last_frame = 0;
+    long frame_count = 0;
     unsigned long last_second = 0;
-    double angle = 0.0;
 
+    // Main rendering loop
     bool running = true;
     while (running) {
+        unsigned long frameStart = SDL_GetTicks();
+
+        // Event handling
         SDL_Event event = { 0 };
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
@@ -405,39 +515,65 @@ main(int argc, char* argv[])
             }
         }
 
-        glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glUseProgram(prog);
-        glUniform1f(uniform_angle, angle);
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(SQUARE) / sizeof(*SQUARE) / 2);
-        glBindVertexArray(0);
-        glUseProgram(0);
-
+        // Calculate time
         unsigned long now = SDL_GetTicks();
-        unsigned long diff = now - last_frame;
-        last_frame = now;
+        float time = now / 1000.0f;
 
-        angle += diff / 1000.0;
-        if (angle > 2 * M_PI) angle -= 2 * M_PI;
+        // Clear buffers
+        glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Use shader program
+        glUseProgram(prog);
+
+        // Create matrices
+        float projection[16], view[16], model[16], rotX[16], rotY[16], temp[16];
+
+        // Projection matrix
+        matrix_perspective(projection, M_PI/4, 800.0f/600.0f, 0.1f, 100.0f);
+
+        // View matrix (move back a bit)
+        matrix_identity(view);
+        view[14] = -3.0f;
+
+        // Model matrix (rotation)
+        matrix_rotate_x(rotX, sinf(time) * M_PI);
+        matrix_rotate_y(rotY, cosf(time) * M_PI);
+        matrix_multiply(model, rotY, rotX);
+
+        // Upload matrices to shader
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, projection);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
+
+        // Draw cube
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, sizeof(CUBE_INDICES) / sizeof(*CUBE_INDICES), GL_UNSIGNED_INT, 0);
+
+        // FPS tracking
+        frame_count++;
         if (now - last_second >= 1000) {
             printf("FPS: %ld\n", frame_count);
             frame_count = 0;
             last_second = now;
         }
 
-        frame_count++;
+        // Swap buffers
         SDL_GL_SwapWindow(window);
+
+        // Frame timing control
+        unsigned long frameTime = SDL_GetTicks() - frameStart;
+        if (FRAME_DELAY > frameTime) {
+            SDL_Delay(FRAME_DELAY - frameTime);
+        }
     }
 
-    // Cleanup OpenGL resources
+    // Cleanup
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
     glDeleteProgram(prog);
 
-    // Cleanup SDL2 resources
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
