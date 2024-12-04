@@ -24,7 +24,7 @@ src/embed-headers.c:
 	sed -i 's/unsigned int/const unsigned int/' src/embed-headers.c
 
 lib/tinycc/libtcc.a:
-	cd lib/tinycc && ./configure ${tinycc_config}
+	cd lib/tinycc && ./configure ${tinycc_config} ${extra_tinycc_config}
 	${MAKE} -C lib/tinycc libtcc.a
 	${MAKE} -C lib/tinycc libtcc1.a
 
