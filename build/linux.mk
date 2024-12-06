@@ -15,6 +15,10 @@ endif
 
 tinycc_config += --with-libgcc
 
+ifeq ($(shell sestatus | awk -F': *' '/SELinux status:/ {print $2}'), enabled)
+tinycc_config += --with-selinux
+endif
+
 all: lib/tinycc/libtcc.a cjit
 
 cjit: ${SOURCES}
