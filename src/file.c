@@ -42,6 +42,22 @@ extern void _err(const char *fmt, ...);
 // from exec-headers.c
 extern bool gen_exec_headers(char *tmpdir);
 
+int detect_bom(const char *filename) {
+    FILE *file = fopen(filename, "rb");
+    if (!file) return -1;
+    uint8_t bom[3;
+    fread(bom, 1, 3, file);
+    fclose(file);
+    if (bom[0] == 0xFF && bom[1] == 0xFE) {
+      return 1; // UTF-16 LE
+    } else if (bom[0] == 0xFE && bom[1] == 0xFF) {
+      return 2; // UTF-16 BE
+    } else if (bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF) {
+      return 3; // UTF-8
+    } else {
+      return 0; // No BOM
+    }
+}
 
 bool append_path(char **stored_path, const char *new_path) {
   // TODO: sanitize input checking only path chars are there

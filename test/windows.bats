@@ -6,3 +6,8 @@ load bats_setup
       run ${CJIT} test/win_timeb.c
       assert_success
 }
+
+@test "BOM source file UTF8" {
+      run ${CJIT} test/hello-bom-utf8.c
+      assert_failure
+}
