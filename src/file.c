@@ -45,7 +45,7 @@ extern bool gen_exec_headers(char *tmpdir);
 int detect_bom(const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (!file) return -1;
-    uint8_t bom[3;
+    uint8_t bom[3];
     fread(bom, 1, 3, file);
     fclose(file);
     if (bom[0] == 0xFF && bom[1] == 0xFE) {
