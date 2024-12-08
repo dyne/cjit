@@ -210,22 +210,22 @@ static int cjit_compile_buffer(void *tcs, char *code, int argc, char **argv)
     TCCState *TCC = (TCCState *)tcs;
     int res = 0;
     char *err_msg;
-    disableRawMode(STDIN_FILENO);
+    disableRawMode(fileno(stdin));
     /* Clear the screen */
-    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(fileno(stdout), "\x1b[2J", 4);
     // run the code from main
     res = cjit_compile_and_run(TCC, code, argc, argv, 1, &err_msg);
     if (err_msg) {
         _err(err_msg);
         free(err_msg);
     }
-    enableGetCharMode(STDIN_FILENO);
+    enableGetCharMode(fileno(stdin));
     _err("\n\n\n\nPress any key to continue....\n");
     getchar();
-    disableGetCharMode(STDIN_FILENO);
+    disableGetCharMode(fileno(stdin));
     free(code);
 
-    enableRawMode(STDIN_FILENO);
+    enableRawMode(fileno(stdin));
     editorRefreshScreen();
     return res;
 }
@@ -238,7 +238,7 @@ int cjit_check_buffer(void *tcs, char *code, char **err_msg) {
         *err_msg = NULL;
     // run the code from main
     //
-    disableRawMode(STDIN_FILENO);
+    disableRawMode(fileno(stdin));
     res = cjit_compile_and_run(TCC, code, 0, NULL, 0, err_msg);
     if (res != 0) {
         if(*err_msg) {
@@ -255,7 +255,7 @@ int cjit_check_buffer(void *tcs, char *code, char **err_msg) {
     } else {
         editorSetStatusMessage("No errors.");
     }
-    enableRawMode(STDIN_FILENO);
+    enableRawMode(fileno(stdin));
     return res;
 }
 
@@ -305,7 +305,7 @@ int cjit_cli_kilo(TCCState *TCC) {
             editorInsertRow(row++, editor_rows[i], strlen(editor_rows[i]));
         }
 
-        enableRawMode(STDIN_FILENO);
+        enableRawMode(fileno(stdin));
         editorSetStatusMessage(
                 "HELP: Cx-S = save | Cx-Q = quit | Cx-F = find | Cx-R = run | Cx-E = editor");
         while(1) {
@@ -313,7 +313,7 @@ int cjit_cli_kilo(TCCState *TCC) {
             editorSetCheckCallback(cjit_check_buffer);
             editorSetCompilerContext(TCC);
             editorRefreshScreen();
-            editorProcessKeypress(STDIN_FILENO);
+            editorProcessKeypress(fileno(stdin));
         }
     }
     return res;

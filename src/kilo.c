@@ -228,7 +228,7 @@ void disableRawMode(int fd) {
 void editorAtExit(void) {
     if (!E.exiting)
         return;
-    disableRawMode(STDIN_FILENO);
+    disableRawMode(fileno(stdin));
     if ((!E.keep_scratchpad) && (E.filename)) {
         char *cp1, *dir_nm;
         cp1 = strdup(E.filename);
@@ -245,7 +245,7 @@ int enableRawMode(int fd) {
     struct termios raw;
 
     if (E.rawmode) return 0; /* Already enabled. */
-    if (!isatty(STDIN_FILENO)) goto fatal;
+    if (!isatty(fileno(stdin))) goto fatal;
     if (tcgetattr(fd,&orig_termios) == -1) goto fatal;
 
     raw = orig_termios;  /* modify the original mode */
@@ -277,9 +277,9 @@ fatal:
 int enableGetCharMode(int fd) {
     struct termios nocanon;
 
-    if (!isatty(STDIN_FILENO))
+    if (!isatty(fileno(stdin)))
         goto fatal;
-    disableRawMode(STDIN_FILENO);
+    disableRawMode(fileno(stdin));
     if (tcgetattr(fd,&orig_termios) == -1)
         goto fatal;
 
@@ -1115,7 +1115,7 @@ void editorRefreshScreen(void) {
     snprintf(buf,sizeof(buf),"\x1b[%d;%dH",E.cy+1,cx);
     abAppend(&ab,buf,strlen(buf));
     abAppend(&ab,"\x1b[?25h",6); /* Show cursor. */
-    write(STDOUT_FILENO,ab.b,ab.len);
+    write(fileno(stdout),ab.b,ab.len);
     abFree(&ab);
     /* Check for errors on new line */
     if (E.check_cb) {
@@ -1385,11 +1385,11 @@ void editorProcessKeypress(int fd) {
         E.dirty++;
         editorSave();
         strcat(ed_cmd, E.filename);
-        disableRawMode(STDIN_FILENO);
+        disableRawMode(fileno(stdin));
         editorReset();
         printf("Running %s\n", ed_cmd);
         system(ed_cmd);
-        enableRawMode(STDIN_FILENO);
+        enableRawMode(fileno(stdin));
         editorOpen();
         break;
     case CTRL_R:        /* Ctrl-r */
@@ -1445,7 +1445,7 @@ int editorFileWasModified(void) {
 }
 
 void updateWindowSize(void) {
-    if (getWindowSize(STDIN_FILENO,STDOUT_FILENO,
+    if (getWindowSize(fileno(stdin),fileno(stdout),
                       &E.screenrows,&E.screencols) == -1) {
         perror("Unable to query the screen for size (columns / rows)");
         exit(1);
