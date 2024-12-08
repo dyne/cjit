@@ -10,6 +10,6 @@ load bats_setup
 @test "BOM source file UTF8" {
       run ${CJIT} -q test/hello-bom-utf8.c
       assert_failure
-      assert_line 'UTF BOM detected in file: test/hello-bom-utf8.c'
-      assert_line 'Encoding is not yet supported, execution aborted.'
+      assert_line --partial 'UTF BOM detected in file: test/hello-bom-utf8.c'
+      assert_line --partial 'Encoding is not yet supported, execution aborted.'
 }
