@@ -37,7 +37,7 @@ void _out(const char *fmt, ...) {
 #if defined(__EMSCRIPTEN__)
   EM_ASM_({Module.print(UTF8ToString($0))}, msg);
 #else
-  write(STDOUT_FILENO, msg, len+1);
+  write(fileno(stdout), msg, len+1);
 #endif
 }
 
@@ -56,6 +56,6 @@ void _err(const char *fmt, ...) {
 #elif defined(__ANDROID__)
   __android_log_print(ANDROID_LOG_ERROR, "ZEN", "%s", msg);
 #else
-  write(STDERR_FILENO,msg,len+1);
+  write(fileno(stderr),msg,len+1);
 #endif
 }
