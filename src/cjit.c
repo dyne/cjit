@@ -123,7 +123,9 @@ int main(int argc, char **argv) {
   const char *default_main = "main";
   char *entry = (char*)default_main;
   bool live_mode = false;
-  bool quiet = false;
+  // quiet is by default on when cjit's output is redirected
+  // errors will still be printed on stderr
+  bool quiet = isatty(fileno(stdout))?false:true;
   int arg_separator = 0;
   int res = 1;
   int i, c;
