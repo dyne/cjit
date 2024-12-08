@@ -37,6 +37,7 @@
 
 /////////////
 // from file.c
+extern int   detect_bom(const char *filename);
 extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
 extern char *load_stdin();
@@ -293,7 +294,7 @@ int main(int argc, char **argv) {
     }
   } else if(opt.ind < left_args) {
     // process files on commandline before separator
-	  if(!quiet)_err("Source code:");
+    if(!quiet)_err("Source code:");
     for (i = opt.ind; i < left_args; ++i) {
       const char *code_path = argv[i];
       if(!quiet)_err("%c %s",(*code_path=='-'?'|':'+'),
@@ -312,7 +313,14 @@ int main(int argc, char **argv) {
           goto endgame;
         } else free(stdin_code);
       } else { // load any file path
-        tcc_add_file(TCC, code_path);
+	int res = detect_bom(code_path);
+	if(res ==0) {
+	  tcc_add_file(TCC, code_path);
+	} else {
+	  _err("UTF BOM detected in file: %s",code_path);
+	  _err("Encoding is not yet supported, execution aborted.");
+	  goto endgame;
+	}
       }
     }
   }
