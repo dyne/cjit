@@ -334,6 +334,7 @@ bool cjit_extensions_mkdtemp(CJITState *CJIT, const char *tmpdir) {
 				  (char*)&lib_dmon_dmon_h,
 				  lib_dmon_dmon_h_len)) return(false);
 	}
+	// setup the tmpdir path in CJIT
 	CJIT->tmpdir = malloc(strlen(tmpdir)+1);
 	strcpy(CJIT->tmpdir, tmpdir);
 	return(true);
