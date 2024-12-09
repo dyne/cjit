@@ -30,6 +30,9 @@
 #include <ftw.h> // _GNU_SOURCE
 
 #ifdef LIBC_MINGW32
+#    ifndef WIN32_LEAN_AND_MEAN
+#        define WIN32_LEAN_AND_MEAN
+#    endif
 #include <windows.h>
 #include <shlwapi.h>
 #include <rpc.h>
