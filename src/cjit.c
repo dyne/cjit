@@ -132,11 +132,23 @@ int main(int argc, char **argv) {
 	    _err("CJIT %s by Dyne.org",VERSION);
       // _err("Running version: %s\n",VERSION);
       // version is always shown
-#ifdef LIBC_MINGW32
-      _err("Built with MINGW32 libc");
+#if   defined(CJIT_BUILD_WIN)
+      _err("Build: WINDOWS");
+#elif defined(CJIT_BUILD_MUSL)
+      _err("Build: MUSL");
+#elif defined(CJIT_BUILD_OSX)
+      _err("Build: OSX");
+#elif defined(CJIT_BUILD_LINUX)
+      _err("Build: LINUX");
+#else
+      _err("Build: UNKNOWN");
 #endif
-#ifdef LIBC_MUSL
-      _err("Built with Musl libc");
+#if   defined(CJIT_DEBUG_ASAN)
+      _err("Debug: ASAN");
+#elif defined(CJIT_DEBUG_GDB)
+      _err("Debug: GDB");
+#else
+      _err("Debug: NONE");
 #endif
       tcc_delete(TCC);
       exit(0); // print and exit
