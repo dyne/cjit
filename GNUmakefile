@@ -40,6 +40,9 @@ apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
 _: ##
 ------: ## __ Debugging targets
 
+debug-gdb: ## 🔬 Build using the address sanitizer to detect memory leaks
+	$(MAKE) -f build/linux.mk GDB=1
+
 debug-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
 	$(MAKE) -f build/linux.mk ASAN=1
 

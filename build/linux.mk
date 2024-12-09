@@ -9,7 +9,15 @@ SOURCES += src/kilo.o
 ifdef ASAN
 	cflags := -Og -ggdb -DDEBUG=1 -fno-omit-frame-pointer -fsanitize=address
 	cflags += ${cflags_includes} ${cflags_gnu} -DKILO_SUPPORTED
+	cflags += -DCJIT_BUILD_LINUX
 	ldflags := -fsanitize=address -static-libasan
+#	tinycc_config += --extra-ldflags="${ldflags}"
+endif
+
+ifdef GDB
+	cflags := -Og -ggdb -DDEBUG=1 -fno-omit-frame-pointer
+	cflags += ${cflags_includes} ${cflags_gnu} -DKILO_SUPPORTED
+	cflags += -DCJIT_BUILD_LINUX
 #	tinycc_config += --extra-ldflags="${ldflags}"
 endif
 
