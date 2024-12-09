@@ -16,7 +16,7 @@ SHELL := C:\Program Files\Git\bin\bash.exe
 # redefine compilation flags
 cc := gcc
 cflags := -O2 -fomit-frame-pointer -Isrc -Ilib/tinycc
-cflags += -DLIBC_MINGW32
+cflags += -DLIBC_MINGW32 -DCJIT_BUILD_WIN
 ldflags := -static-libgcc
 ldadd := lib/tinycc/libtcc.a -lshlwapi
 SOURCES += src/win-compat.o
@@ -42,3 +42,7 @@ src/embed-headers.c:
 	bash build/embed-headers.sh win
 	sed -i 's/unsigned char/const char/' src/embed-headers.c
 	sed -i 's/unsigned int/const unsigned int/' src/embed-headers.c
+
+src/embed-dmon.c:
+	$(info Embedding dmon headers)
+	bash build/embed-dmon.sh

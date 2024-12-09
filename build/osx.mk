@@ -1,6 +1,7 @@
 include build/init.mk
 
 cc := clang
+cflags += -DCJIT_BUILD_OSX
 
 all: deps cjit.command
 
@@ -14,7 +15,7 @@ cjit.command: ${SOURCES}
 	-DVERSION=\"${VERSION}\" \
 	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
 
-deps: lib/tinycc/libtcc.a src/embed-libtcc1.c src/embed-headers.c
+deps: lib/tinycc/libtcc.a src/embed-libtcc1.c src/embed-headers.c src/embed-dmon.c
 
 ## Custom deps targets for osx due to different sed
 
@@ -32,5 +33,10 @@ src/embed-libtcc1.c:
 src/embed-headers.c:
 	$(info Embedding tinycc headers)
 	bash build/embed-headers.sh win
-	sed -i'' -e 's/unsigned char/const char/' src/embed-headers.c
-	sed -i'' -e 's/unsigned int/const unsigned int/' src/embed-headers.c
+
+src/embed-dmon.c:
+	$(info Embedding dmon headers)
+	bash build/embed-dmon.sh
+
+# sed -i'' -e 's/unsigned char/const char/' src/embed-headers.c
+# sed -i'' -e 's/unsigned int/const unsigned int/' src/embed-headers.c
