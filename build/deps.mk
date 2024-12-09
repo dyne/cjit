@@ -6,6 +6,10 @@
 	-DVERSION=\"${VERSION}\" \
 	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
 
+src/embed-dmon.c:
+	$(info Embedding dmon headers)
+	bash build/embed-dmon.sh
+
 src/embed-musl-libc.c:
 	bash build/embed-musl-libc.sh
 	sed -i 's/unsigned char _lib_x86_64_linux_musl_libc_so/const unsigned char musl_libc/' src/embed-musl-libc.c
