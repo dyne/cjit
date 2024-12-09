@@ -58,21 +58,21 @@ jobs:
         #      run: |
         #        echo "😤 Some files failed the C linting checks!"
 
-  musl-test:
-    name: 🐧 Musl Linux test
+  linux-test:
+    name: 🐧 Linux x86 test
     needs: [reuse, c-lint]
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v4
       - name: install dependencies
         run: |
-          sudo apt install -yq musl-tools musl-dev
-      - name: Build x86_64 with musl-system
+          sudo apt install -yq make gcc xxd
+      - name: Build x86_64 with Linux
         run: |
-          make musl-linux
+          make linux-x86
       - name: Run tests
         run: |
-          make check
+          make check-ci
 
   win-native-test:
     name: 🪟 Windows native test
@@ -85,7 +85,7 @@ jobs:
           make win-native
       - name: Run tests
         run: |
-          make check
+          make check-ci
 
   osx-native-test:
     name: 🍎 OSX native test
@@ -98,11 +98,11 @@ jobs:
           make apple-osx
       - name: Run tests
         run: |
-          make check
+          make check-ci
 
   semantic-release:
     name: 🤖 Semantic release
-    needs: [musl-test, osx-native-test, win-native-test]
+    needs: [linux-test, osx-native-test, win-native-test]
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
