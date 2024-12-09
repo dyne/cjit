@@ -2,11 +2,13 @@
 setup() {
     bats_require_minimum_version 1.5.0
     T="$BATS_TEST_DIRNAME"
+    TMP="$BATS_TEST_TMPDIR"
 	#    R=`cd "$T"/.. && pwd`
 	R=`pwd`
     load "$T"/test_helper/bats_support/load
     load "$T"/test_helper/bats_assert/load
 	CJIT="${R}/cjit"
+	rm -rf `${CJIT} --tgen`
 	[ -r "$CJIT" ] || CJIT="${R}/cjit.exe"
 	[ -r "$CJIT" ] || CJIT="${R}/cjit.command"
 	[ -r "$CJIT" ] || {
