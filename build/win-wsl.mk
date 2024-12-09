@@ -7,7 +7,7 @@ include build/init.mk
 
 cc := x86_64-w64-mingw32-gcc
 ar := x86_64-w64-mingw32-ar
-cflags += -DLIBC_MINGW32
+cflags += -DLIBC_MINGW32 -DCJIT_BUILD_WIN
 
 ldadd += -lrpcrt4 -lshlwapi
 

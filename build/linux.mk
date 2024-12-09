@@ -2,7 +2,7 @@ include build/init.mk
 
 cc := gcc
 
-cflags += -DLIBC_GNU -D_GNU_SOURCE -DKILO_SUPPORTED
+cflags += -DLIBC_GNU -D_GNU_SOURCE -DKILO_SUPPORTED -DCJIT_BUILD_LINUX
 
 SOURCES += src/kilo.o
 
