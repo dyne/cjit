@@ -28,6 +28,12 @@ SPDX-FileCopyrightText = "2001-2004 Fabrice Bellard"
 SPDX-License-Identifier = "LGPL-2.1-or-later"
 
 [[annotations]]
+path = "lib/dmon/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = " 2019, Sepehr Taghdisian"
+SPDX-License-Identifier = "BSD-2-Clause"
+
+[[annotations]]
 path = ["docs/**", "**.md"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2024 Dyne.org foundation"

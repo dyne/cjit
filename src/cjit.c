@@ -42,6 +42,8 @@ extern long  file_size(const char *filename);
 extern char* file_load(const char *filename);
 extern char *load_stdin();
 extern char* dir_load(const char *path);
+extern bool write_to_file(char *path, char *filename,
+			  char *buf, unsigned int len);
 
 #ifdef LIBC_MINGW32
 extern char *win32_mkdtemp();
@@ -64,6 +66,11 @@ extern int cjit_cli_tty(TCCState *TCC);
 #ifdef KILO_SUPPORTED
 extern int cjit_cli_kilo(TCCState *TCC);
 #endif
+// from embed-dmon.c
+extern char *lib_dmon_dmon_extra_h;
+extern unsigned int lib_dmon_dmon_extra_h_len;
+extern char *lib_dmon_dmon_h;
+extern unsigned int lib_dmon_dmon_h_len;
 /////////////
 
 void handle_error(void *n, const char *m) {
@@ -126,6 +133,7 @@ int main(int argc, char **argv) {
   // quiet is by default on when cjit's output is redirected
   // errors will still be printed on stderr
   bool quiet = isatty(fileno(stdout))?false:true;
+  bool dmon = false; // activate dmon headers for fs monitoring
   int arg_separator = 0;
   int res = 1;
   int i, c;
@@ -146,6 +154,7 @@ int main(int argc, char **argv) {
     { "help", ko_no_argument, 100 },
     { "live", ko_no_argument, 301 },
     { "tgen", ko_no_argument, 401 },
+    { "dmon", ko_no_argument, 501 },
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
@@ -198,14 +207,14 @@ int main(int argc, char **argv) {
       if(entry!=default_main) free(entry);
       entry = malloc(strlen(opt.arg)+1);
       strcpy(entry,opt.arg);
-    } else if (c == 301) { //
+    } else if (c == 301) {
 #ifdef LIBC_MINGW32
 	    _err("Live mode not supported in Windows");
 #else
 	    if(!quiet)_err("Live mode activated");
 	    live_mode = true;
 #endif
-    } else if (c == 401) { //
+    } else if (c == 401) {
 #ifndef LIBC_MINGW32
       tmpdir = posix_mkdtemp();
 #else
@@ -214,6 +223,8 @@ int main(int argc, char **argv) {
       if(!quiet)_err("Temporary exec dir: %s",tmpdir);
       tcc_delete(TCC);
       exit(0);
+    } else if (c == 501) {
+	    dmon = true;
     }
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
     else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
@@ -256,6 +267,23 @@ int main(int argc, char **argv) {
 #if defined(LIBC_MUSL)
   tcc_add_libc_symbols(TCC);
 #endif
+
+  if(dmon) {
+	  _err("Activated DMON extension for filesystem monitoring");
+	  if(!write_to_file(tmpdir,"dmon.h",
+			    (char*)&lib_dmon_dmon_h,
+			    lib_dmon_dmon_h_len)) goto endgame;
+	  tcc_define_symbol(TCC,"DMON_IMPL",NULL);
+#if defined(CJIT_BUILD_LINUX)
+	  tcc_define_symbol(TCC,"DMON_OS_LINUX",NULL);
+#endif
+#if defined(CJIT_BUILD_OSX)
+	  tcc_define_symbol(TCC,"DMON_OS_MACOS",NULL);
+#endif
+#if defined(CJIT_BUILD_WIN)
+	  tcc_define_symbol(TCC,"DMON_OS_WINDOWS",NULL);
+#endif
+  }
 
   if (argc == 0 ) {
     _err("No input file: live mode!");
