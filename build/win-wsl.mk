@@ -36,6 +36,7 @@ deps:
 	@bash build/embed-headers.sh win
 	@sed -i 's/unsigned char/const char/' src/embed-headers.c
 	@sed -i 's/unsigned int/const unsigned int/' src/embed-headers.c
+	@bash build/embed-dmon.sh
 
 .c.o:
 	$(cc) \

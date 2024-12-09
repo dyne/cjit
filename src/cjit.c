@@ -85,8 +85,7 @@ const char cli_help[] =
   " -e fun\t entry point function (default 'main')\n"
   " -p pid\t write pid of executed program to file\n"
   " --live\t run interactive editor for live coding\n"
-  " --tgen\t create the runtime temporary dir and exit\n"
-  " --dmon\t activate the filesystem monitoring extension\n";
+  " --tgen\t create the runtime temporary dir and exit\n";
 
 int main(int argc, char **argv) {
   TCCState *TCC = NULL;
@@ -120,7 +119,6 @@ int main(int argc, char **argv) {
     { "help", ko_no_argument, 100 },
     { "live", ko_no_argument, 301 },
     { "tgen", ko_no_argument, 401 },
-    { "dmon", ko_no_argument, 501 },
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
@@ -196,8 +194,6 @@ int main(int argc, char **argv) {
 	    if(!quiet)_err("Live mode activated");
 	    live_mode = true;
 #endif
-    } else if (c == 501) {
-	    CJIT.dmon = true;
     } else if (c == 401) {
 #ifndef LIBC_MINGW32
       posix_mkdtemp(&CJIT);
@@ -216,6 +212,22 @@ int main(int argc, char **argv) {
     }
   }
   if(!quiet)_err("CJIT %s by Dyne.org",VERSION);
+
+  // DMON is activated on all supported platforms by default
+  CJIT.dmon = true;
+  tcc_define_symbol(TCC,"DMON_IMPL",NULL);
+#if defined(CJIT_BUILD_LINUX)
+  tcc_define_symbol(TCC,"DMON_OS_LINUX",NULL);
+// TODO: test dmon on OSX (missing library frameworks)
+// #elif defined(CJIT_BUILD_OSX)
+//   tcc_define_symbol(TCC,"DMON_OS_MACOS",NULL);
+#elif defined(CJIT_BUILD_WIN)
+  tcc_define_symbol(TCC,"DMON_OS_WINDOWS",NULL);
+#else
+  tcc_undefine_symbol(TCC,"DMON_OS");
+  tcc_undefine_symbol(TCC,"DMON_IMPL");
+  CJIT.dmon = false;
+#endif
 
   //////////////////////////////////////
   // initialize the tmpdir for execution
@@ -250,22 +262,6 @@ int main(int argc, char **argv) {
 #if defined(LIBC_MUSL)
   tcc_add_libc_symbols(TCC);
 #endif
-
-  if(CJIT.dmon) {
-	  _err("Activated DMON extension for filesystem monitoring");
-	  tcc_define_symbol(TCC,"DMON_IMPL",NULL);
-#if defined(CJIT_BUILD_LINUX)
-	  tcc_define_symbol(TCC,"DMON_OS_LINUX",NULL);
-
-#elif defined(CJIT_BUILD_OSX)
-	  tcc_define_symbol(TCC,"DMON_OS_MACOS",NULL);
-#elif defined(CJIT_BUILD_WIN)
-	  tcc_define_symbol(TCC,"DMON_OS_WINDOWS",NULL);
-#else
-	  _err("Unsupported platform for DMON extension");
-	  tcc_undefine_symbol(TCC,"DMON_OS");
-#endif
-  }
 
   if (argc == 0 ) {
     _err("No input file: live mode!");
