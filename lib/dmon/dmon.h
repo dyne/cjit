@@ -156,10 +156,10 @@ DMON_API_DECL void dmon_unwatch(dmon_watch_id id);
 #        define NOMINMAX
 #    endif
 #    include <windows.h>
-#    include <intrin.h>
-#    ifdef _MSC_VER
-#        pragma intrinsic(_InterlockedExchange)
-#    endif
+// #    include <intrin.h>
+// #    ifdef _MSC_VER
+// #        pragma intrinsic(_InterlockedExchange)
+// #    endif
 #elif DMON_OS_LINUX
 #    ifndef __USE_MISC
 #        define __USE_MISC

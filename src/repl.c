@@ -21,8 +21,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 
-#include <libtcc.h>
+#include <cjit.h>
 
 #ifndef LIBC_MINGW32
 #include <sys/types.h>
@@ -36,7 +37,7 @@ extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 
 #ifdef LIBC_MINGW32
-int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
+int cjit_exec_win(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
   int res = 1;
   int (*_ep)(int, char**);
   _ep = tcc_get_symbol(TCC, ep);
@@ -44,13 +45,24 @@ int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv) {
     _err("Symbol not found in source: %s",ep);
     return -1;
   }
+  if(CJIT->write_pid) {
+	  pid_t pid = getpid();
+	  FILE *fd = fopen(CJIT->write_pid, "w");
+	  if(!fd) {
+		  _err("Cannot create pid file %s: %s",
+		       CJIT->write_pid, strerror(errno));
+		  return -1;
+	  }
+	  fprintf(fd,"%d\n",pid);
+	  fclose(fd);
+  }
   // _err("Execution start\n---");
   res = _ep(argc, argv);
   return(res);
 }
 
 #else // LIBC_MINGW32
-int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv) {
+int cjit_exec_fork(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
   pid_t pid;
   int res = 1;
   int (*_ep)(int, char**);
@@ -59,12 +71,22 @@ int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv) {
     _err("Symbol not found in source: %s",ep);
     return -1;
   }
-  // _err("Start execution\n---------------");
   pid = fork();
   if (pid == 0) {
       res = _ep(argc, argv);
       exit(res);
   } else {
+	  if(CJIT->write_pid) {
+		  // pid_t pid = getpid();
+		  FILE *fd = fopen(CJIT->write_pid, "w");
+		  if(!fd) {
+			  _err("Cannot create pid file %s: %s",
+			       CJIT->write_pid, strerror(errno));
+			  return -1;
+		  }
+		  fprintf(fd,"%d\n",pid);
+		  fclose(fd);
+	  }
       int status;
       int ret;
       ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
@@ -374,9 +396,9 @@ int cjit_cli_tty(TCCState *TCC) {
         _err("-----------------------------------\n");
 #endif // VERBOSE_CLI
 #ifndef LIBC_MINGW32
-        res = cjit_exec_fork(TCC, "main", 0, NULL);
+        res = cjit_exec_fork(TCC, NULL, "main", 0, NULL);
 #else // LIBC_MINGW32
-        res = cjit_exec_win(TCC, "main", 0, NULL);
+        res = cjit_exec_win(TCC, NULL, "main", 0, NULL);
 #endif // LIBC_MINGW32
         free(code);
         code = NULL;

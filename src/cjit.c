@@ -32,46 +32,9 @@
 #include <sys/poll.h>
 #endif
 
-#include <libtcc.h>
 #include <ketopt.h>
+#include <cjit.h>
 
-/////////////
-// from file.c
-extern int   detect_bom(const char *filename);
-extern long  file_size(const char *filename);
-extern char* file_load(const char *filename);
-extern char *load_stdin();
-extern char* dir_load(const char *path);
-extern bool write_to_file(char *path, char *filename,
-			  char *buf, unsigned int len);
-
-#ifdef LIBC_MINGW32
-extern char *win32_mkdtemp();
-// from win-compat.c
-extern void win_compat_usleep(unsigned int microseconds);
-extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
-#else
-extern char *posix_mkdtemp();
-#endif
-// from io.c
-extern void _out(const char *fmt, ...);
-extern void _err(const char *fmt, ...);
-// from repl.c
-#ifdef LIBC_MINGW32
-extern int cjit_exec_win(TCCState *TCC, const char *ep, int argc, char **argv);
-#else
-extern int cjit_exec_fork(TCCState *TCC, const char *ep, int argc, char **argv);
-#endif
-extern int cjit_cli_tty(TCCState *TCC);
-#ifdef KILO_SUPPORTED
-extern int cjit_cli_kilo(TCCState *TCC);
-#endif
-// from embed-dmon.c
-extern char *lib_dmon_dmon_extra_h;
-extern unsigned int lib_dmon_dmon_extra_h_len;
-extern char *lib_dmon_dmon_h;
-extern unsigned int lib_dmon_dmon_h_len;
-/////////////
 
 void handle_error(void *n, const char *m) {
   (void)n;
@@ -120,20 +83,23 @@ const char cli_help[] =
   " -l lib\t search the library named 'lib' when linking\n"
   " -L dir\t also search inside folder 'dir' for -l libs\n"
   " -e fun\t entry point function (default 'main')\n"
+  " -p pid\t write pid of executed program to file\n"
   " --live\t run interactive editor for live coding\n"
-  " --tgen\t create the runtime temporary dir and exit\n";
+  " --tgen\t create the runtime temporary dir and exit\n"
+  " --dmon\t activate the filesystem monitoring extension\n";
 
 int main(int argc, char **argv) {
   TCCState *TCC = NULL;
+  CJITState CJIT;
+  memset(&CJIT,0x0,sizeof(CJITState));
+
   // const char *progname = "cjit";
-  char *tmpdir = NULL;
   const char *default_main = "main";
   char *entry = (char*)default_main;
   bool live_mode = false;
   // quiet is by default on when cjit's output is redirected
   // errors will still be printed on stderr
   bool quiet = isatty(fileno(stdout))?false:true;
-  bool dmon = false; // activate dmon headers for fs monitoring
   int arg_separator = 0;
   int res = 1;
   int i, c;
@@ -158,7 +124,7 @@ int main(int argc, char **argv) {
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
-  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:", longopts)) >= 0) {
 	  if(c == 'q') {
 		  quiet = true;
 	  }
@@ -207,6 +173,10 @@ int main(int argc, char **argv) {
       if(entry!=default_main) free(entry);
       entry = malloc(strlen(opt.arg)+1);
       strcpy(entry,opt.arg);
+    } else if (c == 'p') { // write pid to file
+	    if(!quiet)_err("pid file: %s",opt.arg);
+	    CJIT.write_pid = malloc(strlen(opt.arg)+1);
+	    strcpy(CJIT.write_pid,opt.arg);
     } else if (c == 301) {
 #ifdef LIBC_MINGW32
 	    _err("Live mode not supported in Windows");
@@ -214,17 +184,18 @@ int main(int argc, char **argv) {
 	    if(!quiet)_err("Live mode activated");
 	    live_mode = true;
 #endif
+    } else if (c == 501) {
+	    CJIT.dmon = true;
     } else if (c == 401) {
 #ifndef LIBC_MINGW32
-      tmpdir = posix_mkdtemp();
+      posix_mkdtemp(&CJIT);
 #else
-      tmpdir = win32_mkdtemp();
+      win32_mkdtemp(&CJIT);
 #endif
-      if(!quiet)_err("Temporary exec dir: %s",tmpdir);
+      fprintf(stdout,"%s\n",CJIT.tmpdir);
+      // TODO: free CJIT too here (not reaching endgame)
       tcc_delete(TCC);
       exit(0);
-    } else if (c == 501) {
-	    dmon = true;
     }
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
     else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
@@ -239,26 +210,26 @@ int main(int argc, char **argv) {
   // from here onwards use goto endgame
   // as the main and only exit
 #ifndef LIBC_MINGW32
-  tmpdir = posix_mkdtemp();
+  posix_mkdtemp(&CJIT);
 #else
-  tmpdir = win32_mkdtemp();
+  win32_mkdtemp(&CJIT);
 #endif
-  if(!tmpdir) {
+  if(!CJIT.tmpdir) {
     _err("Error creating temp dir: %s",strerror(errno));
     goto endgame;
   }
 
   // finally set paths
-  tcc_add_include_path(TCC, tmpdir);
+  tcc_add_include_path(TCC, CJIT.tmpdir);
 #ifdef LIBC_MINGW32
   {
 	  char tmp_winapi[512];
-	  snprintf(tmp_winapi,511,"%s/winapi",tmpdir);
+	  snprintf(tmp_winapi,511,"%s/winapi",CJIT.tmpdir);
 	  tcc_add_include_path(TCC, tmp_winapi);
 	  tcc_add_library_path(TCC, "C:\\Windows\\System32");
   }
 #endif
-  tcc_add_library_path(TCC, tmpdir);
+  tcc_add_library_path(TCC, CJIT.tmpdir);
   // tcc_set_lib_path(TCC,tmpdir); // this overrides all?
 
   // set output in memory for just in time execution
@@ -268,20 +239,19 @@ int main(int argc, char **argv) {
   tcc_add_libc_symbols(TCC);
 #endif
 
-  if(dmon) {
+  if(CJIT.dmon) {
 	  _err("Activated DMON extension for filesystem monitoring");
-	  if(!write_to_file(tmpdir,"dmon.h",
-			    (char*)&lib_dmon_dmon_h,
-			    lib_dmon_dmon_h_len)) goto endgame;
 	  tcc_define_symbol(TCC,"DMON_IMPL",NULL);
 #if defined(CJIT_BUILD_LINUX)
 	  tcc_define_symbol(TCC,"DMON_OS_LINUX",NULL);
-#endif
-#if defined(CJIT_BUILD_OSX)
+
+#elif defined(CJIT_BUILD_OSX)
 	  tcc_define_symbol(TCC,"DMON_OS_MACOS",NULL);
-#endif
-#if defined(CJIT_BUILD_WIN)
+#elif defined(CJIT_BUILD_WIN)
 	  tcc_define_symbol(TCC,"DMON_OS_WINDOWS",NULL);
+#else
+	  _err("Unsupported platform for DMON extension");
+	  tcc_undefine_symbol(TCC,"DMON_OS");
 #endif
   }
 
@@ -373,14 +343,18 @@ int main(int argc, char **argv) {
   int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
   char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
 #ifndef LIBC_MINGW32
-  res = cjit_exec_fork(TCC, entry, right_args, right_argv);
+  res = cjit_exec_fork(TCC, &CJIT, entry, right_args, right_argv);
 #else
-  res = cjit_exec_win(TCC, entry, right_args, right_argv);
+  res = cjit_exec_win(TCC, &CJIT, entry, right_args, right_argv);
 #endif
 
   endgame:
   // free TCC
   if(TCC) tcc_delete(TCC);
+  // free CJITState
+  if(CJIT.tmpdir) free(CJIT.tmpdir);
+  if(CJIT.write_pid) free(CJIT.write_pid);
+
   if(entry!=default_main) free(entry);
   exit(res);
 }

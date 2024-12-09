@@ -46,6 +46,8 @@
 # define O_BINARY 0
 #endif
 #endif
+
+#include <cjit.h>
 extern void _err(const char *fmt, ...);
 
 // from exec-headers.c
@@ -196,7 +198,7 @@ char *load_stdin() {
 #endif
 }
 
-bool write_to_file(char *path, char *filename, char *buf, unsigned int len) {
+bool write_to_file(const char *path, const char *filename, const char *buf, unsigned int len) {
   FILE *fd;
   size_t written;
   char fullpath[256];
@@ -326,25 +328,41 @@ char *dir_load(const char *path)
 
 #endif
 
+// cross-platform creation of any CJIT extension requested
+// also fills CJIT->tmpdir on success
+bool cjit_extensions_mkdtemp(CJITState *CJIT, const char *tmpdir) {
+	// dmon.h
+	if(CJIT->dmon) {
+		if(!write_to_file(tmpdir,"dmon.h",
+				  (char*)&lib_dmon_dmon_h,
+				  lib_dmon_dmon_h_len)) return(false);
+	}
+	CJIT->tmpdir = malloc(strlen(tmpdir)+1);
+	strcpy(CJIT->tmpdir, tmpdir);
+	return(true);
+}
+
 #ifdef LIBC_MINGW32
 ///////////////
 // WINDOWS SHIT
-int dir_exists(const char *path) {
+bool dir_exists(CJITState *CJIT, const char *path) {
 	DWORD attributes = GetFileAttributes(path);
 	if (attributes == INVALID_FILE_ATTRIBUTES) {
 		// The path does not exist
-		return 0;
+		return false;
 	} else if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
 		// The path exists and is a directory
-		return 1;
+		CJIT->tmpdir = malloc(strlen(path)+1);
+		strcpy(CJIT->tmpdir, path);
+		return true;
 	} else {
 		_err("Temp dir is a file, cannot overwrite: %s",path);
 		// The path exists but is not a directory
-		return 0;
+		return false;
 	}
 }
 
-char *win32_mkdtemp() {
+bool win32_mkdtemp(CJITState *CJIT) {
     static char tempDir[MAX_PATH];
     char sysTempDir[MAX_PATH];
     char secTempDir[MAX_PATH];
@@ -357,52 +375,55 @@ char *win32_mkdtemp() {
     // Get the temporary path
     if (GetTempPath(MAX_PATH, tempPath) == 0) {
         _err("Failed to get temporary path");
-        return NULL;
+        return false;
     }
     PathCombine(tempDir, tempPath, filename);
     // return already if found existing
-    if(dir_exists(tempDir)) return(tempDir);
+    if(dir_exists(CJIT, tempDir)) return(true);
     // Create the temporary directory
     if (CreateDirectory(tempDir, NULL) == 0) {
         _err("Failed to create temporary dir: %s",tempDir);
-        return NULL;
+        return false;
     }
     PathCombine(sysTempDir, tempDir, "sys");
     if (CreateDirectory(sysTempDir, NULL) == 0) {
         _err("Failed to create sys dir in temporary dir: %s",sysTempDir);
-        return NULL;
+        return false;
     }
     PathCombine(secTempDir, tempDir, "sec_api");
     if (CreateDirectory(secTempDir, NULL) == 0) {
         _err("Failed to create sec_api dir in temporary dir: %s",secTempDir);
-        return NULL;
+        return false;
     }
     PathCombine(sysSecTempDir, secTempDir, "sys");
     if (CreateDirectory(sysSecTempDir, NULL) == 0) {
         _err("Failed to create sec_api/sys dir in temporary dir: %s",sysSecTempDir);
-        return NULL;
+        return false;
     }
     PathCombine(tccTempDir, tempDir, "tcc");
     if (CreateDirectory(tccTempDir, NULL) == 0) {
         _err("Failed to create tcc dir in temporary dir: %s",tccTempDir);
-        return NULL;
+        return false;
     }
     PathCombine(winTempDir, tempDir, "winapi");
     if (CreateDirectory(winTempDir, NULL) == 0) {
         _err("Failed to create winapi dir in temporary dir: %s",winTempDir);
-        return NULL;
+        return false;
     }
-    if(!gen_exec_headers(tempDir)) return(NULL);
-    return(tempDir);
+    if(!gen_exec_headers(tempDir)) return(false);
+    if(!cjit_extensions_mkdtemp(CJIT, tempDir)) return(false);
+    return(true);
 }
 #else // POSIX
-bool dir_exists(const char *path) {
+bool dir_exists(CJITState *CJIT, const char *path) {
 	struct stat info;
 	if (stat(path, &info) != 0) {
 		// stat() failed; the path does not exist
 		return false;
 	} else if (info.st_mode & S_IFDIR) {
 		// The path exists and is a directory
+		CJIT->tmpdir = malloc(strlen(path)+1);
+		strcpy(CJIT->tmpdir, path);
 		return true;
 	} else {
 		_err("Temp dir is a file, cannot overwrite: %s",path);
@@ -411,12 +432,19 @@ bool dir_exists(const char *path) {
 	}
 }
 
-char *posix_mkdtemp() {
-	static char tpath[260];
+bool posix_mkdtemp(CJITState *CJIT) {
+	char tpath[260];
 	snprintf(tpath,259,"/tmp/cjit-%s",VERSION);
-	if(dir_exists(tpath)) return(tpath);
+	if(dir_exists(CJIT, tpath)) return(tpath);
 	mkdir(tpath,0755);
-	if(! gen_exec_headers(tpath) ) return(NULL);
-	return(&tpath[0]);
+	if(!gen_exec_headers(tpath) ) {
+		_err("Cannot create temporary TCC headers");
+		return(false);
+	}
+	if(!cjit_extensions_mkdtemp(CJIT, tpath)) {
+		_err("Cannot create temporary CJIT headers");
+		return(false);
+	}
+	return(true);
 }
 #endif
