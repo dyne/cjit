@@ -243,6 +243,8 @@ jobs:
         with:
           path: |
             cjit-bin
+      - name: directory structure before zip tutorial
+        run: tree -dL 3
       - name: zip the tutorial archive
         run: |
           bash build/zip-tutorial.sh
