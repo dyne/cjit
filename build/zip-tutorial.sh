@@ -3,6 +3,8 @@
 # assume all binaries are in cjit-bin/release*/*
 # from github action release assets
 
+pwd
+ls -l
 mkdir -p cjit-tutorial
 cp -ra cjit-bin/release/*  cjit-tutorial
 cp -ra examples            cjit-tutorial
