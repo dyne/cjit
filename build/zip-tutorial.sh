@@ -11,7 +11,7 @@ for i in ${bins}; do
 	mv cjit-bin/${i} cjit-tutorial/`echo ${i} | sed 's/release/cjit/'`
 done
 cp -ra examples            cjit-tutorial
-git clone --depth 1 https://github.com/dyne/docs dyne-docs
-cp -ra dyne-docs/src/cjit       cjit-tutorial/docs
+#git clone --depth 1 https://github.com/dyne/docs dyne-docs
+#cp -ra dyne-docs/src/cjit       cjit-tutorial/docs
 
-zip -r a cjit-tutorial.zip    cjit-tutorial
+zip -r cjit-tutorial.zip    cjit-tutorial
