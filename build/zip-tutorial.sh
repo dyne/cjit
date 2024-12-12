@@ -14,4 +14,4 @@ cp -ra examples            cjit-tutorial
 git clone --depth 1 https://github.com/dyne/docs dyne-docs
 cp -ra dyne-docs/src/cjit       cjit-tutorial/docs
 
-zip a cjit-tutorial.zip    cjit-tutorial
+zip -r a cjit-tutorial.zip    cjit-tutorial
