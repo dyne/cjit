@@ -240,6 +240,11 @@ jobs:
         with:
           path: |
             cjit-bin
+      - name: zip the tutorial archive
+        run: |
+          bash build/zip-tutorial.sh
+          mkdir -p cjit-bin/release-tutorial
+          mv cjit-tutorial.zip cjit-bin/release-tutorial/
       - name: show directory structure
         run: tree -dL 3
       - name: relase all binary artifacts
