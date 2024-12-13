@@ -232,7 +232,7 @@ jobs:
 
   binary-release:
     name: 📢 Public release
-    needs: [semantic-release, osx-native-release, musl-release, linux-release, win-native-release, virustotal]
+    needs: [semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
