@@ -322,8 +322,18 @@ int main(int argc, char **argv) {
         } else free(stdin_code);
       } else { // load any file path
 	int res = detect_bom(code_path);
+	// returned values:
+	// 0  : no BOM, all OK
+	// <0 : file not found
+	// 1  : BOM found, UTF16-LE
+	// 2  : BOM found, UTF16-BE
+	// 3  : BOM found, UTF8
 	if(res ==0) {
 	  tcc_add_file(TCC, code_path);
+	} else if(res<0) {
+		_err("Cannot open file: %s",code_path);
+		_err("Execution aborted.");
+		goto endgame;
 	} else {
 	  _err("UTF BOM detected in file: %s",code_path);
 	  _err("Encoding is not yet supported, execution aborted.");

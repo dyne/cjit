@@ -59,7 +59,7 @@ int detect_bom(const char *filename) {
 	int fd = open(filename, O_RDONLY | O_BINARY);
 	res = read(fd,bom,3);
 	if (res!=3) {
-		_err("read error on %s: %s",filename, strerror(errno));
+		_err("read error: %s",strerror(errno));
 		return -1;
 	}
 	close(fd);
