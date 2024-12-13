@@ -248,7 +248,7 @@ jobs:
           mkdir -p cjit-tutorial
           cp -ra cjit-bin/* cjit-tutorial/
           cp -ra examples   cjit-tutorial/
-          tar cvfz cjit-tutorial.tar cjit-tutorial
+          tar cvfz cjit-tutorial.tar.gz cjit-tutorial
           mkdir -p cjit-bin/release-tutorial
           mv cjit-tutorial.tar.gz cjit-bin/release-tutorial/
       - name: show release directory structure
