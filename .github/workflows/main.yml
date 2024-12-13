@@ -210,25 +210,25 @@ jobs:
           path: |
             cjit-Darwin-arm64
 
-  virustotal:
-    name: 🦠 Virus scan of released binaries
-    needs: [osx-native-release, win-native-release]
-    runs-on: ubuntu-latest
-    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
-    steps:
-      - name: download binary artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: |
-            cjit-bin
-      - name: VirusTotal Scan
-        uses: crazy-max/ghaction-virustotal@v4
-        with:
-          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
-          update_release: true
-          files: |
-            cjit-bin/release-win-native-x86_64/*
-            cjit-bin/release-osx-native/*
+  # virustotal:
+  #   name: 🦠 Virus scan of released binaries
+  #   needs: [osx-native-release, win-native-release]
+  #   runs-on: ubuntu-latest
+  #   if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
+  #   steps:
+  #     - name: download binary artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         path: |
+  #           cjit-bin
+  #     - name: VirusTotal Scan
+  #       uses: crazy-max/ghaction-virustotal@v4
+  #       with:
+  #         vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+  #         update_release: true
+  #         files: |
+  #           cjit-bin/release-win-native-x86_64/*
+  #           cjit-bin/release-osx-native/*
 
   binary-release:
     name: 📢 Public release
@@ -265,6 +265,14 @@ jobs:
           prerelease: false
           fail_on_unmatched_files: true
           generate_release_notes: true
+      - name: VirusTotal Scan
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+          update_release: true
+          files: |
+            cjit-bin/release-win-native-x86_64/*
+            cjit-bin/release-osx-native/*
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
