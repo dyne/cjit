@@ -70,11 +70,12 @@ check: ## 🧪 Run all tests using the currently built binary ./cjit
 check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@./test/bats/bin/bats test/cli.bats
 	@./test/bats/bin/bats test/windows.bats
+	@./test/bats/bin/bats test/muntar.bats
 
 _: ##
 clean: ## 🧹 Clean the source from all built objects
 	$(MAKE) -f build/deps.mk clean
-	@rm -f cjit
+	@rm -f cjit cjit.exe cjit.command
 
 PREFIX?=/usr/local
 install: cjit
