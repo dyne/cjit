@@ -158,7 +158,7 @@ static int mtar_rewind(mtar_t *tar) {
 
 
 #include <sys/stat.h> // for mkdir(2)
-#if defined(_WIN32
+#if defined(_WIN32)
 #include <windows.h>
 #define makedir(path) CreateDirectory(path, NULL)
 #else
@@ -237,13 +237,30 @@ int untar_to_path(const char *path, const uint8_t *buf,
 	return(MTAR_ESUCCESS);
 }
 
+#if !defined(NOGUNZIP)
 // gunzip and untar all in one
 #include <tinf.h>
+#define DECOMPRESSED_SIZE_RATIO 6 // raise this on errors
 int untargz_to_path(const char *path, const uint8_t *buf,
 		    const unsigned int len) {
-	return(0);
+	int res;
+	unsigned int destlen = len*6;
+	uint8_t *dest = malloc(destlen);
+	res = tinf_gzip_uncompress(dest,&destlen,buf,len);
+	// fprintf(stdout,"Compressed source length: %u\n",len);
+	// fprintf(stdout,"Uncompressed destination length: %u\n",destlen);
+	// fprintf(stdout,"Max buffer length: %u\n",len*6);
+	// fprintf(stdout,"Multiplier ratio: %u\n",destlen/len);
+	if(res != TINF_OK) {
+		fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
+		free(dest);
+		exit(res);
+	}
+	res = untar_to_path(path, dest, destlen);
+	free(dest);
+	return(res);
 }
-
+#endif
 
 int mtar_load(mtar_t *tar, const char *name,
 	      const uint8_t *buf, size_t size) {
