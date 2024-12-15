@@ -5,8 +5,13 @@ setup() {
 	R=`pwd`
     load "$T"/test_helper/bats_support/load
     load "$T"/test_helper/bats_assert/load
+    load "$T"/test_helper/bats_file/load
     tar -Hustar -cf examples.tar examples
     xxd -i examples.tar > examples.c
+    gzip -c examples.tar > examples.tar.gz
+    xxd -i examples.tar.gz > examples_gzip.c
+    examples_len=`awk '/tar_len/{print $5}' examples.c`
+    examples_len=`echo $examples_len | cut -d';' -f1`
 }
 
 
@@ -63,4 +68,55 @@ EOF
     >&3 cat extracted/examples/donut.c
     assert_success
     assert_line --partial "untar_to_path file  extracted/examples/donut.c"
+}
+
+@test "tinf decompress gzip" {
+    cat << EOF > tinf_gunzip.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <inttypes.h>
+#include <string.h>
+#include <errno.h>
+#include <tinf.h>
+extern unsigned char examples_tar_gz[];
+extern unsigned int examples_tar_len;
+extern unsigned int examples_tar_gz_len;
+int main(int argc, char **argv) {
+    int res;
+    unsigned int destlen = examples_tar_len;
+    uint8_t *dest = malloc(destlen);
+    res = tinf_gzip_uncompress(dest, &destlen,
+                               examples_tar_gz, examples_tar_gz_len);
+    if(res != TINF_OK || destlen != examples_tar_len) {
+        fprintf(stderr,"Destination length doesn't match source\n");
+        fprintf(stderr,"Dest: %u Source: %u\n",destlen, examples_tar_len);
+        free(dest);
+        exit(res);
+    }
+    FILE *fp = fopen("examples_uncompressed.tar","w");
+    if(!fp) {
+        fprintf(stderr,
+                "Error open file for write: %s\n",
+                strerror(errno));
+        free(dest);
+        exit(1);
+    }
+    fwrite(dest,1,destlen,fp);
+    fclose(fp);
+    free(dest);
+    fprintf(stderr,"OK\n");
+    exit(0);
+}
+EOF
+    gcc -o tinf_gunzip -I ${R}/src \
+        ${R}/src/tinflate.c ${R}/src/tinfgzip.c \
+        examples.c examples_gzip.c tinf_gunzip.c
+    run ./tinf_gunzip
+    assert_success
+    assert_output 'OK'
+    assert_file_size_equals examples_uncompressed.tar $examples_len
+    # check contents using hash
+    l=`sha256sum examples_uncompressed.tar | cut -d' ' -f1`
+    r=`sha256sum examples.tar | cut -d' ' -f1`
+    assert_equal $l $r
 }
