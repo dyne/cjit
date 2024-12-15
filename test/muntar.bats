@@ -2,11 +2,12 @@ setup() {
     bats_require_minimum_version 1.5.0
     T="$BATS_TEST_DIRNAME"
     TMP="$BATS_TEST_TMPDIR"
-	R=`pwd`
+    R=`pwd`
     load "$T"/test_helper/bats_support/load
     load "$T"/test_helper/bats_assert/load
     load "$T"/test_helper/bats_file/load
-    tar -Hustar -cf examples.tar examples
+    tar --format ustar -cf ${TMP}/examples.tar examples
+    cd ${TMP}
     xxd -i examples.tar > examples.c
     gzip -c examples.tar > examples.tar.gz
     xxd -i examples.tar.gz > examples_gzip.c
@@ -18,7 +19,7 @@ setup() {
 @test "muntar list contents" {
       cat << EOF > muntar_list.c
 #include <stdio.h>
-#include <stdlib.h>      
+#include <stdlib.h>
 #include <muntar.h>
 extern unsigned char examples_tar[];
 extern unsigned int examples_tar_len;
@@ -40,7 +41,7 @@ int main(int argc, char **argv) {
 }
 EOF
     gcc -o muntar_list -I ${R}/src \
-        ${R}/src/muntar.c ${R}/src/io.c examples.c muntar_list.c 
+        ${R}/src/muntar.c ${R}/src/io.c examples.c muntar_list.c
     run ./muntar_list
     assert_success
     assert_line --partial "examples/"
@@ -63,11 +64,15 @@ int main(int argc, char **argv) {
 }
 EOF
     gcc -o muntar_extract -I ${R}/src \
-        ${R}/src/muntar.c ${R}/src/io.c examples.c muntar_extract.c
-    run ./muntar_extract extracted
-    >&3 cat extracted/examples/donut.c
+        ${R}/src/muntar.c examples.c muntar_extract.c
+    run ./muntar_extract ${TMP}/extracted
+    >&3 cat ${TMP}/extracted/examples/donut.c
     assert_success
-    assert_line --partial "untar_to_path file  extracted/examples/donut.c"
+    # assert_file_size_equals ${TMP}/extracted/examples/donut.c \
+    # `ls -l ${R}/examples/donut.c | cut -d' ' -f5`
+    l=`sha256sum ${TMP}/extracted/examples/donut.c | cut -d' ' -f1`
+    r=`sha256sum ${R}/examples/donut.c | cut -d' ' -f1`
+    assert_equal $l $r
 }
 
 @test "tinf decompress gzip" {
