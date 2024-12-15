@@ -140,9 +140,110 @@ static int mtar_seek(mtar_t *tar, size_t pos) {
 	return(MTAR_ESUCCESS);
 }
 
+static int mtar_rewind(mtar_t *tar) {
+	int err;
+	tar->iterator.offset = UINT64_MAX;
+	tar->iterator.cursor = UINT64_MAX;
+	err = mtar_seek(tar, 0);
+	if (err != MTAR_ESUCCESS) return err;
+	err = mtar_read_header(tar, &(tar->iterator.header));
+	if (err != MTAR_ESUCCESS) return err;
+	tar->iterator.offset = 0;
+	tar->iterator.cursor = 512;
+	return(MTAR_ESUCCESS);
+}
 ///////////////////
 // PUBLIC FUNCTIONS
 ///////////////////
+
+
+#include <sys/stat.h> // for mkdir(2)
+#if defined(_WIN32
+#include <windows.h>
+#define makedir(path) CreateDirectory(path, NULL)
+#else
+#define makedir(path) mkdir(path,0755)
+#endif
+// used by extract_embeddings(char *tmpdir)
+int untar_to_path(const char *path, const uint8_t *buf,
+		  const unsigned int len) {
+	int res;
+	mtar_t tar;
+	char tpath[512];
+	const size_t pathlen = strlen(path);
+	if(pathlen>100) return(MTAR_EFAILURE);
+	char *p;
+	const mtar_header_t *header = NULL;
+	strcpy(tpath, path);
+	res = mtar_load(&tar, path, buf, len);
+	if(res != MTAR_ESUCCESS) return(MTAR_EOPENFAIL);
+	// first create extract dir if doesn't exist
+	makedir(tpath);
+	while(!mtar_eof(&tar)) {
+		// then create every other subdir
+		p = tpath+pathlen;
+		*p = '/'; p++;
+		mtar_header(&tar, &header);
+		switch(header->type) {
+		case MTAR_TDIR:
+			if(header->path[0]!=0) { // subdir
+				const size_t subdirlen = strlen(header->path);
+				if(p-tpath+subdirlen>1023) return(MTAR_EOPENFAIL);
+				strcpy(p,header->path);
+				p += subdirlen;
+				*p = '/'; p++;
+			}
+			const size_t namelen = strlen(header->name);
+			if(p-tpath+namelen>1023) return(MTAR_EOPENFAIL);
+			strcpy(p,header->name);
+			makedir(tpath);
+			break;
+		}
+		mtar_next(&tar);
+	}
+	mtar_rewind(&tar);
+	while(!mtar_eof(&tar)) {
+		// and at last create the files
+		p = tpath+pathlen;
+		*p = '/'; p++;
+		mtar_header(&tar, &header);
+		switch(header->type) {
+		case MTAR_TREG:
+			if(header->path[0]!=0) { // subdir
+				const size_t subdirlen = strlen(header->path);
+				if(p-tpath+subdirlen>1023) return(MTAR_EOPENFAIL);
+				strcpy(p,header->path);
+				p += subdirlen;
+				*p = '/'; p++;
+			}
+			const size_t namelen = strlen(header->name);
+			if(p-tpath+namelen>1023) return(MTAR_EOPENFAIL);
+			strcpy(p,header->name);
+			FILE *fp = fopen(tpath,"w");
+			if(!fp) {
+				fprintf(stderr,
+					"Error open file for write: %s\n",
+					tpath);
+				perror("Reason: ");
+				return(MTAR_EWRITEFAIL);
+			}
+			fwrite(&tar.buffer[tar.iterator.cursor],
+			       1,header->size,fp);
+			fclose(fp);
+			break;
+		}
+		mtar_next(&tar);
+	}
+	return(MTAR_ESUCCESS);
+}
+
+// gunzip and untar all in one
+#include <tinf.h>
+int untargz_to_path(const char *path, const uint8_t *buf,
+		    const unsigned int len) {
+	return(0);
+}
+
 
 int mtar_load(mtar_t *tar, const char *name,
 	      const uint8_t *buf, size_t size) {
@@ -236,59 +337,4 @@ int mtar_entry_read(mtar_t *tar, void *ptr, int size)
 	if (err < 0) return err;
 	tar->iterator.cursor += (size_t) size;
 	return size;
-}
-
-#include <sys/stat.h> // for mkdir(2)
-
-// used by extract_embeddings(char *tmpdir)
-int untar_to_path(const char *path, const uint8_t *buf,
-		  const unsigned int len) {
-	int res;
-	mtar_t tar;
-	char tpath[512];
-	const size_t pathlen = strlen(path);
-	if(pathlen>100) return(MTAR_EFAILURE);
-	char *p;
-	const mtar_header_t *header = NULL;
-	strcpy(tpath, path);
-	res = mtar_load(&tar, path, buf, len);
-	if(res != MTAR_ESUCCESS) return(MTAR_EOPENFAIL);
-	while(!mtar_eof(&tar)) {
-		p = tpath+pathlen;
-		*p = '/'; p++;
-		mtar_header(&tar, &header);
-		if(header->path[0]!=0) { // subdir
-			const size_t subdirlen = strlen(header->path);
-			if(p-tpath+subdirlen>1023) return(MTAR_EOPENFAIL);
-			strcpy(p,header->path);
-			p += subdirlen;
- 			*p = '/'; p++;
-		}
-		const size_t namelen = strlen(header->name);
-		if(p-tpath+namelen>1023) return(MTAR_EOPENFAIL);
-		strcpy(p,header->name);
-		switch(header->type) {
-		case MTAR_TDIR:
-			printf("untar_to_path mkdir %s (type %i)\n",
-			       tpath,header->type);
-			mkdir(tpath,0755);
-			break;
-		case MTAR_TREG:
-			FILE *fp;
-			printf("untar_to_path file  %s\n", tpath);
-			fp = fopen(tpath,"w");
-			if(!fp) {
-				fprintf(stderr,
-					"Error open file for write: %s",
-					strerror(errno));
-				return(MTAR_EWRITEFAIL);
-			}
-			fwrite(&tar.buffer[tar.iterator.cursor],
-			       1,header->size,fp);
-			fclose(fp);
-			break;
-		}
-		mtar_next(&tar);
-	}
-	return(MTAR_ESUCCESS);
 }
