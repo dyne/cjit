@@ -1,13 +1,33 @@
+/* muntar
+ *
+ * Copyright (C) 2024 Dyne.org foundation
+ *                  maintained by Jaromil
+ *
+ * based on microtar (C) 2016 rxi
+ *   and on minitar  (C) 2019 Bruno Costa
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <errno.h>
 
 #include <muntar.h>
-
-// from io.c
-extern void _err(const char *fmt, ...);
-
 
 static int mtar_read_header(mtar_t *tar, mtar_header_t *h);
 
@@ -193,7 +213,7 @@ static int mtar_read_header(mtar_t *tar, mtar_header_t *h)
 
 	err = mtar_read(tar, (uint8_t*) &rh, sizeof(rh));
 	if (err != MTAR_ESUCCESS) {
-		_err("Error reading header of tar buffer: %s",tar->name);
+		fprintf(stderr,"Error reading header of tar buffer: %s\n",tar->name);
 		return -1;
 	}
 	return raw_to_header(h, &rh);
@@ -216,4 +236,57 @@ int mtar_entry_read(mtar_t *tar, void *ptr, int size)
 	if (err < 0) return err;
 	tar->iterator.cursor += (size_t) size;
 	return size;
+}
+
+// used by extract_embeddings(char *tmpdir)
+int untar_to_path(const char *path, const uint8_t *buf,
+		  const unsigned int len) {
+	int res;
+	mtar_t tar;
+	char tpath[512];
+	const size_t pathlen = strlen(path);
+	if(pathlen>100) return(MTAR_EFAILURE);
+	char *p;
+	const mtar_header_t *header = NULL;
+	strcpy(tpath, path);
+	res = mtar_load(&tar, path, buf, len);
+	if(res != MTAR_ESUCCESS) return(MTAR_EOPENFAIL);
+	while(!mtar_eof(&tar)) {
+		p = tpath+pathlen;
+		*p = '/'; p++;
+		mtar_header(&tar, &header);
+		if(header->path[0]!=0) { // subdir
+			const size_t subdirlen = strlen(header->path);
+			if(p-tpath+subdirlen>1023) return(MTAR_EOPENFAIL);
+			strcpy(p,header->path);
+			p += subdirlen;
+ 			*p = '/'; p++;
+		}
+		const size_t namelen = strlen(header->name);
+		if(p-tpath+namelen>1023) return(MTAR_EOPENFAIL);
+		strcpy(p,header->name);
+		switch(header->type) {
+		case MTAR_TDIR:
+			printf("untar_to_path mkdir %s (type %i)\n",
+			       tpath,header->type);
+			mkdir(tpath,0755);
+			break;
+		case MTAR_TREG:
+			FILE *fp;
+			printf("untar_to_path file  %s\n", tpath);
+			fp = fopen(tpath,"w");
+			if(!fp) {
+				fprintf(stderr,
+					"Error open file for write: %s",
+					strerror(errno));
+				return(MTAR_EWRITEFAIL);
+			}
+			fwrite(&tar.buffer[tar.iterator.cursor],
+			       1,header->size,fp);
+			fclose(fp);
+			break;
+		}
+		mtar_next(&tar);
+	}
+	return(MTAR_ESUCCESS);
 }
