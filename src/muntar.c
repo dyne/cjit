@@ -238,6 +238,8 @@ int mtar_entry_read(mtar_t *tar, void *ptr, int size)
 	return size;
 }
 
+#include <sys/stat.h> // for mkdir(2)
+
 // used by extract_embeddings(char *tmpdir)
 int untar_to_path(const char *path, const uint8_t *buf,
 		  const unsigned int len) {
