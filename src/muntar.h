@@ -1,16 +1,37 @@
-#ifndef MINITAR_H
-#define MINITAR_H
+/* muntar, part of CJIT
+ *
+ * Copyright (C) 2024 Dyne.org foundation
+ *              and maintained by Jaromil
+ *
+ * based on microtar (C) 2016 rxi
+ *   and on minitar  (C) 2019 Bruno Costa
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+#ifndef MUNTAR_H
+#define MUNTAR_H
 
 #include <stdint.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#ifndef _WIN32
-#include <sys/file.h>
-#endif
 
 #define TMAGIC   "ustar"
 #define TVERSION "00"
+
+// used by extract_embeddings(char *tmpdir)
+int untar_to_path(const char *path,
+		  const uint8_t *buf, const unsigned int len);
 
 enum {
 	MTAR_ESUCCESS     =  0,
