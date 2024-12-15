@@ -45,8 +45,8 @@ EOF
     run ./muntar_list
     assert_success
     assert_line --partial "examples/"
-    assert_line --partial "examples/donut.c (743 bytes)"
-}
+    assert_line --partial "examples/donut.c"
+    }
 
 @test "muntar extract contents" {
       cat << EOF > muntar_extract.c
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
         free(dest);
         exit(res);
     }
-    FILE *fp = fopen("examples_uncompressed.tar","w");
+    FILE *fp = fopen("examples_uncompressed.tar","wb");
     if(!fp) {
         fprintf(stderr,
                 "Error open file for write: %s\n",

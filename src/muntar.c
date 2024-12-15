@@ -157,11 +157,11 @@ static int mtar_rewind(mtar_t *tar) {
 ///////////////////
 
 
-#include <sys/stat.h> // for mkdir(2)
 #if defined(_WIN32)
 #include <windows.h>
 #define makedir(path) CreateDirectory(path, NULL)
 #else
+#include <sys/stat.h>
 #define makedir(path) mkdir(path,0755)
 #endif
 // used by extract_embeddings(char *tmpdir)
@@ -219,7 +219,7 @@ int untar_to_path(const char *path, const uint8_t *buf,
 			const size_t namelen = strlen(header->name);
 			if(p-tpath+namelen>1023) return(MTAR_EOPENFAIL);
 			strcpy(p,header->name);
-			FILE *fp = fopen(tpath,"w");
+			FILE *fp = fopen(tpath,"wb");
 			if(!fp) {
 				fprintf(stderr,
 					"Error open file for write: %s\n",
