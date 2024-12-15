@@ -40,14 +40,13 @@ int main(int argc, char **argv) {
     exit(0);
 }
 EOF
-    gcc -o muntar_list -I ${R}/src \
+    gcc -o muntar_list -DNOGUNZIP -I ${R}/src \
         ${R}/src/muntar.c ${R}/src/io.c examples.c muntar_list.c
     run ./muntar_list
     assert_success
     assert_line --partial "examples/"
     assert_line --partial "examples/donut.c (743 bytes)"
 }
-
 
 @test "muntar extract contents" {
       cat << EOF > muntar_extract.c
@@ -63,13 +62,11 @@ int main(int argc, char **argv) {
     exit(res);
 }
 EOF
-    gcc -o muntar_extract -I ${R}/src \
+    gcc -o muntar_extract -DNOGUNZIP -I ${R}/src \
         ${R}/src/muntar.c examples.c muntar_extract.c
     run ./muntar_extract ${TMP}/extracted
     >&3 cat ${TMP}/extracted/examples/donut.c
     assert_success
-    # assert_file_size_equals ${TMP}/extracted/examples/donut.c \
-    # `ls -l ${R}/examples/donut.c | cut -d' ' -f5`
     l=`sha256sum ${TMP}/extracted/examples/donut.c | cut -d' ' -f1`
     r=`sha256sum ${R}/examples/donut.c | cut -d' ' -f1`
     assert_equal $l $r
@@ -123,5 +120,31 @@ EOF
     # check contents using hash
     l=`sha256sum examples_uncompressed.tar | cut -d' ' -f1`
     r=`sha256sum examples.tar | cut -d' ' -f1`
+    assert_equal $l $r
+}
+
+
+@test "muntargz extract contents" {
+      cat << EOF > muntargz_extract.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <muntar.h>
+extern unsigned char examples_tar_gz[];
+extern unsigned int examples_tar_gz_len;
+int main(int argc, char **argv) {
+    int res;
+    fprintf(stderr,"extract to %s\n",argv[1]);
+    res = untargz_to_path(argv[1], examples_tar_gz, examples_tar_gz_len);
+    exit(res);
+}
+EOF
+    gcc -o muntargz_extract -I ${R}/src \
+    ${R}/src/tinfgzip.c ${R}/src/tinflate.c ${R}/src/muntar.c \
+    examples_gzip.c muntargz_extract.c
+    run ./muntargz_extract ${TMP}/extractgz
+    >&3 cat ${TMP}/extractgz/examples/donut.c
+    assert_success
+    l=`sha256sum ${TMP}/extractgz/examples/donut.c | cut -d' ' -f1`
+    r=`sha256sum ${R}/examples/donut.c | cut -d' ' -f1`
     assert_equal $l $r
 }
