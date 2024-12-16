@@ -23,11 +23,15 @@ cat <<EOF > ${code}
 #include <cjit.h>
 
 // from file.c
+extern bool cjit_mkdtemp(CJITState *CJIT);
 extern int muntar_to_path(const char *path, const uint8_t *buf, const unsigned int len);
 extern int muntargz_to_path(const char *path, const uint8_t *buf, const unsigned int len);
 
 // main function
-bool extract_embeddings(CJITState *CJIT, char *tmpdir) {
+bool extract_embeddings(CJITState *CJIT) {
+  bool res = 0;
+  char incpath[512];
+  const bool fresh = cjit_mkdtemp(CJIT);
 EOF
 
 exit 0

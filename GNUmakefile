@@ -64,6 +64,7 @@ _: ##
 check: ## 🧪 Run all tests using the currently built binary ./cjit
 	@./test/bats/bin/bats test/cli.bats
 	@./test/bats/bin/bats test/windows.bats
+	@./test/bats/bin/bats test/muntar.bats
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/dmon.bats; fi
 
 

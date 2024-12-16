@@ -87,6 +87,12 @@ const char cli_help[] =
   " --live\t run interactive editor for live coding\n"
   " --tgen\t create the runtime temporary dir and exit\n";
 
+bool free_cjit(CJITState *CJIT) {
+	if(CJIT->tmpdir) free(CJIT->tmpdir);
+	if(CJIT->write_pid) free(CJIT->write_pid);
+	if(CJIT->TCC) tcc_delete(CJIT->TCC);
+}
+
 int main(int argc, char **argv) {
   TCCState *TCC = NULL;
   CJITState CJIT;
@@ -149,11 +155,11 @@ int main(int argc, char **argv) {
 #else
       _err("Debug: NONE");
 #endif
-      tcc_delete(TCC);
+      free_cjit(&CJIT);
       exit(0); // print and exit
     } else if (c=='h' || c==100) { // help
       _err(cli_help,VERSION);
-      tcc_delete(TCC);
+      free_cjit(&CJIT);
       exit(0); // print and exit
     } else if (c == 'D') { // define
       int _res;
@@ -164,7 +170,7 @@ int main(int argc, char **argv) {
         tcc_define_symbol(TCC, opt.arg, &opt.arg[_res]);
       } else { // invalid char
         _err("Invalid char used in -D define symbol: %s", opt.arg);
-        tcc_delete(TCC);
+        free_cjit(&CJIT);
         exit(1);
       }
     } else if (c == 'L') { // library path
@@ -196,15 +202,10 @@ int main(int argc, char **argv) {
 	    live_mode = true;
 #endif
     } else if (c == 401) {
-#ifndef LIBC_MINGW32
-      posix_mkdtemp(&CJIT);
-#else
-      win32_mkdtemp(&CJIT);
-#endif
-      fprintf(stdout,"%s\n",CJIT.tmpdir);
-      // TODO: free CJIT too here (not reaching endgame)
-      tcc_delete(TCC);
-      exit(0);
+	    extract_embeddings(&CJIT);
+	    fprintf(stdout,"%s\n",CJIT.tmpdir);
+	    free_cjit(&CJIT);
+	    exit(0);
     }
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
     else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
@@ -234,17 +235,9 @@ int main(int argc, char **argv) {
   // initialize the tmpdir for execution
   // from here onwards use goto endgame
   // as the main and only exit
-  {
-	  bool tmpres;
-#ifndef LIBC_MINGW32
-	  tmpres = posix_mkdtemp(&CJIT);
-#else
-	  tmpres = win32_mkdtemp(&CJIT);
-#endif
-	  if(!tmpres || !CJIT.tmpdir) {
-		  _err("Error creating temp dir: %s",strerror(errno));
-		  goto endgame;
-	  }
+  if(!extract_embeddings(&CJIT)) {
+	  _err("Error extracting temp dir: %s",strerror(errno));
+	  goto endgame;
   }
 
   // where is libtcc1.a found
@@ -367,11 +360,7 @@ int main(int argc, char **argv) {
 
   endgame:
   // free TCC
-  if(TCC) tcc_delete(TCC);
-  // free CJITState
-  if(CJIT.tmpdir) free(CJIT.tmpdir);
-  if(CJIT.write_pid) free(CJIT.write_pid);
-
+  free_cjit(&CJIT);
   if(entry!=default_main) free(entry);
   exit(res);
 }

@@ -51,7 +51,7 @@
 extern void _err(const char *fmt, ...);
 
 // generated in embedded.c
-extern bool extract_embeddings(CJITState *CJIT, char *tmpdir);
+extern bool extract_embeddings(CJITState *CJIT);
 
 int detect_bom(const char *filename) {
 	uint8_t bom[3];
@@ -328,7 +328,7 @@ char *dir_load(const char *path)
 
 #endif
 
-bool dir_exists(CJITState *CJIT, const char *path) {
+static bool dir_exists(CJITState *CJIT, const char *path) {
 	CJIT->tmpdir = malloc(strlen(path)+1);
 	strcpy(CJIT->tmpdir, path);
 #if defined(_WIN32)
@@ -360,43 +360,33 @@ bool dir_exists(CJITState *CJIT, const char *path) {
 #endif
 }
 
+bool cjit_mkdtemp(CJITState *CJIT) {
+	bool res;
 #if defined(_WIN32)
-bool win32_mkdtemp(CJITState *CJIT) {
-    static char tempDir[MAX_PATH];
-    char sysTempDir[MAX_PATH];
-    char secTempDir[MAX_PATH];
-    char tccTempDir[MAX_PATH];
-    char sysSecTempDir[MAX_PATH];
-    char winTempDir[MAX_PATH];
-    char tempPath[MAX_PATH];
-    char filename [64];
-    snprintf(filename,63,"CJIT-%s",VERSION);
-    // Get the temporary path
-    if (GetTempPath(MAX_PATH, tempPath) == 0) {
-        _err("Failed to get temporary path");
-        return false;
-    }
-    PathCombine(tempDir, tempPath, filename);
-    // return already if found existing
-    if(! dir_exists(CJIT, tempDir)) {
-	    // Create the temporary directory
-	    if (CreateDirectory(tempDir, NULL) == 0) {
-		    _err("Failed to create temporary dir: %s",tempDir);
-		    return false;
-	    }
-    }
-    if(!extract_embeddings(CJIT, tempDir)) return(false);
-    return(true);
-}
+	static char tempDir[MAX_PATH];
+	char tempPath[MAX_PATH];
+	char filename [64];
+	snprintf(filename,63,"CJIT-%s",VERSION);
+	// Get the temporary path
+	if (GetTempPath(MAX_PATH, tempPath) == 0) {
+		_err("Failed to get temporary path");
+		return false;
+	}
+	PathCombine(tempDir, tempPath, filename);
+	// return already if found existing
+	res = !dir_exists(CJIT, tempDir);
+	if(res) {
+		// Create the temporary directory
+		if (CreateDirectory(tempDir, NULL) == 0) {
+			_err("Failed to create temporary dir: %s",tempDir);
+			return false;
+		}
+	}
 #else // POSIX
-bool posix_mkdtemp(CJITState *CJIT) {
 	char tpath[260];
 	snprintf(tpath,259,"/tmp/cjit-%s",VERSION);
-	if(! dir_exists(CJIT, tpath)) mkdir(tpath,0755);
-	if(!extract_embeddings(CJIT, tpath) ) {
-		_err("Cannot create temporary directory: %s",tpath);
-		return(false);
-	}
-	return(true);
-}
+	res = !dir_exists(CJIT, tpath);
+	if(res) mkdir(tpath,0755);
 #endif
+	return(res); // true if fresh
+}
