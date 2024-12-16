@@ -13,6 +13,12 @@ struct CJITState {
 };
 typedef struct CJITState CJITState;
 
+extern bool free_cjit(CJITState *CJIT);
+
+
+// from embedded.c - generated at build time
+extern bool extract_embeddings(CJITState *CJIT);
+
 /////////////
 // from file.c
 extern int   detect_bom(const char *filename);

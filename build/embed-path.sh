@@ -54,21 +54,21 @@ else
 fi
 
 # xxd already converts dots in underscores
-name=`echo $name | sed 's/\./_/g'`
+varname=`echo $name | sed 's/\./_/g'`
 
 # generate embeddings in source for extract_embeddings(char *tmpdir)
-echo "extern char *${name};" >> src/embedded.h
-echo "extern unsigned int ${name}_len;" >> src/embedded.h
+echo "extern char *${varname};" >> src/embedded.h
+echo "extern unsigned int ${varname}_len;" >> src/embedded.h
 
 cat <<EOF >> src/embedded.c
-if(muntargz_to_path(tmpdir,(char*)&${name},${name}_len))
-	return(false);
-{
-	if(!CJIT) return(false);
-	if(!CJIT->tmpdir) return(false);
-	char incpath[512];
-	snprintf(incpath,511,"%s/%s",CJIT->tmpdir,"${name}");
-	tcc_add_include_path(CJIT->TCC, incpath);
+snprintf(incpath,511,"%s/%s",CJIT->tmpdir,"${name}");
+if(fresh) {
+res = muntargz_to_path(CJIT->tmpdir,(char*)&${varname},${varname}_len);
 }
+if(res!=0) { // muntar returns 0 on success
+_err("Error extracting %s",incpath);
+return(false);
+}
+tcc_add_include_path(CJIT->TCC, incpath);
 EOF
 exit 0
