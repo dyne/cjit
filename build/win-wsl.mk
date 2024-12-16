@@ -16,9 +16,23 @@ ldflags += -static-libgcc
 tinycc_config += --targetos=WIN32 --config-backtrace=no --enable-cross
 tinycc_config += --ar=${ar}
 
-SOURCES += src/win-compat.o
+SOURCES += src/win-compat.o  \
+	src/embed_libtcc1.a.o     \
+	src/embed_include.o \
+	src/embed_contrib_headers.o \
+	src/embed_tinycc_win32.o
 
-all: deps cjit.exe
+all: deps embed cjit.exe
+
+embed: lib/tinycc/libtcc1.a
+	$(info Generating embeddings)
+	bash build/init-embeddings.sh
+	bash build/embed-path.sh lib/tinycc/libtcc1.a
+	bash build/embed-path.sh lib/tinycc/include
+	bash build/embed-path.sh lib/tinycc/win32/include tinycc_win32
+	bash build/embed-path.sh lib/contrib_headers
+	@echo "\nreturn(true);\n}\n" >> src/embedded.c
+	@echo "\n#endif\n" >> src/embedded.h
 
 cjit.exe: ${SOURCES}
 	./build/stamp-exe.sh
@@ -30,17 +44,15 @@ deps:
 	@${MAKE} -C lib/tinycc libtcc.a
 	@${MAKE} -C lib/tinycc libtcc1.a
 	@mv lib/tinycc/x86_64-win32-libtcc1.a lib/tinycc/libtcc1.a
-	@bash build/embed-libtcc1.sh lib/tinycc/libtcc1.a
-	@sed -i 's/unsigned char lib_tinycc_libtcc1_a/const unsigned char libtcc1/' src/embed-libtcc1.c
-	@sed -i 's/unsigned int lib_tinycc_libtcc1_a_len/const unsigned int libtcc1_len/' src/embed-libtcc1.c
-	@bash build/embed-headers.sh win
-	@sed -i 's/unsigned char/const char/' src/embed-headers.c
-	@sed -i 's/unsigned int/const unsigned int/' src/embed-headers.c
-	@bash build/embed-dmon.sh
 
-.c.o:
-	$(cc) \
-	$(cflags) \
-	-c $< -o $@ \
-	-DVERSION=\"${VERSION}\" \
-	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
+# @bash build/embed-headers.sh win
+# @sed -i 's/unsigned char/const char/' src/embed-headers.c
+# @sed -i 's/unsigned int/const unsigned int/' src/embed-headers.c
+
+include build/deps.mk
+# .c.o:
+# 	$(cc) \
+# 	$(cflags) \
+# 	-c $< -o $@ \
+# 	-DVERSION=\"${VERSION}\" \
+# 	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"

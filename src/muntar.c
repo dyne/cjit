@@ -165,7 +165,7 @@ static int mtar_rewind(mtar_t *tar) {
 #define makedir(path) mkdir(path,0755)
 #endif
 // used by extract_embeddings(char *tmpdir)
-int untar_to_path(const char *path, const uint8_t *buf,
+int muntar_to_path(const char *path, const uint8_t *buf,
 		  const unsigned int len) {
 	int res;
 	mtar_t tar;
@@ -240,11 +240,21 @@ int untar_to_path(const char *path, const uint8_t *buf,
 #if !defined(NOGUNZIP)
 // gunzip and untar all in one
 #include <tinf.h>
-#define DECOMPRESSED_SIZE_RATIO 6 // raise this on errors
-int untargz_to_path(const char *path, const uint8_t *buf,
+#define DECOMPRESSED_SIZE_RATIO 8 // raise this on errors
+int muntargz_to_path(const char *path, const uint8_t *buf,
 		    const unsigned int len) {
+	if(!buf) {
+		fprintf(stderr,"%s: called with NULL buffer\n",
+			__func__);
+		return(-1);
+	}
+	if(!len) {
+		fprintf(stderr,"%s: called with zero length\n",
+			__func__);
+		return(-1);
+	}
 	int res;
-	unsigned int destlen = len*6;
+	unsigned int destlen = len*DECOMPRESSED_SIZE_RATIO;
 	uint8_t *dest = malloc(destlen);
 	res = tinf_gzip_uncompress(dest,&destlen,buf,len);
 	// fprintf(stdout,"Compressed source length: %u\n",len);
@@ -256,7 +266,7 @@ int untargz_to_path(const char *path, const uint8_t *buf,
 		free(dest);
 		exit(res);
 	}
-	res = untar_to_path(path, dest, destlen);
+	res = muntar_to_path(path, dest, destlen);
 	free(dest);
 	return(res);
 }

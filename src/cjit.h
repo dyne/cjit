@@ -9,6 +9,7 @@ struct CJITState {
 	char *tmpdir;
 	char *write_pid; // filename to write the pid of execution
 	bool dmon;
+	TCCState *TCC;
 };
 typedef struct CJITState CJITState;
 
