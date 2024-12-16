@@ -25,7 +25,7 @@
 
 #include <cjit.h>
 
-#ifndef LIBC_MINGW32
+#if !defined(_WIN32)
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -36,7 +36,7 @@
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
 int cjit_exec_win(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
   int res = 1;
   int (*_ep)(int, char**);
@@ -61,7 +61,7 @@ int cjit_exec_win(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char
   return(res);
 }
 
-#else // LIBC_MINGW32
+#else // _WIN32
 int cjit_exec_fork(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
   pid_t pid;
   int res = 1;
@@ -111,7 +111,7 @@ int cjit_exec_fork(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, cha
   }
   return res;
 }
-#endif // LIBC_MINGW32
+#endif // _WIN32
 
 #ifdef KILO_SUPPORTED
 
@@ -356,9 +356,9 @@ int cjit_cli_tty(TCCState *TCC) {
         return 2;
     }
     strcpy(code, intro);
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
     _err("Missing source code argument");
-#else // LIBC_MINGW32
+#else // _WIN32
     while (1) {
       printf("cjit> ");
       fflush(stdout);
@@ -395,11 +395,11 @@ int cjit_cli_tty(TCCState *TCC) {
         _err("Running code\n");
         _err("-----------------------------------\n");
 #endif // VERBOSE_CLI
-#ifndef LIBC_MINGW32
+#if !defined(_WIN32)
         res = cjit_exec_fork(TCC, NULL, "main", 0, NULL);
-#else // LIBC_MINGW32
+#else // _WIN32
         res = cjit_exec_win(TCC, NULL, "main", 0, NULL);
-#endif // LIBC_MINGW32
+#endif // _WIN32
         free(code);
         code = NULL;
         break;
@@ -414,6 +414,6 @@ int cjit_cli_tty(TCCState *TCC) {
       free(line);
       line = NULL;
     }
-#endif // LIBC_MINGW32
+#endif // _WIN32
     return res;
 }

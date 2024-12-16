@@ -43,7 +43,7 @@ extern char *lib_tinycc_include_tgmath_h;
 extern unsigned int lib_tinycc_include_tgmath_h_len;
 extern char *lib_tinycc_include_varargs_h;
 extern unsigned int lib_tinycc_include_varargs_h_len;
-#if defined(LIBC_MINGW32)
+#if defined(_WIN32)
 extern char *lib_tinycc_win32_include_assert_h;
 extern unsigned int lib_tinycc_win32_include_assert_h_len;
 extern char *lib_tinycc_win32_include_conio_h;

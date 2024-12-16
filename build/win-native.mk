@@ -16,7 +16,7 @@ SHELL := C:\Program Files\Git\bin\bash.exe
 # redefine compilation flags
 cc := gcc
 cflags := -O2 -fomit-frame-pointer -Isrc -Ilib/tinycc
-cflags += -DLIBC_MINGW32 -DCJIT_BUILD_WIN
+cflags += -DCJIT_BUILD_WIN
 ldflags := -static-libgcc
 ldadd := lib/tinycc/libtcc.a -lshlwapi
 

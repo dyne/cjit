@@ -44,7 +44,7 @@ bool gen_exec_headers(char *tmpdir) {
 	if(!write_to_file(tmpdir,"tccdefs.h",(char*)&lib_tinycc_include_tccdefs_h,lib_tinycc_include_tccdefs_h_len)) return(false);
 	if(!write_to_file(tmpdir,"tgmath.h",(char*)&lib_tinycc_include_tgmath_h,lib_tinycc_include_tgmath_h_len)) return(false);
 	if(!write_to_file(tmpdir,"varargs.h",(char*)&lib_tinycc_include_varargs_h,lib_tinycc_include_varargs_h_len)) return(false);
-#if defined(LIBC_MINGW32)
+#if defined(_WIN32)
 	if(!write_to_file(tmpdir,"assert.h",(char*)&lib_tinycc_win32_include_assert_h,lib_tinycc_win32_include_assert_h_len)) return(false);
 	if(!write_to_file(tmpdir,"conio.h",(char*)&lib_tinycc_win32_include_conio_h,lib_tinycc_win32_include_conio_h_len)) return(false);
 	if(!write_to_file(tmpdir,"ctype.h",(char*)&lib_tinycc_win32_include_ctype_h,lib_tinycc_win32_include_ctype_h_len)) return(false);

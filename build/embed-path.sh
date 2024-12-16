@@ -23,16 +23,16 @@ command -v xxd > /dev/null || {
   exit 1
 }
 
->&2 echo "parent: $parent"
->&2 echo "name: $name"
->&2 echo "pathname: $pathname"
->&2 echo "dest: $dst"
+# >&2 echo "parent: $parent"
+# >&2 echo "name: $name"
+# >&2 echo "pathname: $pathname"
+# >&2 echo "dest: $dst"
 
 rm -f ${name}.tar.gz
 prevpwd=`pwd`
 cd ${parent}
 [ "$pathname" != "$name" ] && cp -ra "$pathname" "$name"
-tar --format ustar -czf ${prevpwd}/${name}.tar.gz "$name"
+tar --format ustar -cvzf ${prevpwd}/${name}.tar.gz "$name"
 [ "$pathname" != "$name" ] && rm -rf "$name"
 cd -
 

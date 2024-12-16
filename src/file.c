@@ -29,7 +29,7 @@
 
 #include <ftw.h> // _GNU_SOURCE
 
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
 #    ifndef WIN32_LEAN_AND_MEAN
 #        define WIN32_LEAN_AND_MEAN
 #    endif
@@ -169,7 +169,7 @@ char* file_load(const char *filename) {
 }
 
 char *load_stdin() {
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
   return NULL;
 #else
   char *code = NULL;
@@ -202,7 +202,7 @@ bool write_to_file(const char *path, const char *filename, const char *buf, unsi
   FILE *fd;
   size_t written;
   char fullpath[256];
-#if defined(LIBC_MINGW32)
+#if defined(_WIN32)
   snprintf(fullpath,255,"%s\\%s",path,filename);
 #else
   snprintf(fullpath,255,"%s/%s",path,filename);
@@ -226,7 +226,7 @@ bool write_to_file(const char *path, const char *filename, const char *buf, unsi
 static int rm_ftw(const char *pathname,
                   const struct stat *sbuf,
                   int type, struct FTW *ftwb) {
-#ifndef LIBC_MINGW32
+#if !defined(_WIN32)
   if(remove(pathname) < 0) {
     _err("Error: remove path %s",pathname);
     _err("%s",strerror(errno));
@@ -258,7 +258,7 @@ bool rm_recursive(char *path) {
   return true;
 }
 
-#ifndef LIBC_MINGW32
+#if !defined(_WIN32)
 
 static char *full_content = NULL;
 

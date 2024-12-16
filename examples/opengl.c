@@ -11,7 +11,7 @@
 
 #pragma comment(lib, "SDL2")
 
-#ifdef WINDOWS
+#ifdef _WIN32
 #pragma comment(lib, "opengl32")
 #elif LINUX
 #pragma comment(lib, "OpenGL")
