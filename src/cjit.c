@@ -107,6 +107,7 @@ int main(int argc, char **argv) {
     _err("Could not initialize tcc");
     exit(1);
   }
+  CJIT.TCC = TCC;
   // get the extra cflags from the CFLAGS env variable
   // they are overridden by explicit command-line options
   if(getenv("CFLAGS")) {
@@ -233,27 +234,25 @@ int main(int argc, char **argv) {
   // initialize the tmpdir for execution
   // from here onwards use goto endgame
   // as the main and only exit
+  {
+	  bool tmpres;
 #ifndef LIBC_MINGW32
-  posix_mkdtemp(&CJIT);
+	  tmpres = posix_mkdtemp(&CJIT);
 #else
-  win32_mkdtemp(&CJIT);
+	  tmpres = win32_mkdtemp(&CJIT);
 #endif
-  if(!CJIT.tmpdir) {
-    _err("Error creating temp dir: %s",strerror(errno));
-    goto endgame;
+	  if(!tmpres || !CJIT.tmpdir) {
+		  _err("Error creating temp dir: %s",strerror(errno));
+		  goto endgame;
+	  }
   }
 
-  // finally set paths
-  tcc_add_include_path(TCC, CJIT.tmpdir);
-#ifdef LIBC_MINGW32
-  {
-	  char tmp_winapi[512];
-	  snprintf(tmp_winapi,511,"%s/winapi",CJIT.tmpdir);
-	  tcc_add_include_path(TCC, tmp_winapi);
-	  tcc_add_library_path(TCC, "C:\\Windows\\System32");
-  }
-#endif
+  // where is libtcc1.a found
   tcc_add_library_path(TCC, CJIT.tmpdir);
+
+#ifdef LIBC_MINGW32
+  tcc_add_library_path(TCC, "C:\\Windows\\System32");
+#endif
   // tcc_set_lib_path(TCC,tmpdir); // this overrides all?
 
   // set output in memory for just in time execution

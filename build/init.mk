@@ -16,8 +16,9 @@ CFLAGS ?= -O2 -fomit-frame-pointer ${cflags_stack_protect}
 cflags := ${CFLAGS} ${cflags_includes}
 
 SOURCES := src/io.o src/file.o src/cflag.o src/cjit.o \
-           src/embed-libtcc1.o src/embed-headers.o \
-           src/exec-headers.o src/repl.o src/embed-dmon.o
+           src/embedded.o \
+           src/repl.o \
+           src/muntar.o src/tinflate.o src/tinfgzip.o
 
 ldadd := lib/tinycc/libtcc.a
 

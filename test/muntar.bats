@@ -58,7 +58,7 @@ extern unsigned int examples_tar_len;
 int main(int argc, char **argv) {
     int res;
     fprintf(stderr,"extract to %s\n",argv[1]);
-    res = untar_to_path(argv[1], examples_tar, examples_tar_len);
+    res = muntar_to_path(argv[1], examples_tar, examples_tar_len);
     exit(res);
 }
 EOF
@@ -134,7 +134,7 @@ extern unsigned int examples_tar_gz_len;
 int main(int argc, char **argv) {
     int res;
     fprintf(stderr,"extract to %s\n",argv[1]);
-    res = untargz_to_path(argv[1], examples_tar_gz, examples_tar_gz_len);
+    res = muntargz_to_path(argv[1], examples_tar_gz, examples_tar_gz_len);
     exit(res);
 }
 EOF

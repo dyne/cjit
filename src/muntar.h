@@ -30,10 +30,10 @@
 #define TVERSION "00"
 
 // used by extract_embeddings(char *tmpdir)
-int untar_to_path(const char *path,
+int muntar_to_path(const char *path,
 		  const uint8_t *buf, const unsigned int len);
 #if !defined(NOGUNZIP)
-int untargz_to_path(const char *path,
+int muntargz_to_path(const char *path,
 		    const uint8_t *buf, const unsigned int len);
 #endif
 
