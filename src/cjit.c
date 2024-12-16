@@ -25,7 +25,7 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#ifndef LIBC_MINGW32
+#if !defined(_WIN32)
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
 	    CJIT.write_pid = malloc(strlen(opt.arg)+1);
 	    strcpy(CJIT.write_pid,opt.arg);
     } else if (c == 301) {
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
 	    _err("Live mode not supported in Windows");
 #else
 	    if(!quiet)_err("Live mode activated");
@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
   // where is libtcc1.a found
   tcc_add_library_path(TCC, CJIT.tmpdir);
 
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
   tcc_add_library_path(TCC, "C:\\Windows\\System32");
 #endif
   // tcc_set_lib_path(TCC,tmpdir); // this overrides all?
@@ -277,7 +277,7 @@ int main(int argc, char **argv) {
 
   char *stdin_code = NULL;
   if(opt.ind >= argc) {
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
     _err("No files specified on commandline");
     goto endgame;
 #endif
@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
       if(!quiet)_err("%c %s",(*code_path=='-'?'|':'+'),
            (*code_path=='-'?"standard input":code_path));
       if(*code_path=='-') { // stdin explicit
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
         _err("Code from standard input not supported on Windows");
         goto endgame;
 #endif
@@ -337,7 +337,7 @@ int main(int argc, char **argv) {
   // error handler callback for TCC
   tcc_set_error_func(TCC, stderr, handle_error);
 
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
   // add symbols for windows compatibility
   tcc_add_symbol(TCC, "usleep", &win_compat_usleep);
   tcc_add_symbol(TCC, "getline", &win_compat_getline);
@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
   // number of args at the left hand of arg separator, or all of them
   int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
   char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
-#ifndef LIBC_MINGW32
+#if !defined(_WIN32)
   res = cjit_exec_fork(TCC, &CJIT, entry, right_args, right_argv);
 #else
   res = cjit_exec_win(TCC, &CJIT, entry, right_args, right_argv);

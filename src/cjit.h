@@ -29,7 +29,7 @@ extern char* dir_load(const char *path);
 extern bool write_to_file(const char *path, const char *filename,
 			  const char *buf, unsigned int len);
 
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
 bool win32_mkdtemp(CJITState *CJIT);
 // from win-compat.c
 extern void win_compat_usleep(unsigned int microseconds);
@@ -41,7 +41,7 @@ bool posix_mkdtemp(CJITState *CJIT);
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 // from repl.c
-#ifdef LIBC_MINGW32
+#if defined(_WIN32)
 extern int cjit_exec_win(TCCState *TCC, CJITState *CJIT,
 			 const char *ep, int argc, char **argv);
 #else
