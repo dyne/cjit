@@ -30,6 +30,7 @@ function fetch() {
 fetch dmon.h    https://raw.githubusercontent.com/septag/dmon/master/dmon.h
 fetch nuklear.h https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/master/nuklear.h
 fetch miniaudio.h https://raw.githubusercontent.com/mackron/miniaudio/master/miniaudio.h
+fetch termbox2.h https://raw.githubusercontent.com/termbox/termbox2/refs/heads/master/termbox2.h
 
 # win32ports
 odir="lib/win32ports"
