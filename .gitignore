@@ -1,3 +1,4 @@
 cjit
 *.o
 src/embed*
+.build_done*

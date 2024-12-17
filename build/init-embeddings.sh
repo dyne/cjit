@@ -24,7 +24,6 @@ cat <<EOF > ${code}
 
 // from file.c
 extern bool cjit_mkdtemp(CJITState *CJIT);
-extern int muntar_to_path(const char *path, const uint8_t *buf, const unsigned int len);
 extern int muntargz_to_path(const char *path, const uint8_t *buf, const unsigned int len);
 
 // main function

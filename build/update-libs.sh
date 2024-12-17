@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 odir=lib/contrib_headers
 
 function fetch() {
@@ -41,12 +43,14 @@ odir="lib/win32ports/sys"
 fetch time.h https://raw.githubusercontent.com/win32ports/sys_time_h/refs/heads/master/sys/time.h
 fetch wait.h https://raw.githubusercontent.com/win32ports/sys_wait_h/refs/heads/master/sys/wait.h
 
-
-[ "$1" = "stb" ] && {
-# std headers
-	if [ -d stb ]; then cd stb && git pull --rebase; cd -
-	else git clone https://github.com/nothings/stb.git
-	fi
-	mkdir -p lib/stb
-	cp stb/*.h lib/stb/
+function clone() {
+	name=$1
+	repo=$2
+	>&2 echo "update $name headers from $repo"
+	git clone --depth 1 $repo /tmp/$name
+	mkdir -p lib/$name
 }
+
+clone stb https://github.com/nothings/stb.git
+cp /tmp/stb/*.h lib/stb
+rm -rf /tmp/stb

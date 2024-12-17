@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2024 Dyne.org
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Copyright (C) 2024 Dyne.org Foundation
 #
 # This source code is free software; you can redistribute it and/or
