@@ -23,9 +23,10 @@ ldadd := lib/tinycc/libtcc.a -lshlwapi
 SOURCES += src/win-compat.o  \
 	src/embed_libtcc1.a.o     \
 	src/embed_include.o \
-	src/embed_contrib_headers.o \
 	src/embed_tinycc_win32.o \
-	src/embed_win32ports.o
+	src/embed_win32ports.o \
+	src/embed_contrib_headers.o \
+	src/embed_stb.o
 
 all: embed cjit.exe
 
@@ -35,8 +36,9 @@ embed: lib/tinycc/libtcc1.a
 	bash build/embed-path.sh lib/tinycc/libtcc1.a
 	bash build/embed-path.sh lib/tinycc/include
 	bash build/embed-path.sh lib/tinycc/win32/include tinycc_win32
-	bash build/embed-path.sh lib/contrib_headers
 	bash build/embed-path.sh lib/win32ports
+	bash build/embed-path.sh lib/contrib_headers
+	bash build/embed-path.sh lib/stb
 	@echo                 >> src/embedded.c
 	@echo "return(true);" >> src/embedded.c
 	@echo "}"             >> src/embedded.c
