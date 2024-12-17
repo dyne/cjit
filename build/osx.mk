@@ -7,7 +7,8 @@ SOURCES += \
 	src/kilo.o \
 	src/embed_libtcc1.a.o \
 	src/embed_include.o \
-	src/embed_contrib_headers.o
+	src/embed_contrib_headers.o \
+	src/embed_stb.o
 
 all: embed cjit.command
 
@@ -17,8 +18,12 @@ embed: lib/tinycc/libtcc1.a
 	bash build/embed-path.sh lib/tinycc/libtcc1.a
 	bash build/embed-path.sh lib/tinycc/include
 	bash build/embed-path.sh lib/contrib_headers
-	@echo "\nreturn(true);\n}\n" >> src/embedded.c
-	@echo "\n#endif\n" >> src/embedded.h
+	bash build/embed-path.sh lib/stb
+	@echo                 >> src/embedded.c
+	@echo "return(true);" >> src/embedded.c
+	@echo "}"             >> src/embedded.c
+	@echo          >> src/embedded.h
+	@echo "#endif" >> src/embedded.h
 
 cjit.command: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}

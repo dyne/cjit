@@ -16,7 +16,8 @@ SOURCES += \
 	src/embed_include.o \
 	src/embed_contrib_headers.o \
 	src/embed_libc.so.o \
-	src/musl-symbols.o
+	src/musl-symbols.o \
+	src/embed_stb.o
 
 # SOURCES += src/embed-musl-libc.o src/musl-symbols.o src/kilo.o
 
@@ -32,6 +33,7 @@ embed: lib/tinycc/libtcc1.a
 	bash build/embed-path.sh lib/tinycc/include
 	bash build/embed-path.sh lib/contrib_headers
 	bash build/embed-path.sh /lib/x86_64-linux-musl/libc.so
+	bash build/embed-path.sh lib/stb
 	@echo                 >> src/embedded.c
 	@echo "return(true);" >> src/embedded.c
 	@echo "}"             >> src/embedded.c
