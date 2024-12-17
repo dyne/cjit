@@ -13,7 +13,7 @@
 
 int main(void) 
 {
-    printf("Success.\n");
+    printf("Success.");
     return 0;
 }
 #endif
