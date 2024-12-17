@@ -257,7 +257,7 @@ jobs:
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
-          update_release: true
+          update_release_body: true
           files: |
             cjit-bin/release-win-native-x86_64/*
             cjit-bin/release-osx-native/*

@@ -240,7 +240,7 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 #if !defined(NOGUNZIP)
 // gunzip and untar all in one
 #include <tinf.h>
-#define DECOMPRESSED_SIZE_RATIO 8 // raise this on errors
+#define DECOMPRESSED_SIZE_RATIO 10 // raise this on errors
 int muntargz_to_path(const char *path, const uint8_t *buf,
 		    const unsigned int len) {
 	if(!buf) {

@@ -4,7 +4,13 @@ SPDX-PackageSupplier = "Denis Roio <jaromil@dyne.org>"
 SPDX-PackageDownloadLocation = "https://github.com/dyne/cjit"
 
 [[annotations]]
-path = ["src/**", "**"]
+path = ["src/**", "build/**", "test/**", "examples/**", "REUSE.toml"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Dyne.org foundation"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = [".*", ".github/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2024 Dyne.org foundation"
 SPDX-License-Identifier = "GPL-3.0-or-later"
@@ -24,8 +30,38 @@ SPDX-License-Identifier = "LGPL-2.1-or-later"
 [[annotations]]
 path = "lib/contrib_headers/dmon.h"
 precedence = "aggregate"
-SPDX-FileCopyrightText = " 2019-2023, Sepehr Taghdisian"
+SPDX-FileCopyrightText = " 2019-2023 Sepehr Taghdisian"
 SPDX-License-Identifier = "BSD-2-Clause"
+
+[[annotations]]
+path = "lib/contrib_headers/miniaudio.h"
+precedence = "aggregate"
+SPDX-FileCopyrightText = " 2023 David Reid"
+SPDX-License-Identifier = "MIT-0"
+
+[[annotations]]
+path = "lib/contrib_headers/nuklear.h"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2017 Micha Mettke"
+SPDX-License-Identifier = "MIT-0"
+
+[[annotations]]
+path = "lib/stb/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = " 2009-2021 Sean Barrett"
+SPDX-License-Identifier = "MIT-0"
+
+[[annotations]]
+path = "lib/win32ports/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = " 2019 win32ports"
+SPDX-License-Identifier = "MIT-0"
+
+[[annotations]]
+path = "lib/contrib_headers/termbox2.h"
+precedence = "aggregate"
+SPDX-FileCopyrightText = " 2010-2020 nsf, 2015-2024 Adam Saponara"
+SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]
 path = ["docs/**", "**.md"]
