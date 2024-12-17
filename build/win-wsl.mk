@@ -7,6 +7,8 @@ include build/init.mk
 
 cc := x86_64-w64-mingw32-gcc
 ar := x86_64-w64-mingw32-ar
+
+cflags := -Og -ggdb ${cflags_includes}
 cflags += -DCJIT_BUILD_WIN
 
 ldadd += -lrpcrt4 -lshlwapi
@@ -20,7 +22,8 @@ SOURCES += src/win-compat.o  \
 	src/embed_libtcc1.a.o     \
 	src/embed_include.o \
 	src/embed_contrib_headers.o \
-	src/embed_tinycc_win32.o
+	src/embed_tinycc_win32.o \
+	src/embed_win32ports.o
 
 all: deps embed cjit.exe
 
@@ -31,6 +34,7 @@ embed: lib/tinycc/libtcc1.a
 	bash build/embed-path.sh lib/tinycc/include
 	bash build/embed-path.sh lib/tinycc/win32/include tinycc_win32
 	bash build/embed-path.sh lib/contrib_headers
+	bash build/embed-path.sh lib/win32ports
 	@echo "\nreturn(true);\n}\n" >> src/embedded.c
 	@echo "\n#endif\n" >> src/embedded.h
 
