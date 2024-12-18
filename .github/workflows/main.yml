@@ -253,15 +253,6 @@ jobs:
           mv cjit-tutorial.tar.gz cjit-bin/release-tutorial/
       - name: show release directory structure
         run: tree -dL 3
-      - name: VirusTotal Scan
-        uses: crazy-max/ghaction-virustotal@v4
-        with:
-          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
-          update_release_body: true
-          files: |
-            cjit-bin/release-win-native-x86_64/*
-            cjit-bin/release-osx-native/*
-            cjit-bin/release-tutorial/cjit-tutorial.tar.gz
       - name: relase all binary artifacts
         uses: softprops/action-gh-release@v2
         with:
@@ -274,6 +265,15 @@ jobs:
           prerelease: false
           fail_on_unmatched_files: true
           generate_release_notes: true
+      - name: VirusTotal Scan
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+          update_release_body: true
+          files: |
+            cjit-bin/release-win-native-x86_64/*
+            cjit-bin/release-osx-native/*
+            cjit-bin/release-tutorial/cjit-tutorial.tar.gz
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
