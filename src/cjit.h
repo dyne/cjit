@@ -34,6 +34,7 @@ bool win32_mkdtemp(CJITState *CJIT);
 // from win-compat.c
 extern void win_compat_usleep(unsigned int microseconds);
 extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
+extern bool get_winsdkpath(char *dst, size_t destlen);
 #else
 bool posix_mkdtemp(CJITState *CJIT);
 #endif

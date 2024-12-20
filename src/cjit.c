@@ -243,9 +243,6 @@ int main(int argc, char **argv) {
   // where is libtcc1.a found
   tcc_add_library_path(TCC, CJIT.tmpdir);
 
-#if defined(_WIN32)
-  tcc_add_library_path(TCC, "C:\\Windows\\System32");
-#endif
   // tcc_set_lib_path(TCC,tmpdir); // this overrides all?
 
   // set output in memory for just in time execution
@@ -253,6 +250,34 @@ int main(int argc, char **argv) {
 
 #if defined(LIBC_MUSL)
   tcc_add_libc_symbols(TCC);
+#endif
+
+  tcc_add_include_path(TCC, CJIT.tmpdir);
+  tcc_add_include_path(TCC, ".");
+  tcc_add_library_path(TCC, ".");
+#if defined(_WIN32)
+  {
+	  // windows system32 libraries
+	  //tcc_add_library_path(TCC, "C:\\Windows\\System32")
+	  // 64bit
+	  tcc_add_library_path(TCC, "C:\\Windows\\SysWOW64");
+	  // tinycc win32 headers
+	  char *tpath = malloc(strlen(CJIT.tmpdir)+32);
+	  strcpy(tpath,CJIT.tmpdir);
+	  strcat(tpath,"/tinycc_win32/winapi");
+	  tcc_add_include_path(TCC, tpath);
+	  free(tpath);
+	  // windows SDK headers
+	  char *sdkpath = malloc(512);
+	  if( get_winsdkpath(sdkpath,511) ) {
+		  int pathend = strlen(sdkpath);
+		  strcpy(&sdkpath[pathend],"\\um"); // um/GL
+		  tcc_add_include_path(TCC, sdkpath);
+		  strcpy(&sdkpath[pathend],"\\shared"); // winapifamili.h etc.
+		  tcc_add_include_path(TCC, sdkpath);
+	  }
+	  free(sdkpath);
+  }
 #endif
 
   if (argc == 0 ) {
