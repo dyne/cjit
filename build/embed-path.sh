@@ -57,18 +57,19 @@ fi
 varname=`echo $name | sed 's/\./_/g'`
 
 # generate embeddings in source for extract_embeddings(char *tmpdir)
+echo >> src/embedded.h
 echo "extern char *${varname};" >> src/embedded.h
 echo "extern unsigned int ${varname}_len;" >> src/embedded.h
+echo >> src/embedded.h
 
 cat <<EOF >> src/embedded.c
+
+// vv ${name} vv
 snprintf(incpath,511,"%s/%s",CJIT->tmpdir,"${name}");
-if(fresh) {
-res = muntargz_to_path(CJIT->tmpdir,(char*)&${varname},${varname}_len);
-}
-if(res!=0) { // muntar returns 0 on success
-_err("Error extracting %s",incpath);
-return(false);
-}
+if(fresh) res = muntargz_to_path(CJIT->tmpdir,(char*)&${varname},${varname}_len);
+if(res!=0) { _err("Error extracting %s",incpath); return(false); }
 tcc_add_include_path(CJIT->TCC, incpath);
+// ^^ ${name} ^^
+
 EOF
 exit 0
