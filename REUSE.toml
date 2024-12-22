@@ -16,6 +16,12 @@ SPDX-FileCopyrightText = "Copyright (c) 2016 Jer Wilson"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
+path = "examples/tinyc.games/res/PixelatedEleganceRegular.ttf"
+precedence = "aggregate"
+SPDX-FileCopyrightText = " 2024 GGBotNet"
+SPDX-License-Identifier = "MIT-0"
+
+[[annotations]]
 path = [".*", ".github/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2024 Dyne.org foundation"
