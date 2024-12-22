@@ -1,7 +1,10 @@
+// Platform detection
 #ifndef __PLATFORMS_H__
 #define __PLATFORMS_H__
 
-/* Platform/backend detection. */
+// deactivate warnings about re-definitions
+#pragma GCC system_header
+
 #if defined(_WIN32) || defined(__COSMOPOLITAN__)
 #define WINDOWS
 #define PLATFORM "Windows"
