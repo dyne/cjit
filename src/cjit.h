@@ -1,10 +1,30 @@
+/* CJIT https://dyne.org/cjit
+ *
+ * Copyright (C) 2024 Dyne.org foundation
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
 #ifndef _CJIT_H_
 #define _CJIT_H_
 
+#include <platforms.h>
 #include <stdbool.h>
 #include <libtcc.h>
 
-// passed to cjit_exec_fork with CJIT execution parameters
+// passed to cjit_exec with CJIT execution parameters
 struct CJITState {
 	char *tmpdir;
 	char *write_pid; // filename to write the pid of execution
@@ -13,11 +33,14 @@ struct CJITState {
 };
 typedef struct CJITState CJITState;
 
-extern bool free_cjit(CJITState *CJIT);
-
-
 // from embedded.c - generated at build time
 extern bool extract_embeddings(CJITState *CJIT);
+
+// implemented in repl.c
+extern int cjit_exec(TCCState *TCC, CJITState *CJIT,
+		     const char *ep, int argc, char **argv);
+
+extern bool free_cjit(CJITState *CJIT);
 
 /////////////
 // from file.c
@@ -28,36 +51,13 @@ extern char *load_stdin();
 extern char* dir_load(const char *path);
 extern bool write_to_file(const char *path, const char *filename,
 			  const char *buf, unsigned int len);
-
-#if defined(_WIN32)
-bool win32_mkdtemp(CJITState *CJIT);
-// from win-compat.c
-extern void win_compat_usleep(unsigned int microseconds);
-extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
-extern bool get_winsdkpath(char *dst, size_t destlen);
-#else
-bool posix_mkdtemp(CJITState *CJIT);
-#endif
 // from io.c
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
-// from repl.c
-#if defined(_WIN32)
-extern int cjit_exec_win(TCCState *TCC, CJITState *CJIT,
-			 const char *ep, int argc, char **argv);
-#else
-extern int cjit_exec_fork(TCCState *TCC, CJITState *CJIT,
-			  const char *ep, int argc, char **argv);
-#endif
+
 extern int cjit_cli_tty(TCCState *TCC);
 #ifdef KILO_SUPPORTED
 extern int cjit_cli_kilo(TCCState *TCC);
 #endif
-// from embed-dmon.c
-extern char *lib_dmon_dmon_extra_h;
-extern unsigned int lib_dmon_dmon_extra_h_len;
-extern char *lib_dmon_dmon_h;
-extern unsigned int lib_dmon_dmon_h_len;
-/////////////
 
 #endif

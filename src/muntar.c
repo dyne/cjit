@@ -157,13 +157,14 @@ static int mtar_rewind(mtar_t *tar) {
 ///////////////////
 
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(WINDOWS)
 #include <windows.h>
 #define makedir(path) CreateDirectory(path, NULL)
 #else
 #include <sys/stat.h>
 #define makedir(path) mkdir(path,0755)
 #endif
+
 // used by extract_embeddings(char *tmpdir)
 int muntar_to_path(const char *path, const uint8_t *buf,
 		  const unsigned int len) {
