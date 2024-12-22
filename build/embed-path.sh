@@ -32,7 +32,8 @@ rm -f ${name}.tar.gz
 prevpwd=`pwd`
 cd ${parent}
 [ "$pathname" != "$name" ] && cp -ra "$pathname" "$name"
-tar --format ustar -cvzf ${prevpwd}/${name}.tar.gz "$name"
+>&2 echo "Embed ${prevpwd}/${name}.tar.gz"
+tar --format ustar -czf ${prevpwd}/${name}.tar.gz "$name"
 [ "$pathname" != "$name" ] && rm -rf "$name"
 cd -
 

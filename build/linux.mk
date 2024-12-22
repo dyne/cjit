@@ -10,7 +10,7 @@ SOURCES += \
 	src/kilo.o \
 	src/embed_libtcc1.a.o \
 	src/embed_include.o \
-	src/embed_contrib_headers.o \
+	src/embed_misc.o \
 	src/embed_stb.o
 
 all: embed cjit
@@ -20,8 +20,8 @@ embed: lib/tinycc/libtcc1.a
 	bash build/init-embeddings.sh
 	bash build/embed-path.sh lib/tinycc/libtcc1.a
 	bash build/embed-path.sh lib/tinycc/include
-	bash build/embed-path.sh lib/contrib_headers
-	bash build/embed-path.sh lib/stb
+	bash build/embed-path.sh assets/misc
+	bash build/embed-path.sh assets/stb
 	@echo                 >> src/embedded.c
 	@echo "return(true);" >> src/embedded.c
 	@echo "}"             >> src/embedded.c

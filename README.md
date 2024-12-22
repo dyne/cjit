@@ -4,25 +4,32 @@ CJIT is a C interpreter based on tinyCC that compiles C code in-memory and runs 
 
 More info on [Dyne.org/CJIT](https://dyne.org/cjit).
 
-## Downloads
+## 🚀 Quick start
 
-We provide ready to execute binary builds on [github releases](https://github.com/dyne/cjit/releases).
+Download the CJIT executable for your system
 
-Beware windows defender will warn you that there is a virus in the file.
+- Windows x86 64bit: [cjit.exe](https://github.com/dyne/cjit/releases/latest/download/cjit.exe)
+- Apple/OSX: [cjit-Darwin-arm64](https://github.com/dyne/cjit/releases/download/v0.10.5/cjit-Darwin-arm64)
+- GNU/Linux: [cjit-Linux-x86_64-static](https://github.com/dyne/cjit/releases/download/v0.10.5/cjit-Linux-x86_64-static)
 
-There isn't, this is the [0.6.2 release analysis on VirusTotal](https://www.virustotal.com/gui/file/77054b14b5960eaa655bb5c3d5f4f1ddd3ddbd9756136f029074bbef83e168fd/).
-
-## Quick start
-
-Just download the CJIT executable for your system and run it with c source files as well dynamic libraries as arguments:
+and run it with c source files as well dynamic libraries as arguments:
 
 ```
 ./cjit.exe mysource.c mylib.dll
 ```
 
-### [Read the CJIT Manual](https://dyne.org/docs/cjit)
+CJIT can do a lot more! continue reading its tutorial for a hands-on introduction.
 
-## Build from source
+### 📖 [The CJIT tutorial](https://dyne.org/docs/cjit)
+
+## 💾 Downloads
+
+We provide ready to execute binary builds on [github releases](https://github.com/dyne/cjit/releases).
+
+Some systems may warn you about a virus in the file. There isn't, we submit each built executable to Virustotal via [github actions](https://github.com/dyne/cjit/actions).
+
+
+## ⚙️ Build from source
 
 There are various build targets, just type `make` to have a list:
 ```
@@ -46,7 +53,19 @@ There are various build targets, just type `make` to have a list:
  clean            🧹 Clean the source from all built objects
 ```
 
-## License
+## 🔬 Internals
+
+CJIT is a bit complex inside.
+
+1. It relies on [tinycc](https://bellard.org/tcc/) to compile C code in-memory and run it immediately.
+2. It detects automatically the system on which its running and auto-configures to support most features.
+3. It embeds all C code and headers in [cjit/assets](https://github.com/dyne/cjit/tree/main/assets) making them available to all running code.
+4. To embed them creates a `tar.gz` of assets at build-time and decompresses them at run-time in a temporary dir.
+5. It ships a non-exclusive, opinionated selection of libraries useful to quickly script advanced applications in C.
+
+The [CJIT's Frequently Asked Questions](https://dyne.org/docs/cjit/faq/) page may provide more information.
+
+## 📑 License
 
 CJIT is copyright (C) 2024 by the Dyne.org foundation
 
@@ -57,6 +76,6 @@ TinyCC is copyright (C) 2001-2004 by Fabrice Bellard
 TinyCC is distributed under the GNU Lesser General Public License
 
 For more information on licensing please refer to the Reuse report and
-license texts included in LICENSES/.
+license texts included in [LICENSES](https://github.com/dyne/cjit/tree/main/LICENSES).
 
 [![software by Dyne.org](https://files.dyne.org/software_by_dyne.png)](http://www.dyne.org)
