@@ -210,26 +210,6 @@ jobs:
           path: |
             cjit-Darwin-arm64
 
-  # virustotal:
-  #   name: 🦠 Virus scan of released binaries
-  #   needs: [osx-native-release, win-native-release]
-  #   runs-on: ubuntu-latest
-  #   if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
-  #   steps:
-  #     - name: download binary artifacts
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         path: |
-  #           cjit-bin
-  #     - name: VirusTotal Scan
-  #       uses: crazy-max/ghaction-virustotal@v4
-  #       with:
-  #         vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
-  #         update_release: true
-  #         files: |
-  #           cjit-bin/release-win-native-x86_64/*
-  #           cjit-bin/release-osx-native/*
-
   binary-release:
     name: 📢 Public release
     needs: [semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
@@ -243,14 +223,10 @@ jobs:
         with:
           path: |
             cjit-bin
-      - name: zip the tutorial archive
+      - name: pack the cjit-demo archive
         run: |
-          mkdir -p cjit-tutorial
-          cp -ra cjit-bin/release* cjit-tutorial/
-          cp -ra examples   cjit-tutorial/
-          tar cvfz cjit-tutorial.tar.gz cjit-tutorial
-          mkdir -p cjit-bin/release-tutorial
-          mv cjit-tutorial.tar.gz cjit-bin/release-tutorial/
+          bash build/pack-examples.sh
+          mv cjit-demo.tar.gz cjit-bin/release-tutorial/
       - name: show release directory structure
         run: tree -dL 3
       - name: relase all binary artifacts
@@ -265,15 +241,38 @@ jobs:
           prerelease: false
           fail_on_unmatched_files: true
           generate_release_notes: true
+      # - name: VirusTotal Scan
+      #   uses: crazy-max/ghaction-virustotal@v4
+      #   with:
+      #     vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+      #     update_release_body: true
+      #     files: |
+      #       cjit-bin/release-osx-native/*
+      #       cjit-bin/release-win-native-x86_64/*
+      #       cjit-bin/release-shared-linux-x86_64/*
+      #       cjit-bin/release-musl-linux-x86_64/*
+
+  virustotal:
+    name: 🦠 Virus scan of released binaries
+    needs: [binary-release]
+    runs-on: ubuntu-latest
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
+    steps:
+      - name: download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: |
+            cjit-bin
       - name: VirusTotal Scan
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
           update_release_body: true
           files: |
-            cjit-bin/release-win-native-x86_64/*
             cjit-bin/release-osx-native/*
-            cjit-bin/release-tutorial/cjit-tutorial.tar.gz
+            cjit-bin/release-win-native-x86_64/*
+            cjit-bin/release-shared-linux-x86_64/*
+            cjit-bin/release-musl-linux-x86_64/*
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
