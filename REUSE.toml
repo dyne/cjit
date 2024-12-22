@@ -10,6 +10,12 @@ SPDX-FileCopyrightText = "2024 Dyne.org foundation"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = ["examples/tinyc.games/**", "examples/tetris/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (c) 2016 Jer Wilson"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = [".*", ".github/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2024 Dyne.org foundation"
