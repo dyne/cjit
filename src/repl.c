@@ -25,7 +25,7 @@
 
 #include <cjit.h>
 
-#if !defined(_WIN32)
+#if !defined(WINDOWS)
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -36,8 +36,8 @@
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 
-#if defined(_WIN32)
-int cjit_exec_win(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
+int cjit_exec(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
+#if defined(WINDOWS)
   int res = 1;
   int (*_ep)(int, char**);
   _ep = tcc_get_symbol(TCC, ep);
@@ -59,10 +59,9 @@ int cjit_exec_win(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char
   // _err("Execution start\n---");
   res = _ep(argc, argv);
   return(res);
-}
 
-#else // _WIN32
-int cjit_exec_fork(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
+#else // we assume anything else but WINDOWS has fork()
+
   pid_t pid;
   int res = 1;
   int (*_ep)(int, char**);
@@ -110,8 +109,8 @@ int cjit_exec_fork(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, cha
       }
   }
   return res;
+#endif // cjit_exec with fork()
 }
-#endif // _WIN32
 
 #ifdef KILO_SUPPORTED
 
@@ -356,9 +355,9 @@ int cjit_cli_tty(TCCState *TCC) {
         return 2;
     }
     strcpy(code, intro);
-#if defined(_WIN32)
+#if defined(WINDOWS)
     _err("Missing source code argument");
-#else // _WIN32
+#else // WINDOWS
     while (1) {
       printf("cjit> ");
       fflush(stdout);
@@ -395,11 +394,8 @@ int cjit_cli_tty(TCCState *TCC) {
         _err("Running code\n");
         _err("-----------------------------------\n");
 #endif // VERBOSE_CLI
-#if !defined(_WIN32)
-        res = cjit_exec_fork(TCC, NULL, "main", 0, NULL);
-#else // _WIN32
-        res = cjit_exec_win(TCC, NULL, "main", 0, NULL);
-#endif // _WIN32
+
+        res = cjit_exec(TCC, NULL, "main", 0, NULL);
         free(code);
         code = NULL;
         break;
@@ -414,6 +410,6 @@ int cjit_cli_tty(TCCState *TCC) {
       free(line);
       line = NULL;
     }
-#endif // _WIN32
+#endif // WINDOWS
     return res;
 }

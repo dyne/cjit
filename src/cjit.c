@@ -17,6 +17,8 @@
  *
  */
 
+#include <cjit.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -25,16 +27,12 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#if !defined(_WIN32)
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <sys/poll.h>
-#endif
-
 #include <ketopt.h>
-#include <cjit.h>
 
+// from win-compat.c
+extern void win_compat_usleep(unsigned int microseconds);
+extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
+extern bool get_winsdkpath(char *dst, size_t destlen);
 
 void handle_error(void *n, const char *m) {
   (void)n;
@@ -137,17 +135,7 @@ int main(int argc, char **argv) {
 	    _err("CJIT %s by Dyne.org",VERSION);
       // _err("Running version: %s\n",VERSION);
       // version is always shown
-#if   defined(CJIT_BUILD_WIN)
-      _err("Build: WINDOWS");
-#elif defined(CJIT_BUILD_MUSL)
-      _err("Build: MUSL");
-#elif defined(CJIT_BUILD_OSX)
-      _err("Build: OSX");
-#elif defined(CJIT_BUILD_LINUX)
-      _err("Build: LINUX");
-#else
-      _err("Build: UNKNOWN");
-#endif
+      _err("Build: %s",PLATFORM);
 #if   defined(CJIT_DEBUG_ASAN)
       _err("Debug: ASAN");
 #elif defined(CJIT_DEBUG_GDB)
@@ -377,11 +365,7 @@ int main(int argc, char **argv) {
   // number of args at the left hand of arg separator, or all of them
   int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
   char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
-#if !defined(_WIN32)
-  res = cjit_exec_fork(TCC, &CJIT, entry, right_args, right_argv);
-#else
-  res = cjit_exec_win(TCC, &CJIT, entry, right_args, right_argv);
-#endif
+  res = cjit_exec(TCC, &CJIT, entry, right_args, right_argv);
 
   endgame:
   // free TCC

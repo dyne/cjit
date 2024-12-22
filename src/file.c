@@ -17,6 +17,8 @@
  *
  */
 
+#include <cjit.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -28,26 +30,6 @@
 #include <inttypes.h>
 
 #include <ftw.h> // _GNU_SOURCE
-
-#if defined(_WIN32)
-#    ifndef WIN32_LEAN_AND_MEAN
-#        define WIN32_LEAN_AND_MEAN
-#    endif
-#include <windows.h>
-#include <shlwapi.h>
-#include <rpc.h>
-#pragma comment(lib, "rpcrt4.lib")
-#pragma comment(lib, "shlwapi.lib")
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#ifndef O_BINARY
-# define O_BINARY 0
-#endif
-#endif
-
-#include <cjit.h>
 extern void _err(const char *fmt, ...);
 
 // generated in embedded.c
@@ -169,7 +151,7 @@ char* file_load(const char *filename) {
 }
 
 char *load_stdin() {
-#if defined(_WIN32)
+#if defined(WINDOWS)
   return NULL;
 #else
   char *code = NULL;
@@ -202,7 +184,7 @@ bool write_to_file(const char *path, const char *filename, const char *buf, unsi
   FILE *fd;
   size_t written;
   char fullpath[256];
-#if defined(_WIN32)
+#if defined(WINDOWS)
   snprintf(fullpath,255,"%s\\%s",path,filename);
 #else
   snprintf(fullpath,255,"%s/%s",path,filename);
@@ -226,7 +208,7 @@ bool write_to_file(const char *path, const char *filename, const char *buf, unsi
 static int rm_ftw(const char *pathname,
                   const struct stat *sbuf,
                   int type, struct FTW *ftwb) {
-#if !defined(_WIN32)
+#if !defined(WINDOWS)
   if(remove(pathname) < 0) {
     _err("Error: remove path %s",pathname);
     _err("%s",strerror(errno));
@@ -258,7 +240,7 @@ bool rm_recursive(char *path) {
   return true;
 }
 
-#if !defined(_WIN32)
+#if !defined(WINDOWS)
 
 static char *full_content = NULL;
 
@@ -331,7 +313,7 @@ char *dir_load(const char *path)
 static bool dir_exists(CJITState *CJIT, const char *path) {
 	CJIT->tmpdir = malloc(strlen(path)+1);
 	strcpy(CJIT->tmpdir, path);
-#if defined(_WIN32)
+#if defined(WINDOWS)
 	DWORD attributes = GetFileAttributes(path);
 	if (attributes == INVALID_FILE_ATTRIBUTES) {
 		// The path does not exist
@@ -362,7 +344,7 @@ static bool dir_exists(CJITState *CJIT, const char *path) {
 
 bool cjit_mkdtemp(CJITState *CJIT) {
 	bool res;
-#if defined(_WIN32)
+#if defined(WINDOWS)
 	static char tempDir[MAX_PATH];
 	char tempPath[MAX_PATH];
 	char filename [64];
