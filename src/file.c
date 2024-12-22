@@ -251,11 +251,12 @@ static int file_load_ftw(const char *pathname,
                          int type, struct FTW *ftwb) {
     FILE *fd;
     char *content = NULL;
+    unsigned int len;
     if (type == FTW_F) {
         size_t pathlen = strlen(pathname);
         if (pathname[pathlen-1] == 'c' &&
             pathname[pathlen-2] == '.') {
-            content = file_load(pathname);
+            content = file_load(pathname, &len);
             if (content == NULL) {
                 _err("Error: file_load %s",pathname);
                 return -1;
