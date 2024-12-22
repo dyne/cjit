@@ -231,6 +231,10 @@ int main(int argc, char **argv) {
   CJIT.dmon = false;
 #endif
 
+  // When using SDL2 these defines are needed
+  tcc_define_symbol(TCC,"SDL_DISABLE_IMMINTRIN_H",NULL);
+  tcc_define_symbol(TCC,"SDL_MAIN_HANDLED",NULL);
+
   //////////////////////////////////////
   // initialize the tmpdir for execution
   // from here onwards use goto endgame
