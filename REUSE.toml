@@ -28,37 +28,37 @@ SPDX-FileCopyrightText = "2001-2004 Fabrice Bellard"
 SPDX-License-Identifier = "LGPL-2.1-or-later"
 
 [[annotations]]
-path = "lib/contrib_headers/dmon.h"
+path = "assets/misc/dmon.h"
 precedence = "aggregate"
 SPDX-FileCopyrightText = " 2019-2023 Sepehr Taghdisian"
 SPDX-License-Identifier = "BSD-2-Clause"
 
 [[annotations]]
-path = "lib/contrib_headers/miniaudio.h"
+path = "assets/misc/miniaudio.h"
 precedence = "aggregate"
 SPDX-FileCopyrightText = " 2023 David Reid"
 SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]
-path = "lib/contrib_headers/nuklear.h"
+path = "assets/misc/nuklear.h"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2017 Micha Mettke"
 SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]
-path = "lib/stb/**"
+path = "assets/stb/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = " 2009-2021 Sean Barrett"
 SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]
-path = "lib/win32ports/**"
+path = "assets/win32ports/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = " 2019 win32ports"
 SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]
-path = "lib/contrib_headers/termbox2.h"
+path = "assets/misc/termbox2.h"
 precedence = "aggregate"
 SPDX-FileCopyrightText = " 2010-2020 nsf, 2015-2024 Adam Saponara"
 SPDX-License-Identifier = "MIT-0"
