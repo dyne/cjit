@@ -28,6 +28,7 @@
 #include <unistd.h>
 
 #include <ketopt.h>
+#include <muntar.h>
 
 // from win-compat.c
 extern void win_compat_usleep(unsigned int microseconds);
@@ -83,7 +84,8 @@ const char cli_help[] =
   " -e fun\t entry point function (default 'main')\n"
   " -p pid\t write pid of executed program to file\n"
   " --live\t run interactive editor for live coding\n"
-  " --tgen\t create the runtime temporary dir and exit\n";
+  " --temp\t create the runtime temporary dir and exit\n"
+  " --utar\t extract all contents from a USTAR tar.gz\n";
 
 bool free_cjit(CJITState *CJIT) {
 	if(CJIT->tmpdir) free(CJIT->tmpdir);
@@ -123,7 +125,8 @@ int main(int argc, char **argv) {
   static ko_longopt_t longopts[] = {
     { "help", ko_no_argument, 100 },
     { "live", ko_no_argument, 301 },
-    { "tgen", ko_no_argument, 401 },
+    { "temp", ko_no_argument, 401 },
+    { "utar", ko_required_argument, 501 },
     { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
@@ -193,6 +196,15 @@ int main(int argc, char **argv) {
 	    extract_embeddings(&CJIT);
 	    fprintf(stdout,"%s\n",CJIT.tmpdir);
 	    free_cjit(&CJIT);
+	    exit(0);
+    } else if (c == 501) {
+	    free_cjit(&CJIT);
+	    unsigned int len = 0;
+	    _err("Extract contents of: %s",opt.arg);
+	    char *targz = file_load(opt.arg, &len);
+	    if(!targz) exit(1);
+	    if(!len) exit(1);
+	    muntargz_to_path(".",targz,len);
 	    exit(0);
     }
     else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');

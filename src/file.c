@@ -122,7 +122,7 @@ long file_size(const char *filename) {
     return length;
 }
 
-char* file_load(const char *filename) {
+char* file_load(const char *filename, unsigned int *len) {
     long length = file_size(filename);
     if (length == -1) {
         return NULL;
@@ -145,6 +145,7 @@ char* file_load(const char *filename) {
 
     fread(contents, 1, length, file);
     contents[length] = '\0'; // Null-terminate the string
+    *len = length;
     fclose(file);
 
     return contents;
