@@ -34,11 +34,14 @@ tinycc_config += --with-selinux
 endif
 
 ifdef ASAN
-	cflags := -Og -ggdb -DDEBUG=1 -fno-omit-frame-pointer -fsanitize=address
+	ASAN_FLAGS := -fsanitize=address -fsanitize=leak
+	ASAN_FLAGS += -fsanitize=float-divide-by-zero
+	ASAN_FLAGS += -fsanitize=float-cast-overflow
+	cflags := -g -DDEBUG=1 -Wall -fno-omit-frame-pointer
+	cflags += ${ASAN_FLAGS} -DMEM_DEBUG
 	cflags += ${cflags_includes} ${cflags_gnu} -DKILO_SUPPORTED
 	cflags += -DCJIT_BUILD_LINUX
-	ldflags := -fsanitize=address -static-libasan
-#	tinycc_config += --extra-ldflags="${ldflags}"
+	ldflags := ${ASAN_FLAGS} -static-libasan
 endif
 
 ifdef GDB
