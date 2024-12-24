@@ -226,7 +226,8 @@ jobs:
       - name: pack the cjit-demo archive
         run: |
           bash build/pack-examples.sh
-          mv cjit-demo.tar.gz cjit-bin/release-tutorial/
+          mkdir -p cjit-bin/release-demo/
+          mv cjit-demo.tar.gz cjit-bin/release-demo/
       - name: show release directory structure
         run: tree -dL 3
       - name: relase all binary artifacts
@@ -276,7 +277,7 @@ jobs:
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
-    needs: [semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
+    needs: [binary-release, semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
     runs-on: ubuntu-latest
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
@@ -287,5 +288,5 @@ jobs:
         with:
           tag_name: v${{ needs.semantic-release.outputs.new_release_version }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          delete_release: false
+          delete_release: true
           repo: dyne/cjit
