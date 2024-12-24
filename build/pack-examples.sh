@@ -13,7 +13,7 @@ mkdir -p cjit-demo/SDL2
 
 # SDL2
 ver=2.30.10
-url="https://github.com/libsdl-org/SDL2/releases/download/release-${ver}"
+url="https://github.com/libsdl-org/SDL/releases/download/release-${ver}"
 [ -r SDL2-${ver}-win32-x64.zip ] ||
 	wget ${url}/SDL2-${ver}-win32-x64.zip
 [ -r cjit-demo/SDL2.dll ] ||
