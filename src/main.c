@@ -30,11 +30,6 @@
 #include <ketopt.h>
 #include <muntar.h>
 
-// from win-compat.c
-extern void win_compat_usleep(unsigned int microseconds);
-extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
-extern bool get_winsdkpath(char *dst, size_t destlen);
-
 #define MAX_ARG_STRING 1024
 static int parse_value(char *str) {
   int i = 0;
@@ -194,9 +189,9 @@ int main(int argc, char **argv) {
       goto endgame;
     }
 #ifdef KILO_SUPPORTED
-    res = cjit_cli_kilo(CJIT->TCC);
+    res = cjit_cli_kilo(CJIT);
 #else
-    res = cjit_cli_tty(CJIT->TCC);
+    res = cjit_cli_tty(CJIT);
 #endif
     goto endgame;
   }
@@ -273,9 +268,7 @@ int main(int argc, char **argv) {
   // number of args at the left hand of arg separator, or all of them
   int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
   char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
-  res = cjit_exec(CJIT->TCC, CJIT,
-		  CJIT->entry?CJIT->entry:"main",
-		  right_args, right_argv);
+  res = cjit_exec(CJIT, right_args, right_argv);
   endgame:
   // free TCC
   cjit_free(CJIT);

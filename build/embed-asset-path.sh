@@ -8,13 +8,13 @@ name=${2:-`basename ${1}`}
 pathname=`basename ${1}`
 dst=src/embed_${name}.c
 
-[ -r src/embedded.h ] || {
-	>&2 echo "Build must generate src/embedded.h first"
+[ -r src/assets.h ] || {
+	>&2 echo "Build must generate src/assets.h first"
 	exit 1
 }
 
-[ -r src/embedded.c ] || {
-	>&2 echo "Build must generate src/embedded.c first"
+[ -r src/assets.c ] || {
+	>&2 echo "Build must generate src/assets.c first"
 	exit 1
 }
 
@@ -57,13 +57,13 @@ fi
 # xxd already converts dots in underscores
 varname=`echo $name | sed 's/\./_/g'`
 
-# generate embeddings in source for extract_embeddings(char *tmpdir)
-echo >> src/embedded.h
-echo "extern char *${varname};" >> src/embedded.h
-echo "extern unsigned int ${varname}_len;" >> src/embedded.h
-echo >> src/embedded.h
+# generate assets in source for extract_assets(char *tmpdir)
+echo >> src/assets.h
+echo "extern char *${varname};" >> src/assets.h
+echo "extern unsigned int ${varname}_len;" >> src/assets.h
+echo >> src/assets.h
 
-cat <<EOF >> src/embedded.c
+cat <<EOF >> src/assets.c
 
 // vv ${name} vv
 snprintf(incpath,511,"%s/%s",CJIT->tmpdir,"${name}");

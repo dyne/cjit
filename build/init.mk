@@ -15,8 +15,8 @@ CFLAGS ?= -O2 -fomit-frame-pointer ${cflags_stack_protect}
 
 cflags := ${CFLAGS} ${cflags_includes}
 
-SOURCES := src/io.o src/file.o src/cflag.o src/cjit.o \
-           src/main.o src/embedded.o \
+SOURCES := src/file.o src/cflag.o src/cjit.o \
+           src/main.o src/assets.o \
            src/repl.o \
            src/muntar.o src/tinflate.o src/tinfgzip.o
 

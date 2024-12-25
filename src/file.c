@@ -30,10 +30,6 @@
 #include <inttypes.h>
 
 #include <ftw.h> // _GNU_SOURCE
-extern void _err(const char *fmt, ...);
-
-// generated in embedded.c
-extern bool extract_embeddings(CJITState *CJIT);
 
 int detect_bom(const char *filename) {
 	uint8_t bom[3];
