@@ -28,9 +28,9 @@ extern int muntargz_to_path(const char *path, const uint8_t *buf, const unsigned
 
 // main function
 bool extract_embeddings(CJITState *CJIT) {
+  if(!CJIT->tmpdir) return(false);
   bool res = 0;
   char incpath[512];
-  const bool fresh = cjit_mkdtemp(CJIT);
 EOF
 
 exit 0
