@@ -259,12 +259,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  // relocate the code (link symbols)
-  if (tcc_relocate(CJIT->TCC) < 0) {
-    _err("TCC symbol relocation error (some library missing?)");
-    goto endgame;
-  }
-
   // number of args at the left hand of arg separator, or all of them
   int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
   char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
