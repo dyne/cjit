@@ -26,21 +26,27 @@
 
 // passed to cjit_exec with CJIT execution parameters
 struct CJITState {
-	char *tmpdir;
+	TCCState *TCC; // the tinyCC context
+	char *tmpdir; // path to execution temporary directory
 	char *write_pid; // filename to write the pid of execution
-	bool dmon;
-	TCCState *TCC;
+	char *entry; // entry point, default "main" if left NULL
+	bool dmon; // activate filesystem monitor on platforms supported
+	bool live; // live coding mode
+	bool quiet; // print less to stderr
+	bool fresh; // tempdir is freshly created and needs to be populated
 };
 typedef struct CJITState CJITState;
 
 // from embedded.c - generated at build time
 extern bool extract_embeddings(CJITState *CJIT);
 
+extern CJITState* cjit_new();
+
 // implemented in repl.c
 extern int cjit_exec(TCCState *TCC, CJITState *CJIT,
 		     const char *ep, int argc, char **argv);
 
-extern bool free_cjit(CJITState *CJIT);
+extern void cjit_free(CJITState *CJIT);
 
 /////////////
 // from file.c
