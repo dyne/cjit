@@ -37,16 +37,15 @@ struct CJITState {
 };
 typedef struct CJITState CJITState;
 
-// from embedded.c - generated at build time
-extern bool extract_embeddings(CJITState *CJIT);
-
 extern CJITState* cjit_new();
 
-// implemented in repl.c
-extern int cjit_exec(TCCState *TCC, CJITState *CJIT,
-		     const char *ep, int argc, char **argv);
+extern int cjit_exec(CJITState *cjit, int argc, char **argv);
 
 extern void cjit_free(CJITState *CJIT);
+
+/////////////
+// from embedded.c - generated at build time
+extern bool extract_assets(CJITState *CJIT);
 
 /////////////
 // from file.c
@@ -57,13 +56,16 @@ extern char *load_stdin();
 extern char* dir_load(const char *path);
 extern bool write_to_file(const char *path, const char *filename,
 			  const char *buf, unsigned int len);
-// from io.c
+
+// terminal printing functions
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 
-extern int cjit_cli_tty(TCCState *TCC);
+/////////////
+// from repl.c
+extern int cjit_cli_tty(CJITState *cjit);
 #ifdef KILO_SUPPORTED
-extern int cjit_cli_kilo(TCCState *TCC);
+extern int cjit_cli_kilo(CJITState *cjit);
 #endif
 
 #endif

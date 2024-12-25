@@ -165,7 +165,7 @@ static int mtar_rewind(mtar_t *tar) {
 #define makedir(path) mkdir(path,0755)
 #endif
 
-// used by extract_embeddings(char *tmpdir)
+// used by extract_assets(char *tmpdir)
 int muntar_to_path(const char *path, const uint8_t *buf,
 		  const unsigned int len) {
 	int res;

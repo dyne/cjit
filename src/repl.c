@@ -36,81 +36,6 @@
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
 
-int cjit_exec(TCCState *TCC, CJITState *CJIT, const char *ep, int argc, char **argv) {
-#if defined(WINDOWS)
-  int res = 1;
-  int (*_ep)(int, char**);
-  _ep = tcc_get_symbol(TCC, ep);
-  if (!_ep) {
-    _err("Symbol not found in source: %s",ep);
-    return -1;
-  }
-  if(CJIT->write_pid) {
-	  pid_t pid = getpid();
-	  FILE *fd = fopen(CJIT->write_pid, "w");
-	  if(!fd) {
-		  _err("Cannot create pid file %s: %s",
-		       CJIT->write_pid, strerror(errno));
-		  return -1;
-	  }
-	  fprintf(fd,"%d\n",pid);
-	  fclose(fd);
-  }
-  // _err("Execution start\n---");
-  res = _ep(argc, argv);
-  return(res);
-
-#else // we assume anything else but WINDOWS has fork()
-
-  pid_t pid;
-  int res = 1;
-  int (*_ep)(int, char**);
-  _ep = tcc_get_symbol(TCC, ep);
-  if (!_ep) {
-    _err("Symbol not found in source: %s",ep);
-    return -1;
-  }
-  pid = fork();
-  if (pid == 0) {
-      res = _ep(argc, argv);
-      exit(res);
-  } else {
-	  if(CJIT->write_pid) {
-		  // pid_t pid = getpid();
-		  FILE *fd = fopen(CJIT->write_pid, "w");
-		  if(!fd) {
-			  _err("Cannot create pid file %s: %s",
-			       CJIT->write_pid, strerror(errno));
-			  return -1;
-		  }
-		  fprintf(fd,"%d\n",pid);
-		  fclose(fd);
-	  }
-      int status;
-      int ret;
-      ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
-      if (ret != pid){
-          _err("Wait error in source: %s","main");
-      }
-      if (WIFEXITED(status)) {
-          res = WEXITSTATUS(status);
-          //_err("Process has returned %d", res);
-      } else if (WIFSIGNALED(status)) {
-          res = WTERMSIG(status);
-          _err("Process terminated with signal %d", WTERMSIG(status));
-      } else if (WIFSTOPPED(status)) {
-          res = WSTOPSIG(status);
-          //_err("Process has returned %d", WSTOPSIG(status));
-      } else if (WIFSTOPPED(status)) {
-          res = WSTOPSIG(status);
-          _err("Process stopped with signal", WSTOPSIG(status));
-      } else {
-          _err("wait: unknown status: %d", status);
-      }
-  }
-  return res;
-#endif // cjit_exec with fork()
-}
 
 #ifdef KILO_SUPPORTED
 
@@ -280,7 +205,7 @@ int cjit_check_buffer(void *tcs, char *code, char **err_msg) {
     return res;
 }
 
-int cjit_cli_kilo(TCCState *TCC) {
+int cjit_cli_kilo(CJITState *cjit) {
     char *line = NULL;
     size_t len = 0;
     ssize_t rd;
@@ -305,7 +230,7 @@ int cjit_cli_kilo(TCCState *TCC) {
                 }
             }
         } while (rd != -1);
-        cjit_compile_and_run(TCC, code, 0, NULL, 1, &err_msg);
+        cjit_compile_and_run(cjit->TCC, code, 0, NULL, 1, &err_msg);
         if (err_msg)
             _err(err_msg);
     } else {
@@ -332,7 +257,7 @@ int cjit_cli_kilo(TCCState *TCC) {
         while(1) {
             editorSetCompilerCallback(cjit_compile_buffer);
             editorSetCheckCallback(cjit_check_buffer);
-            editorSetCompilerContext(TCC);
+            editorSetCompilerContext(cjit->TCC);
             editorRefreshScreen();
             editorProcessKeypress(fileno(stdin));
         }
@@ -343,7 +268,7 @@ int cjit_cli_kilo(TCCState *TCC) {
 #endif // KILO_SUPPORTED
 
 
-int cjit_cli_tty(TCCState *TCC) {
+int cjit_cli_tty(CJITState *cjit) {
     char *line = NULL;
     size_t len = 0;
     ssize_t rd;
@@ -380,12 +305,12 @@ int cjit_cli_tty(TCCState *TCC) {
         _err("%s\n", code);
         _err("-----------------------------------\n");
 #endif // VERBOSE_CLI
-        if (tcc_compile_string(TCC, code) < 0) {
+        if (tcc_compile_string(cjit->TCC, code) < 0) {
           _err("Code runtime error in source\n");
           res = 1;
           break;
         }
-        if (tcc_relocate(TCC) < 0) {
+        if (tcc_relocate(cjit->TCC) < 0) {
           _err("Code relocation error in source\n");
           res = 1;
           break;
@@ -395,7 +320,7 @@ int cjit_cli_tty(TCCState *TCC) {
         _err("-----------------------------------\n");
 #endif // VERBOSE_CLI
 
-        res = cjit_exec(TCC, NULL, "main", 0, NULL);
+        res = cjit_exec(cjit, 0, NULL);
         free(code);
         code = NULL;
         break;

@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
@@ -30,7 +31,12 @@
 #include <ketopt.h>
 #include <muntar.h>
 
-#define MAX_PATH 260
+#define MAX_PATH 260 // rather short paths
+#define MAX_STRING 20480 // max 20KiB strings
+
+// declared at bottom
+void _out(const char *fmt, ...);
+void _err(const char *fmt, ...);
 
 // from win-compat.c
 extern void    win_compat_usleep(unsigned int microseconds);
@@ -117,8 +123,9 @@ CJITState* cjit_new() {
 		return(NULL);
 	}
 	// call the generated function to populate the tmpdir
-	if(!extract_embeddings(cjit)) {
-		_err("Error extracting temp dir: %s",strerror(errno));
+	if(!extract_assets(cjit)) {
+		_err("Error extracting assets in temp dir: %s",
+		     strerror(errno));
 		return(NULL);
 	}
 	// error handler callback for TCC
@@ -195,10 +202,121 @@ CJITState* cjit_new() {
 	return(cjit);
 }
 
+int cjit_exec(CJITState *cjit, int argc, char **argv) {
+#if defined(WINDOWS)
+  int res = 1;
+  int (*_ep)(int, char**);
+  _ep = tcc_get_symbol(cjit->TCC, cjit->entry?cjit->entry:"main");
+  if (!_ep) {
+    _err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
+    return -1;
+  }
+  if(cjit->write_pid) {
+	  pid_t pid = getpid();
+	  FILE *fd = fopen(cjit->write_pid, "w");
+	  if(!fd) {
+		  _err("Cannot create pid file %s: %s",
+		       cjit->write_pid, strerror(errno));
+		  return -1;
+	  }
+	  fprintf(fd,"%d\n",pid);
+	  fclose(fd);
+  }
+  res = _ep(argc, argv);
+  return(res);
+
+#else // we assume anything else but WINDOWS has fork()
+
+  pid_t pid;
+  int res = 1;
+  int (*_ep)(int, char**);
+  _ep = tcc_get_symbol(cjit->TCC, cjit->entry?cjit->entry:"main");
+  if (!_ep) {
+    _err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
+    return -1;
+  }
+  pid = fork();
+  if (pid == 0) {
+      res = _ep(argc, argv);
+      exit(res);
+  } else {
+	  if(cjit->write_pid) {
+		  // pid_t pid = getpid();
+		  FILE *fd = fopen(cjit->write_pid, "w");
+		  if(!fd) {
+			  _err("Cannot create pid file %s: %s",
+			       cjit->write_pid, strerror(errno));
+			  return -1;
+		  }
+		  fprintf(fd,"%d\n",pid);
+		  fclose(fd);
+	  }
+      int status;
+      int ret;
+      ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+      if (ret != pid){
+          _err("Wait error in source: %s","main");
+      }
+      if (WIFEXITED(status)) {
+          res = WEXITSTATUS(status);
+          //_err("Process has returned %d", res);
+      } else if (WIFSIGNALED(status)) {
+          res = WTERMSIG(status);
+          _err("Process terminated with signal %d", WTERMSIG(status));
+      } else if (WIFSTOPPED(status)) {
+          res = WSTOPSIG(status);
+          //_err("Process has returned %d", WSTOPSIG(status));
+      } else if (WIFSTOPPED(status)) {
+          res = WSTOPSIG(status);
+          _err("Process stopped with signal", WSTOPSIG(status));
+      } else {
+          _err("wait: unknown status: %d", status);
+      }
+  }
+  return res;
+#endif // cjit_exec with fork()
+}
+
 void cjit_free(CJITState *cjit) {
 	if(cjit->tmpdir) free(cjit->tmpdir);
 	if(cjit->write_pid) free(cjit->write_pid);
 	if(cjit->entry) free(cjit->entry);
 	if(cjit->TCC) tcc_delete(cjit->TCC);
 	free(cjit);
+}
+
+
+// stdout message free from context
+void _out(const char *fmt, ...) {
+  char msg[MAX_STRING+4];
+  va_list args;
+  va_start(args, fmt);
+  int len = vsnprintf(msg, MAX_STRING, fmt, args);
+  va_end(args);
+  msg[len] = '\n';
+  msg[len+1] = 0x0; //safety
+#if defined(__EMSCRIPTEN__)
+  EM_ASM_({Module.print(UTF8ToString($0))}, msg);
+#else
+  write(fileno(stdout), msg, len+1);
+#endif
+}
+
+// error message free from context
+void _err(const char *fmt, ...) {
+  char msg[MAX_STRING+4];
+  int len;
+  va_list args;
+  va_start(args, fmt);
+  len = vsnprintf(msg, MAX_STRING, fmt, args);
+  va_end(args);
+  msg[len] = '\n';
+  msg[len+1] = 0x0;
+#if defined(__EMSCRIPTEN__)
+  EM_ASM_({Module.printErr(UTF8ToString($0))}, msg);
+#elif defined(__ANDROID__)
+  __android_log_print(ANDROID_LOG_ERROR, "ZEN", "%s", msg);
+#else
+  write(fileno(stderr),msg,len+1);
+#endif
 }

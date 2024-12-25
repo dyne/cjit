@@ -27,18 +27,18 @@ tynycc_config += --extra-cflags=-static --extra-ldflags=-static
 all: lib/tinycc/libtcc.a embed cjit
 
 embed: lib/tinycc/libtcc1.a
-	$(info Generating embeddings)
-	bash build/init-embeddings.sh
-	bash build/embed-path.sh lib/tinycc/libtcc1.a
-	bash build/embed-path.sh lib/tinycc/include
-	bash build/embed-path.sh assets/misc
-	bash build/embed-path.sh /lib/x86_64-linux-musl/libc.so
-	bash build/embed-path.sh assets/stb
-	@echo                 >> src/embedded.c
-	@echo "return(true);" >> src/embedded.c
-	@echo "}"             >> src/embedded.c
-	@echo          >> src/embedded.h
-	@echo "#endif" >> src/embedded.h
+	$(info Generating assets)
+	bash build/init-assetss.sh
+	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
+	bash build/embed-asset-path.sh lib/tinycc/include
+	bash build/embed-asset-path.sh assets/misc
+	bash build/embed-asset-path.sh /lib/x86_64-linux-musl/libc.so
+	bash build/embed-asset-path.sh assets/stb
+	@echo                 >> src/assets.c
+	@echo "return(true);" >> src/assets.c
+	@echo "}"             >> src/assets.c
+	@echo          >> src/assets.h
+	@echo "#endif" >> src/assets.h
 
 cjit: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldadd}

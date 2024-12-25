@@ -13,17 +13,17 @@ SOURCES += \
 all: embed cjit.command
 
 embed: lib/tinycc/libtcc1.a
-	$(info Generating embeddings)
-	bash build/init-embeddings.sh
-	bash build/embed-path.sh lib/tinycc/libtcc1.a
-	bash build/embed-path.sh lib/tinycc/include
-	bash build/embed-path.sh assets/misc
-	bash build/embed-path.sh assets/stb
-	@echo                 >> src/embedded.c
-	@echo "return(true);" >> src/embedded.c
-	@echo "}"             >> src/embedded.c
-	@echo          >> src/embedded.h
-	@echo "#endif" >> src/embedded.h
+	$(info Generating assets)
+	bash build/init-assets.sh
+	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
+	bash build/embed-asset-path.sh lib/tinycc/include
+	bash build/embed-asset-path.sh assets/misc
+	bash build/embed-asset-path.sh assets/stb
+	@echo                 >> src/assets.c
+	@echo "return(true);" >> src/assets.c
+	@echo "}"             >> src/assets.c
+	@echo          >> src/assets.h
+	@echo "#endif" >> src/assets.h
 
 cjit.command: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}

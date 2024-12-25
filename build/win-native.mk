@@ -31,19 +31,19 @@ SOURCES += src/win-compat.o  \
 all: embed cjit.exe
 
 embed: lib/tinycc/libtcc1.a
-	$(info Generating embeddings)
-	bash build/init-embeddings.sh
-	bash build/embed-path.sh lib/tinycc/libtcc1.a
-	bash build/embed-path.sh lib/tinycc/include
-	bash build/embed-path.sh lib/tinycc/win32/include tinycc_win32
-	bash build/embed-path.sh assets/win32ports
-	bash build/embed-path.sh assets/misc
-	bash build/embed-path.sh assets/stb
-	@echo                 >> src/embedded.c
-	@echo "return(true);" >> src/embedded.c
-	@echo "}"             >> src/embedded.c
-	@echo          >> src/embedded.h
-	@echo "#endif" >> src/embedded.h
+	$(info Generating assets)
+	bash build/init-assets.sh
+	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
+	bash build/embed-asset-path.sh lib/tinycc/include
+	bash build/embed-asset-path.sh lib/tinycc/win32/include tinycc_win32
+	bash build/embed-asset-path.sh assets/win32ports
+	bash build/embed-asset-path.sh assets/misc
+	bash build/embed-asset-path.sh assets/stb
+	@echo                 >> src/assets.c
+	@echo "return(true);" >> src/assets.c
+	@echo "}"             >> src/assets.c
+	@echo          >> src/assets.h
+	@echo "#endif" >> src/assets.h
 
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
