@@ -13,20 +13,7 @@ SOURCES += \
 	src/embed_misc.o \
 	src/embed_stb.o
 
-all: embed cjit
-
-embed: lib/tinycc/libtcc1.a
-	$(info Generating assets)
-	bash build/init-assets.sh
-	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
-	bash build/embed-asset-path.sh lib/tinycc/include
-	bash build/embed-asset-path.sh assets/misc
-	bash build/embed-asset-path.sh assets/stb
-	@echo                 >> src/assets.c
-	@echo "return(true);" >> src/assets.c
-	@echo "}"             >> src/assets.c
-	@echo          >> src/assets.h
-	@echo "#endif" >> src/assets.h
+all: embed-posix cjit
 
 tinycc_config += --with-libgcc
 ifeq ($(shell sestatus | awk -F': *' '/SELinux status:/ {print $2}'), enabled)

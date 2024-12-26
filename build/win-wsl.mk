@@ -26,42 +26,17 @@ SOURCES += src/win-compat.o  \
 	src/embed_misc.o \
 	src/embed_stb.o
 
-all: deps embed cjit.exe
-
-embed: lib/tinycc/libtcc1.a
-	$(info Generating assets)
-	bash build/init-assets.sh
-	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
-	bash build/embed-asset-path.sh lib/tinycc/include
-	bash build/embed-asset-path.sh lib/tinycc/win32/include tinycc_win32
-	bash build/embed-asset-path.sh assets/win32ports
-	bash build/embed-asset-path.sh assets/misc
-	bash build/embed-asset-path.sh assets/stb
-	@echo                 >> src/assets.c
-	@echo "return(true);" >> src/assets.c
-	@echo "}"             >> src/assets.c
-	@echo          >> src/assets.h
-	@echo "#endif" >> src/assets.h
+all: cross-win embed-win cjit.exe
 
 cjit.exe: ${SOURCES}
-	./build/stamp-exe.sh
+	bash build/stamp-exe.sh
 	$(cc) $(cflags) -o $@ $(SOURCES) cjit.res ${ldflags} ${ldadd}
 
-deps:
+cross-win:
 	@cd lib/tinycc && ./configure ${tinycc_config}
 	@$(MAKE) -C lib/tinycc cross-x86_64-win32
 	@${MAKE} -C lib/tinycc libtcc.a
 	@${MAKE} -C lib/tinycc libtcc1.a
 	@mv lib/tinycc/x86_64-win32-libtcc1.a lib/tinycc/libtcc1.a
 
-# @bash build/embed-headers.sh win
-# @sed -i 's/unsigned char/const char/' src/embed-headers.c
-# @sed -i 's/unsigned int/const unsigned int/' src/embed-headers.c
-
 include build/deps.mk
-# .c.o:
-# 	$(cc) \
-# 	$(cflags) \
-# 	-c $< -o $@ \
-# 	-DVERSION=\"${VERSION}\" \
-# 	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
