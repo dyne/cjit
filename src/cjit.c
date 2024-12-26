@@ -59,7 +59,7 @@ static bool cjit_mkdtemp(CJITState *cjit) {
 	DWORD attributes = GetFileAttributes(tempDir);
 	if (attributes == INVALID_FILE_ATTRIBUTES) {
 		// The path does not exist
-		return(false);
+		cjit->fresh = true;
 	} else if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
 		// The path exists and is a directory
 		cjit->fresh = false;
