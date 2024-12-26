@@ -10,6 +10,18 @@ SPDX-FileCopyrightText = "2024 Dyne.org foundation"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = [".*", ".github/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Dyne.org foundation"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "lib/tinycc/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2001-2004 Fabrice Bellard"
+SPDX-License-Identifier = "LGPL-2.1-or-later"
+
+[[annotations]]
 path = ["examples/tinyc.games/**", "examples/tetris/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Copyright (c) 2016 Jer Wilson"
@@ -22,40 +34,10 @@ SPDX-FileCopyrightText = " 2024 GGBotNet"
 SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]
-path = [".*", ".github/**"]
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2024 Dyne.org foundation"
-SPDX-License-Identifier = "GPL-3.0-or-later"
-
-[[annotations]]
-path = "src/cflag**"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2020 Adrian Perez de Castro"
-SPDX-License-Identifier = "MIT"
-
-[[annotations]]
-path = "lib/tinycc/**"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2001-2004 Fabrice Bellard"
-SPDX-License-Identifier = "LGPL-2.1-or-later"
-
-[[annotations]]
-path = "assets/misc/dmon.h"
+path = "test/dmon.h"
 precedence = "aggregate"
 SPDX-FileCopyrightText = " 2019-2023 Sepehr Taghdisian"
 SPDX-License-Identifier = "BSD-2-Clause"
-
-[[annotations]]
-path = "assets/misc/miniaudio.h"
-precedence = "aggregate"
-SPDX-FileCopyrightText = " 2023 David Reid"
-SPDX-License-Identifier = "MIT-0"
-
-[[annotations]]
-path = "assets/misc/nuklear.h"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2017 Micha Mettke"
-SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]
 path = "assets/stb/**"
@@ -67,12 +49,6 @@ SPDX-License-Identifier = "MIT-0"
 path = "assets/win32ports/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = " 2019 win32ports"
-SPDX-License-Identifier = "MIT-0"
-
-[[annotations]]
-path = "assets/misc/termbox2.h"
-precedence = "aggregate"
-SPDX-FileCopyrightText = " 2010-2020 nsf, 2015-2024 Adam Saponara"
 SPDX-License-Identifier = "MIT-0"
 
 [[annotations]]

@@ -30,7 +30,6 @@ struct CJITState {
 	char *tmpdir; // path to execution temporary directory
 	char *write_pid; // filename to write the pid of execution
 	char *entry; // entry point, default "main" if left NULL
-	bool dmon; // activate filesystem monitor on platforms supported
 	bool live; // live coding mode
 	bool quiet; // print less to stderr
 	bool fresh; // tempdir is freshly created and needs to be populated
