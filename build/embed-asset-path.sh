@@ -59,8 +59,8 @@ varname=`echo $name | sed 's/\./_/g'`
 
 # generate assets in source for extract_assets(char *tmpdir)
 echo >> src/assets.h
-echo "extern char *${varname};" >> src/assets.h
-echo "extern unsigned int ${varname}_len;" >> src/assets.h
+echo "extern const char *${varname};" >> src/assets.h
+echo "extern const unsigned int ${varname}_len;" >> src/assets.h
 echo >> src/assets.h
 
 cat <<EOF >> src/assets.c

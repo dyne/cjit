@@ -23,12 +23,8 @@ ldadd := lib/tinycc/libtcc.a -lshlwapi
 tinycc_config += --targetos=WIN32 --config-backtrace=no
 
 SOURCES += src/win-compat.o  \
-	src/embed_libtcc1.a.o     \
-	src/embed_include.o \
 	src/embed_tinycc_win32.o \
-	src/embed_win32ports.o \
-	src/embed_misc.o \
-	src/embed_stb.o
+	src/embed_win32ports.o
 
 all: embed-win cjit.exe
 
