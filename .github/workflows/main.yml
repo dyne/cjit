@@ -149,30 +149,6 @@ jobs:
           path: |
             cjit-Linux-x86_64
 
-  musl-release:
-    name: 🐧 Musl Linux binary release build
-    runs-on: ubuntu-latest
-    needs: [semantic-release]
-    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install build deps
-        run: |
-          sudo apt install -qy make musl-tools musl-dev
-      - name: Build x86_64 with musl-system
-        run: |
-          make musl-linux RELEASE=1
-          mv cjit cjit-Linux-x86_64-static
-      - name: Upload artifact linux-amd64
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-musl-linux-x86_64
-          path: |
-            cjit-Linux-x86_64-static
-
   win-native-release:
     name: 🪟 Windows native binary release build
     needs: [semantic-release]
@@ -212,7 +188,7 @@ jobs:
 
   binary-release:
     name: 📢 Public release
-    needs: [semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
+    needs: [semantic-release, osx-native-release, linux-release, win-native-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -242,16 +218,6 @@ jobs:
           prerelease: false
           fail_on_unmatched_files: true
           generate_release_notes: true
-      # - name: VirusTotal Scan
-      #   uses: crazy-max/ghaction-virustotal@v4
-      #   with:
-      #     vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
-      #     update_release_body: true
-      #     files: |
-      #       cjit-bin/release-osx-native/*
-      #       cjit-bin/release-win-native-x86_64/*
-      #       cjit-bin/release-shared-linux-x86_64/*
-      #       cjit-bin/release-musl-linux-x86_64/*
 
   virustotal:
     name: 🦠 Virus scan of released binaries
@@ -273,11 +239,10 @@ jobs:
             cjit-bin/release-osx-native/*
             cjit-bin/release-win-native-x86_64/*
             cjit-bin/release-shared-linux-x86_64/*
-            cjit-bin/release-musl-linux-x86_64/*
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
-    needs: [binary-release, semantic-release, osx-native-release, musl-release, linux-release, win-native-release]
+    needs: [binary-release, semantic-release, osx-native-release, linux-release, win-native-release]
     runs-on: ubuntu-latest
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
