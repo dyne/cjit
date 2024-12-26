@@ -146,21 +146,6 @@ CJITState* cjit_new() {
 	tcc_add_symbol(cjit->TCC, "usleep", &win_compat_usleep);
 	tcc_add_symbol(cjit->TCC, "getline", &win_compat_getline);
 #endif
-	// DMON is activated on all supported platforms by default
-	cjit->dmon = true;
-	tcc_define_symbol(cjit->TCC,"DMON_IMPL",NULL);
-#if defined(CJIT_BUILD_LINUX)
-	tcc_define_symbol(cjit->TCC,"DMON_OS_LINUX",NULL);
-	// TODO: test dmon on OSX (missing library frameworks)
-	// #elif defined(CJIT_BUILD_OSX)
-	//   tcc_define_symbol(cjit->TCC,"DMON_OS_MACOS",NULL);
-#elif defined(CJIT_BUILD_WIN)
-	tcc_define_symbol(cjit->TCC,"DMON_OS_WINDOWS",NULL);
-#else
-	tcc_undefine_symbol(cjit->TCC,"DMON_OS");
-	tcc_undefine_symbol(cjit->TCC,"DMON_IMPL");
-	cjit->dmon = false;
-#endif
 	// When using SDL2 these defines are needed
 	tcc_define_symbol(cjit->TCC,"SDL_DISABLE_IMMINTRIN_H",NULL);
 	tcc_define_symbol(cjit->TCC,"SDL_MAIN_HANDLED",NULL);
@@ -172,6 +157,7 @@ CJITState* cjit_new() {
 
 	tcc_add_sysinclude_path(cjit->TCC, cjit->tmpdir);
 	tcc_add_sysinclude_path(cjit->TCC, ".");
+	tcc_add_sysinclude_path(cjit->TCC, "include");
 	tcc_add_library_path(cjit->TCC, ".");
 
 #if defined(_WIN32)

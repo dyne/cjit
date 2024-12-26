@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+#define DMON_IMPL
 #include <dmon.h>
 
 

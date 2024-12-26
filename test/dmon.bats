@@ -20,7 +20,7 @@ load bats_setup
      sleep 2;
      kill -HUP `cat ${TMP}/test_dmon.pid`) &
 
-    run ${CJIT} -p ${TMP}/test_dmon.pid ${T}/dmon.c -- ${TMP}
+    run ${CJIT} -p ${TMP}/test_dmon.pid -I${T} ${T}/dmon.c -- ${TMP}
     # assert_failure # TODO: cleaner way than kill -HUP
     assert_line --regexp '^CREATE:.*dmon_test_create.txt$'
     assert_line --regexp '^DELETE:.*dmon_test_create.txt$'
