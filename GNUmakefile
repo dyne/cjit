@@ -24,11 +24,6 @@ help:
 _: ##
 ------: ## __ Production targets
 
-musl-linux: ## 🗿 Build a fully static cjit using musl-libc on Linux
-	$(MAKE) -f build/musl.mk lib/tinycc/libtcc.a embed-musl cjit
-	@rm -f .build_done*
-	date | tee .build_done_musl
-
 linux-x86: ## 🐧 Build a dynamically linked cjit using libs found on Linux x86
 	$(MAKE) -f build/linux.mk embed-posix cjit
 	@rm -f .build_done*
