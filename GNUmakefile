@@ -25,28 +25,27 @@ _: ##
 ------: ## __ Production targets
 
 musl-linux: ## 🗿 Build a fully static cjit using musl-libc on Linux
-	$(MAKE) -f build/musl.mk
+	$(MAKE) -f build/musl.mk lib/tinycc/libtcc.a embed-musl cjit
 	@rm -f .build_done*
 	date | tee .build_done_musl
 
 linux-x86: ## 🐧 Build a dynamically linked cjit using libs found on Linux x86
-	$(MAKE) -f build/linux.mk
+	$(MAKE) -f build/linux.mk embed-posix cjit
 	@rm -f .build_done*
 	date | tee .build_done_linux
 
 win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
-	$(MAKE) -f build/win-wsl.mk
+	$(MAKE) -f build/win-wsl.mk cross-win embed-win cjit.exe
 	@rm -f .build_done*
 	date | tee .build_done_win
 
 win-native: ## 🪟 Build cjit.exe for WIN64 on Windows Server
-	cd ./lib/tinycc; bash configure --targetos=WIN32 --config-backtrace=no; make libtcc.a libtcc1.a
-	$(MAKE) -f build/win-native.mk
+	$(MAKE) -f build/win-native.mk embed-win cjit.exe
 	@rm -f .build_done*
 	date | tee .build_done_win
 
 apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
-	$(MAKE) -f build/osx.mk
+	$(MAKE) -f build/osx.mk embed-posix cjit.command
 	@rm -f .build_done*
 	date | tee .build_done_osx
 
@@ -54,11 +53,11 @@ _: ##
 ------: ## __ Debugging targets
 
 debug-gdb: ## 🔬 Build using the address sanitizer to detect memory leaks
-	$(MAKE) -f build/linux.mk GDB=1
+	$(MAKE) -f build/linux.mk embed-posix cjit GDB=1
 	date | tee .build_done_linux
 
 debug-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
-	$(MAKE) -f build/linux.mk ASAN=1
+	$(MAKE) -f build/linux.mk embed-posix cjit ASAN=1
 	date | tee .build_done_linux
 
 _: ##

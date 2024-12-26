@@ -20,6 +20,8 @@ cflags += -DCJIT_BUILD_WIN
 ldflags := -static-libgcc
 ldadd := lib/tinycc/libtcc.a -lshlwapi
 
+tinycc_config += --targetos=WIN32 --config-backtrace=no
+
 SOURCES += src/win-compat.o  \
 	src/embed_libtcc1.a.o     \
 	src/embed_include.o \
@@ -28,31 +30,11 @@ SOURCES += src/win-compat.o  \
 	src/embed_misc.o \
 	src/embed_stb.o
 
-all: embed cjit.exe
-
-embed: lib/tinycc/libtcc1.a
-	$(info Generating assets)
-	bash build/init-assets.sh
-	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
-	bash build/embed-asset-path.sh lib/tinycc/include
-	bash build/embed-asset-path.sh lib/tinycc/win32/include tinycc_win32
-	bash build/embed-asset-path.sh assets/win32ports
-	bash build/embed-asset-path.sh assets/misc
-	bash build/embed-asset-path.sh assets/stb
-	@echo                 >> src/assets.c
-	@echo "return(true);" >> src/assets.c
-	@echo "}"             >> src/assets.c
-	@echo          >> src/assets.h
-	@echo "#endif" >> src/assets.h
+all: embed-win cjit.exe
 
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
 
 # libtcc is built by CI
 
-.c.o:
-	$(cc) \
-	$(cflags) \
-	-c $< -o $@ \
-	-DVERSION=\"${VERSION}\" \
-	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
+include build/deps.mk
