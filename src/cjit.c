@@ -68,7 +68,7 @@ static bool cjit_mkdtemp(CJITState *cjit) {
 		// The path exists but is not a directory
 		return(false);
 	}
-	if(!cjit->fresh) {
+	if(cjit->fresh) {
 		// Create the temporary directory
 		if (CreateDirectory(tempDir, NULL) == 0) {
 			_err("Failed to create temporary dir: %s",tempDir);
