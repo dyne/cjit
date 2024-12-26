@@ -11,13 +11,8 @@ ldadd := lib/tinycc/libtcc.a \
 		/usr/lib/x86_64-linux-musl/libc.a
 
 SOURCES += \
-	src/kilo.o \
-	src/embed_libtcc1.a.o \
-	src/embed_include.o \
-	src/embed_misc.o \
 	src/embed_libc.so.o \
-	src/musl-symbols.o \
-	src/embed_stb.o
+	src/musl-symbols.o
 
 # SOURCES += src/embed-musl-libc.o src/musl-symbols.o src/kilo.o
 

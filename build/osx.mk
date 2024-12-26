@@ -3,12 +3,7 @@ include build/init.mk
 cc := clang
 cflags += -DCJIT_BUILD_OSX
 
-SOURCES += \
-	src/kilo.o \
-	src/embed_libtcc1.a.o \
-	src/embed_include.o \
-	src/embed_misc.o \
-	src/embed_stb.o
+SOURCES += src/kilo.o
 
 all: embed-posix cjit.command
 

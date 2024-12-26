@@ -29,6 +29,7 @@
 
 #include <ketopt.h>
 #include <muntar.h>
+#include <assets.h>
 
 #define MAX_ARG_STRING 1024
 static int parse_value(char *str) {
@@ -75,7 +76,9 @@ const char cli_help[] =
   " -p pid\t write pid of executed program to file\n"
   " --live\t run interactive editor for live coding\n"
   " --temp\t create the runtime temporary dir and exit\n"
-  " --utar\t extract all contents from a USTAR tar.gz\n";
+  " --xtgz\t extract all contents from a USTAR tar.gz\n";
+
+//  " --src\t  extract source code to cjit_source\n"
 
 int main(int argc, char **argv) {
   CJITState *CJIT = cjit_new();
@@ -89,6 +92,7 @@ int main(int argc, char **argv) {
   static ko_longopt_t longopts[] = {
 	  { "help", ko_no_argument, 100 },
 	  { "live", ko_no_argument, 301 },
+//	  { "src",  ko_no_argument, 311 },
 	  { "temp", ko_no_argument, 401 },
 	  { "utar", ko_required_argument, 501 },
 	  { NULL, 0, 0 }
@@ -157,6 +161,11 @@ int main(int argc, char **argv) {
 		  if(!CJIT->quiet)_err("Live mode activated");
 		  CJIT->live = true;
 #endif
+	  // } else if (c == 311) {
+	  // 	  _err("Extracting CJIT's own source code...");
+	  // 	  muntargz_to_path("cjit_source",cjit_source,cjit_source_len);
+	  // 	  _err("Done! source code folder ready: cjit_source");
+	  // 	  exit(0);
 	  } else if (c == 401) { // --temp
 		  fprintf(stdout,"%s\n",CJIT->tmpdir);
 		  cjit_free(CJIT);

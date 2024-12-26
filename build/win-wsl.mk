@@ -19,12 +19,8 @@ tinycc_config += --targetos=WIN32 --config-backtrace=no --enable-cross
 tinycc_config += --ar=${ar}
 
 SOURCES += src/win-compat.o  \
-	src/embed_libtcc1.a.o     \
-	src/embed_include.o \
 	src/embed_tinycc_win32.o \
-	src/embed_win32ports.o \
-	src/embed_misc.o \
-	src/embed_stb.o
+	src/embed_win32ports.o
 
 all: cross-win embed-win cjit.exe
 
