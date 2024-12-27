@@ -6,8 +6,6 @@ cflags += -DLIBC_GNU -D_GNU_SOURCE
 cflags += -DKILO_SUPPORTED
 cflags += -DCJIT_BUILD_LINUX
 
-SOURCES += src/kilo.o
-
 all: embed-posix cjit
 
 tinycc_config += --with-libgcc
