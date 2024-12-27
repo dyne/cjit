@@ -31,6 +31,10 @@ ifdef GDB
 #	tinycc_config += --extra-ldflags="${ldflags}"
 endif
 
+ifdef SELFHOST
+	cflags += -DSELFHOST
+endif
+
 cjit: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
 

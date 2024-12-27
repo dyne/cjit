@@ -75,9 +75,11 @@ const char cli_help[] =
   " -e fun\t entry point function (default 'main')\n"
   " -p pid\t write pid of executed program to file\n"
   " --temp\t create the runtime temporary dir and exit\n"
+#if defined(SELFHOST)
+  " --src\t  extract source code to cjit_source\n"
+#endif
   " --xtgz\t extract all contents from a USTAR tar.gz\n";
 
-//  " --src\t  extract source code to cjit_source\n"
 
 int main(int argc, char **argv) {
   CJITState *CJIT = cjit_new();
@@ -90,7 +92,9 @@ int main(int argc, char **argv) {
   // they are overridden by explicit command-line options
   static ko_longopt_t longopts[] = {
 	  { "help", ko_no_argument, 100 },
-//	  { "src",  ko_no_argument, 311 },
+#if defined(SELFHOST)
+	  { "src",  ko_no_argument, 311 },
+#endif
 	  { "temp", ko_no_argument, 401 },
 	  { "utar", ko_required_argument, 501 },
 	  { NULL, 0, 0 }
@@ -152,6 +156,15 @@ int main(int argc, char **argv) {
 		  if(CJIT->write_pid) free(CJIT->write_pid);
 		  CJIT->write_pid = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->write_pid,opt.arg);
+#if defined(SELFHOST)
+	  } else if (c == 311) { // --temp
+		  char cwd[PATH_MAX];
+		  getcwd(cwd, sizeof(cwd));
+		  _err("Extracting CJIT's own source to %s",cwd);
+		  muntargz_to_path(cwd,(char*)&cjit_source,cjit_source_len);
+		  cjit_free(CJIT);
+		  exit(0);
+#endif
 	  } else if (c == 401) { // --temp
 		  fprintf(stdout,"%s\n",CJIT->tmpdir);
 		  cjit_free(CJIT);
