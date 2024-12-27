@@ -55,6 +55,10 @@ debug-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
 	$(MAKE) -f build/linux.mk embed-posix cjit ASAN=1
 	date | tee .build_done_linux
 
+self-host: ## 💎 Build a CJIT that builts itself (embed its source)
+	$(MAKE) -f build/linux.mk embed-posix-source cjit ASAN=1 SELFHOST=1
+	date | tee .build_done_linux
+
 _: ##
 ------: ## __ Testing targets
 
