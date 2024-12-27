@@ -15,13 +15,11 @@ CFLAGS ?= -O2 -fomit-frame-pointer ${cflags_stack_protect}
 
 cflags := ${CFLAGS} ${cflags_includes}
 
-SOURCES := src/file.o src/cflag.o src/cjit.o \
+SOURCES := src/file.o src/cjit.o \
            src/main.o src/assets.o \
            src/repl.o \
            src/muntar.o src/tinflate.o src/tinfgzip.o \
-           src/embed_libtcc1.a.o src/embed_include.o \
-           src/embed_misc.o src/embed_stb.o
-
+           src/embed_libtcc1.a.o src/embed_include.o
 #src/embed_source.o
 
 
@@ -38,15 +36,24 @@ embed-posix: lib/tinycc/libtcc1.a
 	bash build/init-assets.sh
 	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
 	bash build/embed-asset-path.sh lib/tinycc/include
-	bash build/embed-asset-path.sh assets/misc
-	bash build/embed-asset-path.sh assets/stb
 	@echo                 >> src/assets.c
 	@echo "return(true);" >> src/assets.c
 	@echo "}"             >> src/assets.c
 	@echo          >> src/assets.h
 	@echo "#endif" >> src/assets.h
 
-# 	bash build/embed-source.sh
+embed-posix-source: lib/tinycc/libtcc1.a
+	$(info Embedding assets for POSIX build)
+	bash build/init-assets.sh
+	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
+	bash build/embed-asset-path.sh lib/tinycc/include
+	bash build/embed-source.sh
+	@echo                 >> src/assets.c
+	@echo "return(true);" >> src/assets.c
+	@echo "}"             >> src/assets.c
+	@echo          >> src/assets.h
+	@echo "#endif" >> src/assets.h
+	$(eval SOURCES += src/embed_source.c)
 
 embed-win: lib/tinycc/libtcc.a lib/tinycc/libtcc1.a
 	$(info Embedding assets for Windows build)
@@ -55,8 +62,6 @@ embed-win: lib/tinycc/libtcc.a lib/tinycc/libtcc1.a
 	bash build/embed-asset-path.sh lib/tinycc/include
 	bash build/embed-asset-path.sh lib/tinycc/win32/include tinycc_win32
 	bash build/embed-asset-path.sh assets/win32ports
-	bash build/embed-asset-path.sh assets/misc
-	bash build/embed-asset-path.sh assets/stb
 	@echo                 >> src/assets.c
 	@echo "return(true);" >> src/assets.c
 	@echo "}"             >> src/assets.c
@@ -68,9 +73,7 @@ embed-musl: lib/tinycc/libtcc1.a
 	bash build/init-assets.sh
 	bash build/embed-asset-path.sh lib/tinycc/libtcc1.a
 	bash build/embed-asset-path.sh lib/tinycc/include
-	bash build/embed-asset-path.sh assets/misc
 	bash build/embed-asset-path.sh /lib/x86_64-linux-musl/libc.so
-	bash build/embed-asset-path.sh assets/stb
 	@echo                 >> src/assets.c
 	@echo "return(true);" >> src/assets.c
 	@echo "}"             >> src/assets.c
