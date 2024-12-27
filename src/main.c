@@ -74,7 +74,6 @@ const char cli_help[] =
   " -L dir\t also search inside folder 'dir' for -l libs\n"
   " -e fun\t entry point function (default 'main')\n"
   " -p pid\t write pid of executed program to file\n"
-  " --live\t run interactive editor for live coding\n"
   " --temp\t create the runtime temporary dir and exit\n"
   " --xtgz\t extract all contents from a USTAR tar.gz\n";
 
@@ -91,7 +90,6 @@ int main(int argc, char **argv) {
   // they are overridden by explicit command-line options
   static ko_longopt_t longopts[] = {
 	  { "help", ko_no_argument, 100 },
-	  { "live", ko_no_argument, 301 },
 //	  { "src",  ko_no_argument, 311 },
 	  { "temp", ko_no_argument, 401 },
 	  { "utar", ko_required_argument, 501 },
@@ -154,23 +152,11 @@ int main(int argc, char **argv) {
 		  if(CJIT->write_pid) free(CJIT->write_pid);
 		  CJIT->write_pid = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->write_pid,opt.arg);
-	  } else if (c == 301) {
-#if defined(_WIN32)
-		  _err("Live mode not supported in Windows");
-#else
-		  if(!CJIT->quiet)_err("Live mode activated");
-		  CJIT->live = true;
-#endif
-	  // } else if (c == 311) {
-	  // 	  _err("Extracting CJIT's own source code...");
-	  // 	  muntargz_to_path("cjit_source",cjit_source,cjit_source_len);
-	  // 	  _err("Done! source code folder ready: cjit_source");
-	  // 	  exit(0);
 	  } else if (c == 401) { // --temp
 		  fprintf(stdout,"%s\n",CJIT->tmpdir);
 		  cjit_free(CJIT);
 		  exit(0);
-	  } else if (c == 501) { // --utar
+	  } else if (c == 501) { // --xtgz
 		  cjit_free(CJIT);
 		  unsigned int len = 0;
 		  _err("Extract contents of: %s",opt.arg);
@@ -188,8 +174,9 @@ int main(int argc, char **argv) {
   }
   if(!CJIT->quiet) _err("CJIT %s by Dyne.org",VERSION);
 
+  // If no arguments then start the REPL
   if (argc == 0 ) {
-    _err("No input file: live mode!");
+    _err("No input file: interactive mode");
     CJIT->live = true;
   }
   if(CJIT->live) {
@@ -197,13 +184,11 @@ int main(int argc, char **argv) {
       _err("Live mode only available in terminal (tty not found)");
       goto endgame;
     }
-#ifdef KILO_SUPPORTED
-    res = cjit_cli_kilo(CJIT);
-#else
     res = cjit_cli_tty(CJIT);
-#endif
     goto endgame;
   }
+  // end of REPL
+  /////////////////////////////////////
 
   // number of args at the left hand of arg separator, or all of them
   int left_args = arg_separator? arg_separator: argc;
