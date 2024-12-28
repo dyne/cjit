@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 	  { "src",  ko_no_argument, 311 },
 #endif
 	  { "temp", ko_no_argument, 401 },
-	  { "utar", ko_required_argument, 501 },
+	  { "xtgz", ko_required_argument, 501 },
 	  { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
 		  CJIT->write_pid = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->write_pid,opt.arg);
 #if defined(SELFHOST)
-	  } else if (c == 311) { // --temp
+	  } else if (c == 311) { // --src
 		  char cwd[PATH_MAX];
 		  getcwd(cwd, sizeof(cwd));
 		  _err("Extracting CJIT's own source to %s/cjit_source",cwd);
