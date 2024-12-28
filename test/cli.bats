@@ -18,6 +18,22 @@ load bats_setup
     assert_output --partial 'Please compile with -DALLOWED=1'
 }
 
+@test "Compile to object and execute" {
+      run ${CJIT} -c test/hello.c
+      assert_success
+      run ${CJIT} hello.o
+      assert_success
+      assert_output 'Hello World!'
+}
+
+@test "Compile to custom object and execute" {
+      run ${CJIT} -o world.o -c test/hello.c
+      assert_success
+      run ${CJIT} world.o
+      assert_success
+      assert_output 'Hello World!'
+}
+
 @test "Execute multiple files" {
     run ${CJIT} -q test/multifile/*
     assert_success

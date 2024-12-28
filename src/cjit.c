@@ -194,13 +194,30 @@ bool cjit_setup(CJITState *cjit) {
 	return(true);
 }
 
-bool cjit_add_file(CJITState *cjit, const char *path) {
+static int has_source_extension(const char *path) {
 	char *ext;
 	size_t extlen;
-	bool is_source = false;
-	bool res = cwk_path_get_extension(path,(const char**)&ext,&extlen);
-	// no filename extension: still good to add
-	if(!res) {
+	bool is_source;
+	is_source = cwk_path_get_extension(path,(const char**)&ext,&extlen);
+	//_err("%s: extension: %s",__func__,ext);
+	if(!is_source) // no extension at all
+		return 0;
+	if(extlen==2 && (ext[1]=='c' || ext[1]=='C')) is_source = true;
+	else if(extlen==3
+	   && (ext[1]=='c' || ext[1]=='C')
+	   && (ext[2]=='c' || ext[2]=='C')) is_source = true;
+	else if(extlen==4
+	   && (ext[1]=='c' || ext[1]=='C')
+	   && (ext[2]=='x' || ext[2]=='X')
+	   && (ext[3]=='x' || ext[3]=='X')) is_source = true;
+	else is_source = false;
+	return (is_source? 1 : -1);
+}
+
+bool cjit_add_file(CJITState *cjit, const char *path) {
+	// _err("%s",__func__);
+	int is_source = has_source_extension(path);
+	if(is_source == 0) { // no extension, we still add
 		cjit_setup(cjit);
 		if(tcc_add_file(cjit->TCC, path)<0) {
 			_err("%s: tcc_add_file error",__func__);
@@ -208,16 +225,8 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 		}
 		return true;
 	}
-	// if C source then use tcc_compile_string
-	if(extlen==1 && (ext[1]=='c' || ext[1]=='C')) is_source = true;
-	if(extlen==3
-	   && (ext[1]=='c' || ext[1]=='C')
-	   && (ext[2]=='c' || ext[2]=='C')) is_source = true;
-	if(extlen==4
-	   && (ext[1]=='c' || ext[1]=='C')
-	   && (ext[2]=='x' || ext[2]=='X')
-	   && (ext[3]=='x' || ext[3]=='X')) is_source = true;
-	if(is_source) {
+	if(is_source>0) {
+		// _err("%s: is source(%i): %s",__func__, is_source, path);
 		long length = file_size(path);
 		if (length == -1) return false;
 		FILE *file = fopen(path, "r");
@@ -235,6 +244,15 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 		contents[length] = 0x0; // Null-terminate the string
 		fclose(file);
 		cjit_setup(cjit);
+		size_t dirname;
+		cwk_path_get_dirname(path,&dirname);
+		if(dirname) {
+			char *tmp = malloc(dirname+1);
+			strncpy(tmp,path,dirname);
+			tmp[dirname] = 0x0;
+			tcc_add_include_path(cjit->TCC,tmp);
+			free(tmp);
+		}
 		tcc_compile_string(cjit->TCC,contents);
 		free(contents);
 	} else {
@@ -248,32 +266,43 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 }
 
 bool cjit_compile_file(CJITState *cjit, const char *path) {
-	char *restrict tmp;
-	const char *basename;
-	char *ext;
-	size_t len;
-	cwk_path_get_basename((char*)path, &basename, &len);
-	tmp = malloc(len+2);
-	strncpy(tmp,basename,len+1);
+	int is_source = has_source_extension(path);
 	// _err("basename: %s",tmp);
-	if( !cwk_path_get_extension(tmp,(const char**)&ext,&len) ) {
+	if( is_source == 0) {
 		_err("%s: filename has no extension: %s",
 		     __func__,basename);
-		return 1;
+		return false;
 	}
-	// _err("extension: %s",ext);
-	if( *(ext+1) != 'c' ) {
+	if( is_source < 0) {
 		_err("%s: filename has wrong extension: %s",
 		     __func__,basename);
-		return 1;
+		return false;
 	}
-	strcpy(ext,".o");
 	cjit_setup(cjit);
 	tcc_add_file(cjit->TCC, path);
-	_err("Compiling: %s -> %s",path,tmp);
-	tcc_output_file(cjit->TCC,tmp);
-	free(tmp);
-	return 0;
+	if(cjit->output_filename) {
+		if(!cjit->quiet)
+			_err("Compiling: %s -> %s",path,
+			     cjit->output_filename);
+		tcc_output_file(cjit->TCC,
+				cjit->output_filename);
+	} else {
+		char *ext;
+		size_t extlen;
+		char *restrict tmp;
+		const char *basename;
+		size_t len;
+		cwk_path_get_basename((char*)path, &basename, &len);
+		tmp = malloc(len+2);
+		strncpy(tmp,basename,len+1);
+		cwk_path_get_extension(tmp,(const char**)&ext,&extlen);
+		strcpy(ext,".o");
+		if(!cjit->quiet)
+			_err("Compiling: %s -> %s",path,tmp);
+		tcc_output_file(cjit->TCC,tmp);
+		free(tmp);
+	}
+	return true;
 }
 
 int cjit_exec(CJITState *cjit, int argc, char **argv) {

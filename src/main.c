@@ -60,25 +60,28 @@ static int parse_value(char *str) {
 }
 
 const char cli_help[] =
-  "\n"
-  "Synopsis: cjit [options] files(*) -- app arguments\n"
-  "  (*) can be any source (.c) or built object (dll, dylib, .so)\n"
-  "Options:\n"
-  " -h \t print this help\n"
-  " -v \t print version information\n"
-  " -q \t stay quiet and only print errors and output\n"
-  " -D sym\t define a macro symbol or key=value\n"
-  " -C \t set compiler flags (default from env var CFLAGS)\n"
-  " -I dir\t also search folder 'dir' for header files\n"
-  " -l lib\t search the library named 'lib' when linking\n"
-  " -L dir\t also search inside folder 'dir' for -l libs\n"
-  " -e fun\t entry point function (default 'main')\n"
-  " -p pid\t write pid of executed program to file\n"
-  " --temp\t create the runtime temporary dir and exit\n"
+	"CJIT %s by Dyne.org\n"
+	"\n"
+	"Synopsis: cjit [options] files(*) -- app arguments\n"
+	"  (*) can be any source (.c) or built object (dll, dylib, .so)\n"
+	"Options:\n"
+	" -h \t print this help\n"
+	" -v \t print version information\n"
+	" -q \t stay quiet and only print errors and output\n"
+	" -D sym\t define a macro symbol or key=value\n"
+	" -C \t set compiler flags (default from env var CFLAGS)\n"
+	" -I dir\t also search folder 'dir' for header files\n"
+	" -l lib\t search the library named 'lib' when linking\n"
+	" -L dir\t also search inside folder 'dir' for -l libs\n"
+	" -e fun\t entry point function (default 'main')\n"
+	" -p pid\t write pid of executed program to file\n"
+	" -c \t compile a single source file, do not execute\n"
+	" -o exe\t compile to an 'exe' file, do not execute\n"
+	" --temp\t create the runtime temporary dir and exit\n"
 #if defined(SELFHOST)
-  " --src\t  extract source code to cjit_source\n"
+	" --src\t  extract source code to cjit_source\n"
 #endif
-  " --xtgz\t extract all contents from a USTAR tar.gz\n";
+	" --xtgz\t extract all contents from a USTAR tar.gz\n";
 
 
 int main(int argc, char **argv) {
@@ -101,7 +104,7 @@ int main(int argc, char **argv) {
   };
   ketopt_t opt = KETOPT_INIT;
   // tolerated and ignored: -f -W -O -g -U -E -S -M
-  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:co:f:W:O:gU:ESM:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:co:f:W:O:gU:ESM:m:", longopts)) >= 0) {
 	  if(c == 'q') {
 		  CJIT->quiet = true;
 	  }
@@ -284,7 +287,7 @@ int main(int argc, char **argv) {
 			  // 3  : BOM found, UTF8
 			  if(res ==0) {
 				  cjit_setup(CJIT);
-				  tcc_add_file(CJIT->TCC, code_path);
+				  cjit_add_file(CJIT, code_path);
 			  } else if(res<0) {
 				  _err("Cannot open file: %s",code_path);
 				  _err("Execution aborted.");
