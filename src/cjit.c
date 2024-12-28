@@ -270,12 +270,12 @@ bool cjit_compile_file(CJITState *cjit, const char *path) {
 	// _err("basename: %s",tmp);
 	if( is_source == 0) {
 		_err("%s: filename has no extension: %s",
-		     __func__,basename);
+		     __func__,path);
 		return false;
 	}
 	if( is_source < 0) {
 		_err("%s: filename has wrong extension: %s",
-		     __func__,basename);
+		     __func__,path);
 		return false;
 	}
 	cjit_setup(cjit);
