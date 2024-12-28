@@ -204,6 +204,8 @@ jobs:
           bash build/pack-examples.sh
           mkdir -p cjit-bin/release-demo/
           mv cjit-demo.tar.gz cjit-bin/release-demo/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: show release directory structure
         run: tree -dL 3
       - name: relase all binary artifacts
