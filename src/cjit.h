@@ -33,10 +33,20 @@ struct CJITState {
 	bool live; // live coding mode
 	bool quiet; // print less to stderr
 	bool fresh; // tempdir is freshly created and needs to be populated
+	int tcc_output; //
+	// #define TCC_OUTPUT_MEMORY   1 /* output will be run in memory */
+	// #define TCC_OUTPUT_EXE      2 /* executable file */
+	// #define TCC_OUTPUT_DLL      4 /* dynamic library */
+	// #define TCC_OUTPUT_OBJ      3 /* object file */
+	// #define TCC_OUTPUT_PREPROCESS 5 /* only preprocess */
+	char *output_filename; // output in case of compilation mode
+
 };
 typedef struct CJITState CJITState;
 
 extern CJITState* cjit_new();
+
+int cjit_compile_obj(CJITState *cjit, const char *_path);
 
 extern int cjit_exec(CJITState *cjit, int argc, char **argv);
 

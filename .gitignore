@@ -1,4 +1,11 @@
 cjit
 *.o
-src/embed*
+src/assets.*
+src/embed_*
 .build_done*
+dl
+cjit.res
+cjit.rc
+cjit_source
+pristine
+cjit-demo*
