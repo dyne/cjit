@@ -109,7 +109,7 @@ bool prepend_path(char **stored_path, const char *new_path) {
 long file_size(const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
-        perror("Error opening file");
+        _err("%s: fopen error: %s",__func__,strerror(errno));
         return -1;
     }
     fseek(file, 0, SEEK_END);

@@ -246,51 +246,55 @@ int main(int argc, char **argv) {
 	  }
 	  cjit_setup(CJIT);
 	  //if(!CJIT->quiet)_err("Compile: %s",argv[opt.ind]);
-	  res = cjit_compile_obj(CJIT, argv[opt.ind]);
+	  res = cjit_compile_file(CJIT, argv[opt.ind]) ?0:1; // 0 on success
 	  goto endgame;
 	  ////////////////////////////
 
   } else if(opt.ind < left_args) {
-    // process files on commandline before separator
-    if(!CJIT->quiet)_err("Source code:");
-    for (i = opt.ind; i < left_args; ++i) {
-      const char *code_path = argv[i];
-      if(!CJIT->quiet)_err("%c %s",(*code_path=='-'?'|':'+'),
-           (*code_path=='-'?"standard input":code_path));
-      if(*code_path=='-') { // stdin explicit
+	  // process files on commandline before separator
+	  if(!CJIT->quiet)_err("Source code:");
+	  for (i = opt.ind; i < left_args; ++i) {
+		  const char *code_path = argv[i];
+		  if(!CJIT->quiet)_err("%c %s",(*code_path=='-'?'|':'+'),
+				       (*code_path=='-'?"standard input":code_path));
+		  if(*code_path=='-') { // stdin explicit
 #if defined(_WIN32)
-        _err("Code from standard input not supported on Windows");
-        goto endgame;
+			  _err("Code from standard input not supported on Windows");
+			  goto endgame;
 #endif
-        stdin_code = load_stdin(); // allocated returned buffer, needs free
-        if(!stdin_code) {
-          _err("Error reading from standard input");
-        } else if( tcc_compile_string(CJIT->TCC,stdin_code) < 0) {
-          _err("Code runtime error in stdin");
-          free(stdin_code);
-          goto endgame;
-        } else free(stdin_code);
-      } else { // load any file path
-	int res = detect_bom(code_path);
-	// returned values:
-	// 0  : no BOM, all OK
-	// <0 : file not found
-	// 1  : BOM found, UTF16-LE
-	// 2  : BOM found, UTF16-BE
-	// 3  : BOM found, UTF8
-	if(res ==0) {
-	  tcc_add_file(CJIT->TCC, code_path);
-	} else if(res<0) {
-		_err("Cannot open file: %s",code_path);
-		_err("Execution aborted.");
-		goto endgame;
-	} else {
-	  _err("UTF BOM detected in file: %s",code_path);
-	  _err("Encoding is not yet supported, execution aborted.");
-	  goto endgame;
-	}
-      }
-    }
+			  stdin_code = load_stdin(); // allocated returned buffer, needs free
+			  if(!stdin_code) {
+				  _err("Error reading from standard input");
+				  goto endgame;
+			  }
+			  cjit_setup(CJIT);
+			  if( tcc_compile_string(CJIT->TCC,stdin_code) < 0) {
+				  _err("Code runtime error in stdin");
+				  free(stdin_code);
+				  goto endgame;
+			  } else free(stdin_code);
+		  } else { // load any file path
+			  int res = detect_bom(code_path);
+			  // returned values:
+			  // 0  : no BOM, all OK
+			  // <0 : file not found
+			  // 1  : BOM found, UTF16-LE
+			  // 2  : BOM found, UTF16-BE
+			  // 3  : BOM found, UTF8
+			  if(res ==0) {
+				  cjit_setup(CJIT);
+				  tcc_add_file(CJIT->TCC, code_path);
+			  } else if(res<0) {
+				  _err("Cannot open file: %s",code_path);
+				  _err("Execution aborted.");
+				  goto endgame;
+			  } else {
+				  _err("UTF BOM detected in file: %s",code_path);
+				  _err("Encoding is not yet supported, execution aborted.");
+				  goto endgame;
+			  }
+		  }
+	  }
   }
 
   // number of args at the left hand of arg separator, or all of them

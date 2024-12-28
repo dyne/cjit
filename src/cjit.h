@@ -40,13 +40,15 @@ struct CJITState {
 	// #define TCC_OUTPUT_OBJ      3 /* object file */
 	// #define TCC_OUTPUT_PREPROCESS 5 /* only preprocess */
 	char *output_filename; // output in case of compilation mode
-
+	bool done_setup;
+	bool done_exec;
 };
 typedef struct CJITState CJITState;
 
 extern CJITState* cjit_new();
 
-int cjit_compile_obj(CJITState *cjit, const char *_path);
+bool cjit_compile_file(CJITState *cjit, const char *_path);
+bool cjit_add_file(CJITState *cjit, const char *path);
 
 extern int cjit_exec(CJITState *cjit, int argc, char **argv);
 
