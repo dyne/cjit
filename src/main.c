@@ -100,7 +100,8 @@ int main(int argc, char **argv) {
 	  { NULL, 0, 0 }
   };
   ketopt_t opt = KETOPT_INIT;
-  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:", longopts)) >= 0) {
+  // tolerated and ignored: -f -W -O -g -U -E -S -M
+  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:co:f:W:O:gU:ESM:", longopts)) >= 0) {
 	  if(c == 'q') {
 		  CJIT->quiet = true;
 	  }
@@ -134,6 +135,12 @@ int main(int argc, char **argv) {
 			  cjit_free(CJIT);
 			  exit(1);
 		  }
+	  } else if (c == 'c') { // don't link or execute, just compile to .o
+		  CJIT->tcc_output = 3;
+	  } else if (c == 'o') { // override output filename
+		  if(CJIT->output_filename) free(CJIT->output_filename);
+		  CJIT->output_filename = malloc(strlen(opt.arg)+1);
+		  strcpy(CJIT->output_filename,opt.arg);
 	  } else if (c == 'L') { // library path
 		  if(!CJIT->quiet)_err("lib path: %s",opt.arg);
 		  tcc_add_library_path(CJIT->TCC, opt.arg);
@@ -160,7 +167,7 @@ int main(int argc, char **argv) {
 	  } else if (c == 311) { // --temp
 		  char cwd[PATH_MAX];
 		  getcwd(cwd, sizeof(cwd));
-		  _err("Extracting CJIT's own source to %s",cwd);
+		  _err("Extracting CJIT's own source to %s/cjit_source",cwd);
 		  muntargz_to_path(cwd,(char*)&cjit_source,cjit_source_len);
 		  cjit_free(CJIT);
 		  exit(0);
@@ -197,6 +204,7 @@ int main(int argc, char **argv) {
       _err("Live mode only available in terminal (tty not found)");
       goto endgame;
     }
+    cjit_setup(CJIT);
     res = cjit_cli_tty(CJIT);
     goto endgame;
   }
@@ -209,20 +217,39 @@ int main(int argc, char **argv) {
   char *stdin_code = NULL;
   if(opt.ind >= argc) {
 #if defined(_WIN32)
-    _err("No files specified on commandline");
-    goto endgame;
+	  _err("No files specified on commandline");
+	  goto endgame;
 #endif
-    if(!CJIT->quiet)_err("No files specified on commandline, reading code from stdin");
-    stdin_code = load_stdin(); // allocated returned buffer, needs free
-    if(!stdin_code) {
-      _err("Error reading from standard input");
-      goto endgame;
-    }
-    if( tcc_compile_string(CJIT->TCC,stdin_code) < 0) {
-      _err("Code runtime error in stdin");
-      free(stdin_code);
-      goto endgame;
-    }
+	  ////////////////////////////
+	  // Processs code from STDIN
+	  if(!CJIT->quiet)_err("No files specified on commandline, reading code from stdin");
+	  stdin_code = load_stdin(); // allocated returned buffer, needs free
+	  if(!stdin_code) {
+		  _err("Error reading from standard input");
+		  goto endgame;
+	  }
+	  cjit_setup(CJIT);
+	  if( tcc_compile_string(CJIT->TCC,stdin_code) < 0) {
+		  _err("Code runtime error in stdin");
+		  free(stdin_code);
+		  goto endgame;
+	  }
+	  // end of STDIN
+	  ////////////////
+
+  } else if(CJIT->tcc_output==3) {
+	  /////////////////////////////
+	  // Compile one .c file to .o
+	  if(left_args - opt.ind != 1) {
+		  _err("Compiling to object files supports only one file argument");
+		  goto endgame;
+	  }
+	  cjit_setup(CJIT);
+	  //if(!CJIT->quiet)_err("Compile: %s",argv[opt.ind]);
+	  res = cjit_compile_obj(CJIT, argv[opt.ind]);
+	  goto endgame;
+	  ////////////////////////////
+
   } else if(opt.ind < left_args) {
     // process files on commandline before separator
     if(!CJIT->quiet)_err("Source code:");

@@ -18,6 +18,8 @@
  */
 
 #include <cjit.h>
+#include <libtcc.h>
+#include <cwalk.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,11 +27,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
-#include <ctype.h>
-#include <unistd.h>
 
-#include <ketopt.h>
-#include <muntar.h>
 
 #define MAX_PATH 260 // rather short paths
 #define MAX_STRING 20480 // max 20KiB strings
@@ -130,8 +128,16 @@ CJITState* cjit_new() {
 	}
 	// error handler callback for TCC
 	tcc_set_error_func(cjit->TCC, stderr, cjit_tcc_handle_error);
+	return(cjit);
+}
+
+bool cjit_setup(CJITState *cjit) {
 	// set output in memory for just in time execution
-	tcc_set_output_type(cjit->TCC, TCC_OUTPUT_MEMORY);
+
+	tcc_set_output_type(cjit->TCC,
+			    cjit->tcc_output?
+			    cjit->tcc_output:
+			    TCC_OUTPUT_MEMORY);
 #if defined(LIBC_MUSL)
 	tcc_add_libc_symbols(cjit->TCC);
 #endif
@@ -184,8 +190,33 @@ CJITState* cjit_new() {
 		free(sdkpath);
 	}
 #endif
+	return(true);
+}
 
-	return(cjit);
+int cjit_compile_obj(CJITState *cjit, const char *_path) {
+	char *restrict tmp;
+	const char *basename;
+	char *ext;
+	size_t len;
+	cwk_path_get_basename((char*)_path, &basename, &len);
+	tmp = malloc(len+2);
+	strncpy(tmp,basename,len+1);
+	// _err("basename: %s",tmp);
+	if( !cwk_path_get_extension(tmp,(const char**)&ext,&len) ) {
+		_err("Filename has no extension: %s",basename);
+		return 1;
+	}
+	// _err("extension: %s",ext);
+	if( *(ext+1) != 'c' ) {
+		_err("Filename has wrong extension: %s",ext);
+		return 1;
+	}
+	strcpy(ext,".o");
+	tcc_add_file(cjit->TCC, _path);
+	_err("Compiling: %s -> %s",_path,tmp);
+	tcc_output_file(cjit->TCC,tmp);
+	free(tmp);
+	return 0;
 }
 
 int cjit_exec(CJITState *cjit, int argc, char **argv) {
@@ -263,6 +294,7 @@ void cjit_free(CJITState *cjit) {
 	if(cjit->tmpdir) free(cjit->tmpdir);
 	if(cjit->write_pid) free(cjit->write_pid);
 	if(cjit->entry) free(cjit->entry);
+	if(cjit->output_filename) free(cjit->output_filename);
 	if(cjit->TCC) tcc_delete(cjit->TCC);
 	free(cjit);
 }
