@@ -180,7 +180,8 @@ int main(int argc, char **argv) {
 		  cjit_free(CJIT);
 		  unsigned int len = 0;
 		  _err("Extract contents of: %s",opt.arg);
-		  char *targz = file_load(opt.arg, &len);
+		  const uint8_t *targz = (const uint8_t*)
+			  file_load(opt.arg, &len);
 		  if(!targz) exit(1);
 		  if(!len) exit(1);
 		  muntargz_to_path(".",targz,len);

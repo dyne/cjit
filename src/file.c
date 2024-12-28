@@ -245,9 +245,8 @@ static char *full_content = NULL;
 static int file_load_ftw(const char *pathname,
                          const struct stat *sbuf,
                          int type, struct FTW *ftwb) {
-    FILE *fd;
-    char *content = NULL;
     unsigned int len;
+    char *content = NULL;
     if (type == FTW_F) {
         size_t pathlen = strlen(pathname);
         if (pathname[pathlen-1] == 'c' &&
@@ -276,8 +275,6 @@ static int file_load_ftw(const char *pathname,
 char *dir_load(const char *path)
 {
     struct stat sb;
-    FILE *fd;
-    char *content = NULL;
 
     if (stat(path, &sb) != 0) {
         _err("Error: %s",path);
