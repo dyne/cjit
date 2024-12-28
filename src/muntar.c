@@ -113,11 +113,11 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh)
 	h->devminor = (uint32_t) decodeTarOctal(rh->devminor, sizeof(rh->devminor));
 
 	h->type = (uint32_t) rh->type;
-	strncpy(h->name, rh->name, sizeof(rh->name));
+	strncpy(h->name, rh->name, sizeof(h->name));
 	h->name[ sizeof(h->name) - 1 ] = 0;
-	strncpy(h->linkname, rh->linkname, sizeof(rh->linkname));
+	strncpy(h->linkname, rh->linkname, sizeof(h->linkname));
 	h->linkname[ sizeof(h->linkname) - 1 ] = 0;
-	strncpy(h->path, rh->path, sizeof(rh->path));
+	strncpy(h->path, rh->path, sizeof(h->path));
 	h->path[ sizeof(h->path) - 1 ] = 0;
 
 	return MTAR_ESUCCESS;

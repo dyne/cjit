@@ -46,9 +46,9 @@ struct CJITState {
 typedef struct CJITState CJITState;
 
 extern CJITState* cjit_new();
-
-bool cjit_compile_file(CJITState *cjit, const char *_path);
-bool cjit_add_file(CJITState *cjit, const char *path);
+extern bool cjit_setup(CJITState *cjit);
+extern bool cjit_compile_file(CJITState *cjit, const char *_path);
+extern bool cjit_add_file(CJITState *cjit, const char *path);
 
 extern int cjit_exec(CJITState *cjit, int argc, char **argv);
 

@@ -23,11 +23,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdarg.h>
+#include <stdarg.h> // _err/_out
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
-
+#include <unistd.h> // getpid/write
 
 #define MAX_PATH 260 // rather short paths
 #define MAX_STRING 20480 // max 20KiB strings
