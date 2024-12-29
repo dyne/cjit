@@ -109,17 +109,7 @@ int main(int argc, char **argv) {
 		  CJIT->quiet = true;
 	  }
 	  if (c == 'v') {
-		  _err("CJIT %s by Dyne.org",VERSION);
-		  // _err("Running version: %s\n",VERSION);
-		  // version is always shown
-		  _err("Build: %s",PLATFORM);
-#if   defined(CJIT_DEBUG_ASAN)
-		  _err("Debug: ASAN");
-#elif defined(CJIT_DEBUG_GDB)
-		  _err("Debug: GDB");
-#else
-		  _err("Debug: NONE");
-#endif
+		  cjit_status(CJIT);
 		  cjit_free(CJIT);
 		  exit(0); // print and exit
 	  } else if (c=='h' || c==100) { // help
@@ -139,11 +129,12 @@ int main(int argc, char **argv) {
 			  exit(1);
 		  }
 	  } else if (c == 'c') { // don't link or execute, just compile to .o
-		  CJIT->tcc_output = 3;
+		  CJIT->tcc_output = TCC_OUTPUT_OBJ;
 	  } else if (c == 'o') { // override output filename
 		  if(CJIT->output_filename) free(CJIT->output_filename);
 		  CJIT->output_filename = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->output_filename,opt.arg);
+		  CJIT->tcc_output = TCC_OUTPUT_EXE;
 	  } else if (c == 'L') { // library path
 		  if(!CJIT->quiet)_err("lib path: %s",opt.arg);
 		  tcc_add_library_path(CJIT->TCC, opt.arg);
@@ -286,7 +277,6 @@ int main(int argc, char **argv) {
 			  // 2  : BOM found, UTF16-BE
 			  // 3  : BOM found, UTF8
 			  if(res ==0) {
-				  cjit_setup(CJIT);
 				  cjit_add_file(CJIT, code_path);
 			  } else if(res<0) {
 				  _err("Cannot open file: %s",code_path);
@@ -301,10 +291,23 @@ int main(int argc, char **argv) {
 	  }
   }
 
-  // number of args at the left hand of arg separator, or all of them
-  int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
-  char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
-  res = cjit_exec(CJIT, right_args, right_argv);
+  /////////////////////////
+  // compile to executable
+  if(CJIT->output_filename) {
+	  _err("Create executable: %s", CJIT->output_filename);
+	  cjit_setup(CJIT);
+	  if(tcc_output_file(CJIT->TCC,CJIT->output_filename)<0) {
+		  _err("Error in linker compiling to file: %s",
+		       CJIT->output_filename);
+		  res = 1;
+	  } else res = 0;
+  } else {
+	  // number of args at the left hand of arg separator, or all
+	  // of them
+	  int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
+	  char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
+	  res = cjit_exec(CJIT, right_args, right_argv);
+  }
   endgame:
   // free TCC
   cjit_free(CJIT);

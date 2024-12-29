@@ -34,6 +34,15 @@ load bats_setup
       assert_output 'Hello World!'
 }
 
+@test "Compile and link to executable and run" {
+      run ${CJIT} -o world test/hello.c
+      assert_success
+      chmod +x ./world
+      run ./world
+      assert_success
+      assert_output 'Hello World!'
+}
+
 @test "Execute multiple files" {
     run ${CJIT} -q test/multifile/*
     assert_success

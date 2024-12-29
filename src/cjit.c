@@ -20,7 +20,7 @@
 #include <cjit.h>
 #include <libtcc.h>
 #include <cwalk.h>
-//#include <xfs.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h> // _err/_out
@@ -120,6 +120,8 @@ CJITState* cjit_new() {
 		free(cjit);
 		return(NULL);
 	}
+	// set default execution in memory
+	cjit->tcc_output = TCC_OUTPUT_MEMORY;
 	// call the generated function to populate the tmpdir
 	if(!extract_assets(cjit)) {
 		_err("Error extracting assets in temp dir: %s",
@@ -133,11 +135,11 @@ CJITState* cjit_new() {
 
 bool cjit_setup(CJITState *cjit) {
 	// set output in memory for just in time execution
-	if(cjit->done_setup) return(true);
-	tcc_set_output_type(cjit->TCC,
-			    cjit->tcc_output?
-			    cjit->tcc_output:
-			    TCC_OUTPUT_MEMORY);
+	if(cjit->done_setup) {
+		_err("Warning: cjit_setup called twice or more times");
+		return(true);
+	}
+	tcc_set_output_type(cjit->TCC, cjit->tcc_output);
 #if defined(LIBC_MUSL)
 	tcc_add_libc_symbols(cjit->TCC);
 #endif
@@ -194,6 +196,41 @@ bool cjit_setup(CJITState *cjit) {
 	return(true);
 }
 
+bool cjit_status(CJITState *cjit) {
+	_err("CJIT %s (c) 2024-2025 Dyne.org foundation",VERSION);
+	_err("Build system: %s",PLATFORM);
+#if defined(TCC_TARGET_I386)
+        _err("Target platform: i386 code generator");
+#elif defined(TCC_TARGET_X86_64)
+        _err("Target platform: x86-64 code generator");
+#elif defined(TCC_TARGET_ARM)
+        _err("Target platform: ARMv4 code generator");
+#elif defined(TCC_TARGET_ARM64)
+        _err("Target platform: ARMv8 code generator");
+#elif defined(TCC_TARGET_C67)
+        _err("Target platform: TMS320C67xx code generator");
+#elif defined(TCC_TARGET_RISCV64)
+        _err("Target platform: risc-v code generator");
+#else
+        _err("Target platform: No target is defined");
+#endif
+#if   defined(TCC_TARGET_PE) && defined(TCC_TARGET_X86_64)
+	_err("Target system: WIN64");
+#elif defined(TCC_TARGET_PE) && defined(TCC_TARGET_I386)
+	_err("Target system: WIN32");
+#elif defined(TCC_TARGET_MACHO)
+	_err("Target system: Apple/OSX");
+#elif defined(TARGETOS_Linux)
+	_err("Target system: GNU/Linux");
+#elif defined(TARGETOS_BSD)
+	_err("Target system: BSD");
+#endif
+#if !(defined TCC_TARGET_PE || defined TCC_TARGET_MACHO)
+	_err("ELF interpreter: %s",CONFIG_TCC_ELFINTERP);
+#endif
+	return true;
+}
+
 static int has_source_extension(const char *path) {
 	char *ext;
 	size_t extlen;
@@ -214,60 +251,72 @@ static int has_source_extension(const char *path) {
 	return (is_source? 1 : -1);
 }
 
+static bool cjit_add_source(CJITState *cjit, const char *path) {
+	long length = file_size(path);
+	if (length == -1) return false;
+	FILE *file = fopen(path, "rb");
+	if (!file) {
+		_err("%s: fopen error: ", __func__, strerror(errno));
+		return false;
+	}
+	char *spath = (char*)malloc((strlen(path)+16)*sizeof(char));
+	if (!spath) {
+		_err("%s: malloc error: %s",__func__, strerror(errno));
+		fclose(file);
+		return false;
+	}
+	sprintf(spath,"#line 1 \"%s\"\n",path);
+	size_t spath_len = strlen(spath);
+	char *contents =
+		(char*)malloc
+		((spath_len + length + 1)
+		 * sizeof(char));
+	if (!contents) {
+		_err("%s: malloc error: %s",__func__, strerror(errno));
+		free(spath);
+		fclose(file);
+		return false;
+	}
+	strcpy(contents,spath);
+	free(spath);
+	fread(contents+spath_len, 1, length, file);
+	contents[length+spath_len] = 0x0;
+	fclose(file);
+	size_t dirname;
+	cwk_path_get_dirname(path,&dirname);
+	if(dirname) {
+		char *tmp = malloc(dirname+1);
+		strncpy(tmp,path,dirname);
+		tmp[dirname] = 0x0;
+		tcc_add_include_path(cjit->TCC,tmp);
+		free(tmp);
+	}
+	tcc_compile_string(cjit->TCC,contents);
+	free(contents);
+	return true;
+}
+
 bool cjit_add_file(CJITState *cjit, const char *path) {
 	// _err("%s",__func__);
 	int is_source = has_source_extension(path);
 	if(is_source == 0) { // no extension, we still add
 		cjit_setup(cjit);
 		if(tcc_add_file(cjit->TCC, path)<0) {
-			_err("%s: tcc_add_file error",__func__);
+			_err("%s: tcc_add_file error: %s",__func__,path);
 			return false;
 		}
 		return true;
 	}
 	if(is_source>0) {
-		// _err("%s: is source(%i): %s",__func__, is_source, path);
-		long length = file_size(path);
-		if (length == -1) return false;
-		FILE *file = fopen(path, "rb");
-		if (!file) {
-			_err("%s: fopen error: ", __func__, strerror(errno));
-			return false;
-		}
-		char *spath = (char*)malloc((strlen(path)+16)*sizeof(char));
-		sprintf(spath,"#line 1 \"%s\"\n",path);
-		size_t spath_len = strlen(spath);
-		char *contents =
-			(char*)malloc
-			((spath_len + length + 1)
-			* sizeof(char));
-		if (!contents) {
-			_err("%s: malloc error: %s",__func__, strerror(errno));
-			free(spath);
-			fclose(file);
-			return false;
-		}
-		strcpy(contents,spath);
-		free(spath);
-		fread(contents+spath_len, 1, length, file);
-		contents[length+spath_len] = 0x0;
-		fclose(file);
 		cjit_setup(cjit);
-		size_t dirname;
-		cwk_path_get_dirname(path,&dirname);
-		if(dirname) {
-			char *tmp = malloc(dirname+1);
-			strncpy(tmp,path,dirname);
-			tmp[dirname] = 0x0;
-			tcc_add_include_path(cjit->TCC,tmp);
-			free(tmp);
+		if(!cjit_add_source(cjit, path)) {
+			_err("%s: error: %s",__func__,path);
+			return false;
 		}
-		tcc_compile_string(cjit->TCC,contents);
-		free(contents);
 	} else {
 		cjit_setup(cjit);
 		if(tcc_add_file(cjit->TCC, path)<0) {
-			_err("%s: tcc_add_file error",__func__);
+			_err("%s: tcc_add_file error: %s",__func__,path);
 			return false;
 		}
 	}
@@ -319,76 +368,76 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 		_err("%s: CJIT already executed once",__func__);
 		return 1;
 	}
-
-  int res = 1;
-  int (*_ep)(int, char**);
-  // relocate the code (link symbols)
-  if (tcc_relocate(cjit->TCC) < 0) {
-    _err("TCC symbol relocation error (some library missing?)");
-    return -1;
-  }
-  _ep = tcc_get_symbol(cjit->TCC, cjit->entry?cjit->entry:"main");
-  if (!_ep) {
-    _err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
-    return -1;
-  }
+	int res = 1;
+	int (*_ep)(int, char**);
+	// relocate the code (link symbols)
+	if (tcc_relocate(cjit->TCC) < 0) {
+		_err("%s: TCC linker error",__func__);
+		_err("Library functions missing.");
+		return -1;
+	}
+	_ep = tcc_get_symbol(cjit->TCC, cjit->entry?cjit->entry:"main");
+	if (!_ep) {
+		_err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
+		return -1;
+	}
 #if defined(WINDOWS)
-  if(cjit->write_pid) {
-	  pid_t pid = getpid();
-	  FILE *fd = fopen(cjit->write_pid, "w");
-	  if(!fd) {
-		  _err("Cannot create pid file %s: %s",
-		       cjit->write_pid, strerror(errno));
-		  return -1;
-	  }
-	  fprintf(fd,"%d\n",pid);
-	  fclose(fd);
-  }
-  cjit->done_exec = true;
-  res = _ep(argc, argv);
-  return(res);
+	if(cjit->write_pid) {
+		pid_t pid = getpid();
+		FILE *fd = fopen(cjit->write_pid, "w");
+		if(!fd) {
+			_err("Cannot create pid file %s: %s",
+			     cjit->write_pid, strerror(errno));
+			return -1;
+		}
+		fprintf(fd,"%d\n",pid);
+		fclose(fd);
+	}
+	cjit->done_exec = true;
+	res = _ep(argc, argv);
+	return(res);
 #else // we assume anything else but WINDOWS has fork()
-  pid_t pid;
-  cjit->done_exec = true;
-  pid = fork();
-  if (pid == 0) {
-	  res = _ep(argc, argv);
-	  exit(res);
-  } else {
-	  if(cjit->write_pid) {
-		  // pid_t pid = getpid();
-		  FILE *fd = fopen(cjit->write_pid, "w");
-		  if(!fd) {
-			  _err("Cannot create pid file %s: %s",
-			       cjit->write_pid, strerror(errno));
-			  return -1;
-		  }
-		  fprintf(fd,"%d\n",pid);
-		  fclose(fd);
-	  }
-	  int status;
-	  int ret;
-	  ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
-	  if (ret != pid){
-		  _err("Wait error in source: %s","main");
-	  }
-	  if (WIFEXITED(status)) {
-		  res = WEXITSTATUS(status);
-		  //_err("Process has returned %d", res);
-	  } else if (WIFSIGNALED(status)) {
-		  res = WTERMSIG(status);
-		  _err("Process terminated with signal %d", WTERMSIG(status));
-	  } else if (WIFSTOPPED(status)) {
-		  res = WSTOPSIG(status);
-		  //_err("Process has returned %d", WSTOPSIG(status));
-	  } else if (WIFSTOPPED(status)) {
-		  res = WSTOPSIG(status);
-		  _err("Process stopped with signal", WSTOPSIG(status));
-	  } else {
-		  _err("wait: unknown status: %d", status);
-	  }
-  }
-  return res;
+	pid_t pid;
+	cjit->done_exec = true;
+	pid = fork();
+	if (pid == 0) {
+		res = _ep(argc, argv);
+		exit(res);
+	} else {
+		if(cjit->write_pid) {
+			// pid_t pid = getpid();
+			FILE *fd = fopen(cjit->write_pid, "w");
+			if(!fd) {
+				_err("Cannot create pid file %s: %s",
+				     cjit->write_pid, strerror(errno));
+				return -1;
+			}
+			fprintf(fd,"%d\n",pid);
+			fclose(fd);
+		}
+		int status;
+		int ret;
+		ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+		if (ret != pid){
+			_err("Wait error in source: %s","main");
+		}
+		if (WIFEXITED(status)) {
+			res = WEXITSTATUS(status);
+			//_err("Process has returned %d", res);
+		} else if (WIFSIGNALED(status)) {
+			res = WTERMSIG(status);
+			_err("Process terminated with signal %d", WTERMSIG(status));
+		} else if (WIFSTOPPED(status)) {
+			res = WSTOPSIG(status);
+			//_err("Process has returned %d", WSTOPSIG(status));
+		} else if (WIFSTOPPED(status)) {
+			res = WSTOPSIG(status);
+			_err("Process stopped with signal", WSTOPSIG(status));
+		} else {
+			_err("wait: unknown status: %d", status);
+		}
+	}
+	return res;
 #endif // cjit_exec with fork()
 }
 
