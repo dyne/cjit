@@ -28,6 +28,9 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <unistd.h> // getpid/write
+#include <fcntl.h> // open(2)
+#include <inttypes.h>
+#include <sys/stat.h> // fstat(2)
 
 #define MAX_PATH 260 // rather short paths
 #define MAX_STRING 20480 // max 20KiB strings
@@ -251,9 +254,54 @@ static int has_source_extension(const char *path) {
 	return (is_source? 1 : -1);
 }
 
+static int detect_bom(const char *filename,size_t *filesize) {
+	uint8_t bom[3];
+	int res;
+	int fd = open(filename, O_RDONLY | O_BINARY);
+	if(fd<0) {
+		_err("%s: error opening file: %s",__func__,filename);
+		_err("%s",strerror(errno));
+		return -1;
+	}
+	struct stat st;
+	if (fstat(fd, &st) == -1) {
+		_err("%s: error analyzing file: %s",__func__,filename);
+		_err("%s",strerror(errno));
+		close(fd);
+		return -1;
+	}
+	*filesize = st.st_size;
+	res = read(fd,bom,3);
+	close(fd);
+	if (res!=3) {
+		_err("%s: error reading file: %s",__func__,filename);
+		_err("%s",strerror(errno));
+		return -1;
+	}
+	// _err("%s bom: %x %x %x",filename,bom[0],bom[1],bom[2]);
+	if (bom[0] == 0xFF && bom[1] == 0xFE) {
+		return 1; // UTF-16 LE
+	} else if (bom[0] == 0xFE && bom[1] == 0xFF) {
+		return 2; // UTF-16 BE
+	} else if (bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF) {
+		return 3; // UTF-8
+	} else {
+		return 0; // No BOM
+	}
+}
+
 static bool cjit_add_source(CJITState *cjit, const char *path) {
-	long length = file_size(path);
-	if (length == -1) return false;
+	size_t length;
+	int res = detect_bom(path,&length);
+	if(res<0) {
+		_err("Cannot open file: %s",path);
+		_err("Execution aborted.");
+		return false;
+	} else if(res>0) {
+		_err("UTF BOM detected in file: %s",path);
+		_err("Encoding is not yet supported, execution aborted.");
+		return false;
+	}
 	FILE *file = fopen(path, "rb");
 	if (!file) {
 		_err("%s: fopen error: ", __func__, strerror(errno));

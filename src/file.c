@@ -31,82 +31,8 @@
 
 #include <ftw.h> // _GNU_SOURCE
 
-int detect_bom(const char *filename) {
-	uint8_t bom[3];
-	int res;
-	int fd = open(filename, O_RDONLY | O_BINARY);
-	res = read(fd,bom,3);
-	if (res!=3) {
-		_err("read error: %s",strerror(errno));
-		return -1;
-	}
-	close(fd);
-	// _err("%s bom: %x %x %x",filename,bom[0],bom[1],bom[2]);
-	if (bom[0] == 0xFF && bom[1] == 0xFE) {
-		return 1; // UTF-16 LE
-	} else if (bom[0] == 0xFE && bom[1] == 0xFF) {
-		return 2; // UTF-16 BE
-	} else if (bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF) {
-		return 3; // UTF-8
-	} else {
-		return 0; // No BOM
-	}
-}
-
-bool append_path(char **stored_path, const char *new_path) {
-  // TODO: sanitize input checking only path chars are there
-  // support both / and \ for windows
-  if (*stored_path == NULL) {
-    // If stored_path is NULL, allocate memory and copy new_path
-    *stored_path = malloc(strlen(new_path) + 1);
-    if (*stored_path == NULL) {
-      _err("Memory allocation failed");
-      return(false);
-    }
-    strcpy(*stored_path, new_path);
-  } else {
-    // If stored_path is not NULL, append new_path separated by ':'
-    size_t new_length = strlen(*stored_path) + strlen(new_path) + 2;
-    char *temp = realloc(*stored_path, new_length);
-    if (temp == NULL) {
-      _err("Memory allocation failed");
-      return(false);
-    }
-    *stored_path = temp;
-    strcat(*stored_path, ":");
-    strcat(*stored_path, new_path);
-  }
-  return(true);
-}
-
-bool prepend_path(char **stored_path, const char *new_path) {
-  if (*stored_path == NULL) {
-    // If stored_path is NULL, allocate memory and copy new_path
-    *stored_path = malloc(strlen(new_path) + 1);
-    if (*stored_path == NULL) {
-      _err("Memory allocation failed");
-      return(false);
-    }
-    strcpy(*stored_path, new_path);
-  } else {
-    // If stored_path is not NULL, prepend new_path separated by ':'
-    size_t new_length = strlen(*stored_path) + strlen(new_path) + 2;
-    char *temp = malloc(new_length);
-    if (temp == NULL) {
-      _err("Memory allocation failed");
-      return(false);
-    }
-    strcpy(temp, new_path);
-    strcat(temp, ":");
-    strcat(temp, *stored_path);
-    free(*stored_path);
-    *stored_path = temp;
-  }
-  return(true);
-}
-
 // Function to get the length of a file in bytes
-long file_size(const char *filename) {
+static long file_size(const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
         _err("%s: fopen error: %s",__func__,strerror(errno));

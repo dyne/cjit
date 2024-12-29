@@ -61,8 +61,6 @@ extern bool extract_assets(CJITState *CJIT);
 
 /////////////
 // from file.c
-extern int   detect_bom(const char *filename);
-extern long  file_size(const char *filename);
 extern char* file_load(const char *filename, unsigned int *len);
 extern char *load_stdin();
 extern char* dir_load(const char *path);
