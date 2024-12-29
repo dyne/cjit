@@ -20,7 +20,7 @@
 #include <cjit.h>
 #include <libtcc.h>
 #include <cwalk.h>
-
+//#include <xfs.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h> // _err/_out
@@ -229,19 +229,28 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 		// _err("%s: is source(%i): %s",__func__, is_source, path);
 		long length = file_size(path);
 		if (length == -1) return false;
-		FILE *file = fopen(path, "r");
+		FILE *file = fopen(path, "rb");
 		if (!file) {
 			_err("%s: fopen error: ", __func__, strerror(errno));
 			return false;
 		}
-		char *contents = (char*)malloc((length + 1) * sizeof(char));
+		char *spath = (char*)malloc((strlen(path)+16)*sizeof(char));
+		sprintf(spath,"#line 1 \"%s\"\n",path);
+		size_t spath_len = strlen(spath);
+		char *contents =
+			(char*)malloc
+			((spath_len + length + 1)
+			* sizeof(char));
 		if (!contents) {
 			_err("%s: malloc error: %s",__func__, strerror(errno));
+			free(spath);
 			fclose(file);
 			return false;
 		}
-		fread(contents, 1, length, file);
-		contents[length] = 0x0; // Null-terminate the string
+		strcpy(contents,spath);
+		free(spath);
+		fread(contents+spath_len, 1, length, file);
+		contents[length+spath_len] = 0x0;
 		fclose(file);
 		cjit_setup(cjit);
 		size_t dirname;
