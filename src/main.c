@@ -253,10 +253,10 @@ int main(int argc, char **argv) {
 
   } else if(opt.ind < left_args) {
 	  // process files on commandline before separator
-	  if(!CJIT->quiet)_err("Source code:");
+	  if(CJIT->verbose)_err("Source code:");
 	  for (i = opt.ind; i < left_args; ++i) {
 		  const char *code_path = argv[i];
-		  if(!CJIT->quiet)_err("%c %s",(*code_path=='-'?'|':'+'),
+		  if(CJIT->verbose)_err("%c %s",(*code_path=='-'?'|':'+'),
 				       (*code_path=='-'?"standard input":code_path));
 		  if(*code_path=='-') { // stdin explicit
 #if defined(_WIN32)

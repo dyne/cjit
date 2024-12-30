@@ -37,7 +37,7 @@
 
 #define tcc(cjit) (TCCState*)cjit->TCC
 #define setup if(!cjit->done_setup)cjit_setup(cjit)
-#define debug(fmt,par) if(!cjit->quiet)_err(fmt,par)
+#define debug(fmt,par) if(cjit->verbose)_err(fmt,par)
 // declared at bottom
 void _out(const char *fmt, ...);
 void _err(const char *fmt, ...);
@@ -534,25 +534,25 @@ void cjit_set_output(CJITState *cjit, int output) {
 }
 void cjit_define_symbol(CJITState *cjit, const char *sym, const char *value) {
 	tcc_define_symbol(tcc(cjit),sym,value);
-	if(!cjit->quiet)_err("+D %s",sym,value?value:"");
+	if(cjit->verbose)_err("+D %s %s",sym,value?value:"");
 }
 void cjit_add_include_path(CJITState *cjit, const char *path) {
 	tcc_add_include_path(tcc(cjit), path);
-	if(!cjit->quiet)_err("+I %s",path);
+	debug("+I %s",path);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library_path(CJITState *cjit, const char *path) {
 	tcc_add_library_path(tcc(cjit), path);
-	if(!cjit->quiet)_err("+L %s",path);
+	debug("+L %s",path);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library(CJITState *cjit, const char *path) {
 	tcc_add_library(tcc(cjit), path);
-	if(!cjit->quiet)_err("+l %s",path);
+	debug("+l %s",path);
 }
 void cjit_set_tcc_options(CJITState *cjit, const char *opts) {
 	tcc_set_options(tcc(cjit),opts);
-	if(!cjit->quiet)_err("+O %s",opts);
+	debug("+O %s",opts);
 }
 
 // stdout message free from context
@@ -564,11 +564,7 @@ void _out(const char *fmt, ...) {
   va_end(args);
   msg[len] = '\n';
   msg[len+1] = 0x0; //safety
-#if defined(__EMSCRIPTEN__)
-  EM_ASM_({Module.print(UTF8ToString($0))}, msg);
-#else
   write(fileno(stdout), msg, len+1);
-#endif
 }
 
 // error message free from context
@@ -581,11 +577,5 @@ void _err(const char *fmt, ...) {
   va_end(args);
   msg[len] = '\n';
   msg[len+1] = 0x0;
-#if defined(__EMSCRIPTEN__)
-  EM_ASM_({Module.printErr(UTF8ToString($0))}, msg);
-#elif defined(__ANDROID__)
-  __android_log_print(ANDROID_LOG_ERROR, "ZEN", "%s", msg);
-#else
   write(fileno(stderr),msg,len+1);
-#endif
 }

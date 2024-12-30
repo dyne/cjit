@@ -1,0 +1,12 @@
+Write-Host ""
+Write-Host "Welcome to CJIT!"
+Write-Host "We'll be downloading our quick demo setup, please wait a bit,"
+Write-Host "then all will be found inside the 'cjit-demo' folder right here."
+Invoke-WebRequest -OutFile "cjit.exe" -Uri "https://github.com/dyne/cjit/releases/latest/download/cjit.exe"
+Invoke-WebRequest -OutFile "cjit-demo.tar.gz" -Uri "https://github.com/dyne/cjit/releases/latest/download/cjit-demo.tar.gz"
+.\cjit.exe --xtgz cjit-demo.tar.gz
+cp .\cjit.exe cjit-demo
+cd cjit-demo
+Write-Host "Ready to start! Follow the tutorial:"
+Write-Host " --> https://dyne.org/docs/cjit <--"
+Write-Host ""
