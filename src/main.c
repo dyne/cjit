@@ -125,33 +125,33 @@ int main(int argc, char **argv) {
 		  int _res;
 		  _res = parse_value(opt.arg);
 		  if(_res==0) { // -Dsym (no key=value)
-			  tcc_define_symbol(CJIT->TCC, opt.arg, NULL);
+			  cjit_define_symbol(CJIT, opt.arg, NULL);
 		  } else if(_res>0) { // -Dkey=value
-			  tcc_define_symbol(CJIT->TCC, opt.arg, &opt.arg[_res]);
+			  cjit_define_symbol(CJIT, opt.arg, &opt.arg[_res]);
 		  } else { // invalid char
 			  _err("Invalid char used in -D define symbol: %s", opt.arg);
 			  cjit_free(CJIT);
 			  exit(1);
 		  }
 	  } else if (c == 'c') { // don't link or execute, just compile to .o
-		  CJIT->tcc_output = TCC_OUTPUT_OBJ;
+		  cjit_set_output(CJIT, OBJ);
 	  } else if (c == 'o') { // override output filename
 		  if(CJIT->output_filename) free(CJIT->output_filename);
 		  CJIT->output_filename = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->output_filename,opt.arg);
-		  CJIT->tcc_output = TCC_OUTPUT_EXE;
+		  cjit_set_output(CJIT, EXE);
 	  } else if (c == 'L') { // library path
 		  if(!CJIT->quiet)_err("lib path: %s",opt.arg);
-		  tcc_add_library_path(CJIT->TCC, opt.arg);
+		  cjit_add_library_path(CJIT, opt.arg);
 	  } else if (c == 'l') { // library link
 		  if(!CJIT->quiet)_err("lib: %s",opt.arg);
-		  tcc_add_library(CJIT->TCC, opt.arg);
+		  cjit_add_library(CJIT, opt.arg);
 	  } else if (c == 'C') { // cflags compiler options
 		  if(!CJIT->quiet)_err("cflags: %s",opt.arg);
-		  tcc_set_options(CJIT->TCC, opt.arg);
+		  cjit_set_tcc_options(CJIT->TCC, opt.arg);
 	  } else if (c == 'I') { // include paths in cflags
 		  if(!CJIT->quiet)_err("inc: %s",opt.arg);
-		  tcc_add_include_path(CJIT->TCC, opt.arg);
+		  cjit_add_include_path(CJIT, opt.arg);
 	  } else if (c == 'e') { // entry point (default main)
 		  if(!CJIT->quiet)_err("entry: %s",opt.arg);
 		  if(CJIT->entry) free(CJIT->entry);
@@ -194,6 +194,7 @@ int main(int argc, char **argv) {
   }
   if(!CJIT->quiet) _err("CJIT %s by Dyne.org",VERSION);
 
+#if 0
   // If no arguments then start the REPL
   if (argc == 0 ) {
     _err("No input file: interactive mode");
@@ -210,6 +211,7 @@ int main(int argc, char **argv) {
   }
   // end of REPL
   /////////////////////////////////////
+#endif
 
   // number of args at the left hand of arg separator, or all of them
   int left_args = arg_separator? arg_separator: argc;
@@ -228,23 +230,22 @@ int main(int argc, char **argv) {
 		  _err("Error reading from standard input");
 		  goto endgame;
 	  }
-	  cjit_setup(CJIT);
-	  if( tcc_compile_string(CJIT->TCC,stdin_code) < 0) {
+	  if( cjit_add_buffer(CJIT->TCC,stdin_code) < 0) {
 		  _err("Code runtime error in stdin");
 		  free(stdin_code);
 		  goto endgame;
 	  }
+	  free(stdin_code);
 	  // end of STDIN
 	  ////////////////
 
-  } else if(CJIT->tcc_output==3) {
+  } else if(CJIT->tcc_output==OBJ) {
 	  /////////////////////////////
 	  // Compile one .c file to .o
 	  if(left_args - opt.ind != 1) {
 		  _err("Compiling to object files supports only one file argument");
 		  goto endgame;
 	  }
-	  cjit_setup(CJIT);
 	  //if(!CJIT->quiet)_err("Compile: %s",argv[opt.ind]);
 	  res = cjit_compile_file(CJIT, argv[opt.ind]) ?0:1; // 0 on success
 	  goto endgame;
@@ -267,8 +268,7 @@ int main(int argc, char **argv) {
 				  _err("Error reading from standard input");
 				  goto endgame;
 			  }
-			  cjit_setup(CJIT);
-			  if( tcc_compile_string(CJIT->TCC,stdin_code) < 0) {
+			  if( cjit_add_buffer(CJIT,stdin_code) < 0) {
 				  _err("Code runtime error in stdin");
 				  free(stdin_code);
 				  goto endgame;
@@ -283,8 +283,7 @@ int main(int argc, char **argv) {
   // compile to executable
   if(CJIT->output_filename) {
 	  _err("Create executable: %s", CJIT->output_filename);
-	  cjit_setup(CJIT);
-	  if(tcc_output_file(CJIT->TCC,CJIT->output_filename)<0) {
+	  if(cjit_link(CJIT)<0) {
 		  _err("Error in linker compiling to file: %s",
 		       CJIT->output_filename);
 		  res = 1;

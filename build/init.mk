@@ -17,7 +17,7 @@ cflags := ${CFLAGS} ${cflags_includes}
 
 SOURCES := src/file.o src/cjit.o \
            src/main.o src/assets.o \
-           src/cwalk.o src/repl.o \
+           src/cwalk.o \
            src/muntar.o src/tinflate.o src/tinfgzip.o \
            src/embed_libtcc1.a.o src/embed_include.o
 #src/embed_source.o
