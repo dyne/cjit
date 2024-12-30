@@ -69,7 +69,7 @@ cat <<EOF >> src/assets.c
 snprintf(incpath,511,"%s/%s",CJIT->tmpdir,"${name}");
 if(CJIT->fresh) res = muntargz_to_path(CJIT->tmpdir,(const uint8_t*)&${varname},${varname}_len);
 if(res!=0) { _err("Error extracting %s",incpath); return(false); }
-tcc_add_include_path(CJIT->TCC, incpath);
+cjit_add_include_path(CJIT, incpath);
 // ^^ ${name} ^^
 
 EOF

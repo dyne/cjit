@@ -35,6 +35,9 @@
 #define MAX_PATH 260 // rather short paths
 #define MAX_STRING 20480 // max 20KiB strings
 
+#define tcc(cjit) (TCCState*)cjit->TCC
+#define setup if(!cjit->done_setup)cjit_setup(cjit)
+#define debug(fmt,par) if(!cjit->quiet)_err(fmt,par)
 // declared at bottom
 void _out(const char *fmt, ...);
 void _err(const char *fmt, ...);
@@ -117,7 +120,7 @@ CJITState* cjit_new() {
 	}
 	// instantiate TCC before extracting assets because
 	// extract_assets() will also add include paths using TCC
-	cjit->TCC = tcc_new();
+	cjit->TCC = (void*)tcc_new();
 	if (!cjit->TCC) {
 		_err("CJIT: Could not initialize tinyCC");
 		free(cjit);
@@ -132,65 +135,65 @@ CJITState* cjit_new() {
 		return(NULL);
 	}
 	// error handler callback for TCC
-	tcc_set_error_func(cjit->TCC, stderr, cjit_tcc_handle_error);
+	tcc_set_error_func(tcc(cjit), stderr, cjit_tcc_handle_error);
 	return(cjit);
 }
 
-bool cjit_setup(CJITState *cjit) {
+static bool cjit_setup(CJITState *cjit) {
 	// set output in memory for just in time execution
 	if(cjit->done_setup) {
 		_err("Warning: cjit_setup called twice or more times");
 		return(true);
 	}
-	tcc_set_output_type(cjit->TCC, cjit->tcc_output);
+	tcc_set_output_type(tcc(cjit), cjit->tcc_output);
 #if defined(LIBC_MUSL)
-	tcc_add_libc_symbols(cjit->TCC);
+	tcc_add_libc_symbols(tcc(cjit));
 #endif
 	if(getenv("CFLAGS")) {
 		char *extra_cflags = NULL;
 		extra_cflags = getenv("CFLAGS");
 		_err("CFLAGS: %s",extra_cflags);
-		tcc_set_options(cjit->TCC, extra_cflags);
+		tcc_set_options(tcc(cjit), extra_cflags);
 	}
 #if defined(_WIN32)
 	// add symbols for windows compatibility
-	tcc_add_symbol(cjit->TCC, "usleep", &win_compat_usleep);
-	tcc_add_symbol(cjit->TCC, "getline", &win_compat_getline);
+	tcc_add_symbol(tcc(cjit), "usleep", &win_compat_usleep);
+	tcc_add_symbol(tcc(cjit), "getline", &win_compat_getline);
 #endif
 	// When using SDL2 these defines are needed
-	tcc_define_symbol(cjit->TCC,"SDL_DISABLE_IMMINTRIN_H",NULL);
-	tcc_define_symbol(cjit->TCC,"SDL_MAIN_HANDLED",NULL);
+	tcc_define_symbol(tcc(cjit),"SDL_DISABLE_IMMINTRIN_H",NULL);
+	tcc_define_symbol(tcc(cjit),"SDL_MAIN_HANDLED",NULL);
 
 	// where is libtcc1.a found
-	tcc_add_library_path(cjit->TCC, cjit->tmpdir);
+	tcc_add_library_path(tcc(cjit), cjit->tmpdir);
 
 	// tcc_set_lib_path(TCC,tmpdir); // this overrides all?
 
-	tcc_add_sysinclude_path(cjit->TCC, cjit->tmpdir);
-	tcc_add_sysinclude_path(cjit->TCC, ".");
-	tcc_add_sysinclude_path(cjit->TCC, "include");
-	tcc_add_library_path(cjit->TCC, ".");
+	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
+	tcc_add_sysinclude_path(tcc(cjit), ".");
+	tcc_add_sysinclude_path(tcc(cjit), "include");
+	tcc_add_library_path(tcc(cjit), ".");
 
 #if defined(_WIN32)
 	{
 		// windows system32 libraries
 		//tcc_add_library_path(TCC, "C:\\Windows\\System32")
 		// 64bit
-		tcc_add_library_path(cjit->TCC, "C:\\Windows\\SysWOW64");
+		tcc_add_library_path(tcc(cjit), "C:\\Windows\\SysWOW64");
 		// tinycc win32 headers
 		char *tpath = malloc(strlen(cjit->tmpdir)+32);
 		strcpy(tpath,cjit->tmpdir);
 		strcat(tpath,"/tinycc_win32/winapi");
-		tcc_add_sysinclude_path(cjit->TCC, tpath);
+		tcc_add_sysinclude_path(tcc(cjit), tpath);
 		free(tpath);
 		// windows SDK headers
 		char *sdkpath = malloc(512);
 		if( get_winsdkpath(sdkpath,511) ) {
 			int pathend = strlen(sdkpath);
 			strcpy(&sdkpath[pathend],"\\um"); // um/GL
-			tcc_add_sysinclude_path(cjit->TCC, sdkpath);
+			tcc_add_sysinclude_path(tcc(cjit), sdkpath);
 			strcpy(&sdkpath[pathend],"\\shared"); // winapifamili.h etc.
-			tcc_add_sysinclude_path(cjit->TCC, sdkpath);
+			tcc_add_sysinclude_path(tcc(cjit), sdkpath);
 		}
 		free(sdkpath);
 	}
@@ -290,7 +293,14 @@ static int detect_bom(const char *filename,size_t *filesize) {
 	}
 }
 
-static bool cjit_add_source(CJITState *cjit, const char *path) {
+bool cjit_add_buffer(CJITState *cjit, const char *buffer) {
+	setup;
+	tcc_compile_string(tcc(cjit),buffer);
+	debug("+B %p",buffer);
+}
+
+bool cjit_add_source(CJITState *cjit, const char *path) {
+	setup;
 	size_t length;
 	int res = detect_bom(path,&length);
 	if(res<0) {
@@ -336,38 +346,37 @@ static bool cjit_add_source(CJITState *cjit, const char *path) {
 		char *tmp = malloc(dirname+1);
 		strncpy(tmp,path,dirname);
 		tmp[dirname] = 0x0;
-		tcc_add_include_path(cjit->TCC,tmp);
+		tcc_add_include_path(tcc(cjit),tmp);
 		free(tmp);
 	}
-	tcc_compile_string(cjit->TCC,contents);
+	tcc_compile_string(tcc(cjit),contents);
 	free(contents);
+	debug("+S %s",path);
 	return true;
 }
 
 bool cjit_add_file(CJITState *cjit, const char *path) {
-	// _err("%s",__func__);
+	setup;
 	int is_source = has_source_extension(path);
 	if(is_source == 0) { // no extension, we still add
-		cjit_setup(cjit);
-		if(tcc_add_file(cjit->TCC, path)<0) {
+		if(tcc_add_file(tcc(cjit), path)<0) {
 			_err("%s: tcc_add_file error: %s",__func__,path);
 			return false;
 		}
 		return true;
 	}
 	if(is_source>0) {
-		cjit_setup(cjit);
 		if(!cjit_add_source(cjit, path)) {
 			_err("%s: error: %s",__func__,path);
 			return false;
 		}
 	} else {
-		cjit_setup(cjit);
-		if(tcc_add_file(cjit->TCC, path)<0) {
+		if(tcc_add_file(tcc(cjit), path)<0) {
 			_err("%s: tcc_add_file error: %s",__func__,path);
 			return false;
 		}
 	}
+	debug("+F %s",path);
 	return true;
 }
 
@@ -384,13 +393,13 @@ bool cjit_compile_file(CJITState *cjit, const char *path) {
 		     __func__,path);
 		return false;
 	}
-	cjit_setup(cjit);
-	tcc_add_file(cjit->TCC, path);
+	setup;
+	tcc_add_file(tcc(cjit), path);
 	if(cjit->output_filename) {
 		if(!cjit->quiet)
 			_err("Compiling: %s -> %s",path,
 			     cjit->output_filename);
-		tcc_output_file(cjit->TCC,
+		tcc_output_file(tcc(cjit),
 				cjit->output_filename);
 	} else {
 		char *ext;
@@ -405,13 +414,30 @@ bool cjit_compile_file(CJITState *cjit, const char *path) {
 		strcpy(ext,".o");
 		if(!cjit->quiet)
 			_err("Compiling: %s -> %s",path,tmp);
-		tcc_output_file(cjit->TCC,tmp);
+		tcc_output_file(tcc(cjit),tmp);
 		free(tmp);
 	}
 	return true;
 }
 
+// link all setup and create an executable file
+int cjit_link(CJITState *cjit) {
+	if(!cjit->done_setup) {
+		_err("%s: no source code found",__func__);
+		return 1;
+	}
+	if(!cjit->output_filename) {
+		_err("%s: no output file configured (-o)",__func__);
+		return 1;
+	}
+	return( tcc_output_file(tcc(cjit),cjit->output_filename));
+}
+
 int cjit_exec(CJITState *cjit, int argc, char **argv) {
+	if(!cjit->done_setup) {
+		_err("%s: no source code found",__func__);
+		return 1;
+	}
 	if(cjit->done_exec) {
 		_err("%s: CJIT already executed once",__func__);
 		return 1;
@@ -419,12 +445,12 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 	int res = 1;
 	int (*_ep)(int, char**);
 	// relocate the code (link symbols)
-	if (tcc_relocate(cjit->TCC) < 0) {
+	if (tcc_relocate(tcc(cjit)) < 0) {
 		_err("%s: TCC linker error",__func__);
 		_err("Library functions missing.");
 		return -1;
 	}
-	_ep = tcc_get_symbol(cjit->TCC, cjit->entry?cjit->entry:"main");
+	_ep = tcc_get_symbol(tcc(cjit), cjit->entry?cjit->entry:"main");
 	if (!_ep) {
 		_err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
 		return -1;
@@ -494,10 +520,40 @@ void cjit_free(CJITState *cjit) {
 	if(cjit->write_pid) free(cjit->write_pid);
 	if(cjit->entry) free(cjit->entry);
 	if(cjit->output_filename) free(cjit->output_filename);
-	if(cjit->TCC) tcc_delete(cjit->TCC);
+	if(cjit->TCC) tcc_delete(tcc(cjit));
 	free(cjit);
 }
 
+
+// wrappers to make TCC opaque
+void cjit_set_output(CJITState *cjit, int output) {
+	if(output>5 || output<1)
+		_err("%s: invalid output: %i",__func__,output);
+	else
+		cjit->tcc_output = output;
+}
+void cjit_define_symbol(CJITState *cjit, const char *sym, const char *value) {
+	tcc_define_symbol(tcc(cjit),sym,value);
+	if(!cjit->quiet)_err("+D %s",sym,value?value:"");
+}
+void cjit_add_include_path(CJITState *cjit, const char *path) {
+	tcc_add_include_path(tcc(cjit), path);
+	if(!cjit->quiet)_err("+I %s",path);
+}
+// TODO: temporary, to be reimplemented in linker.c
+void cjit_add_library_path(CJITState *cjit, const char *path) {
+	tcc_add_library_path(tcc(cjit), path);
+	if(!cjit->quiet)_err("+L %s",path);
+}
+// TODO: temporary, to be reimplemented in linker.c
+void cjit_add_library(CJITState *cjit, const char *path) {
+	tcc_add_library(tcc(cjit), path);
+	if(!cjit->quiet)_err("+l %s",path);
+}
+void cjit_set_tcc_options(CJITState *cjit, const char *opts) {
+	tcc_set_options(tcc(cjit),opts);
+	if(!cjit->quiet)_err("+O %s",opts);
+}
 
 // stdout message free from context
 void _out(const char *fmt, ...) {

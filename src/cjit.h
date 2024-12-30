@@ -22,11 +22,10 @@
 
 #include <platforms.h>
 #include <stdbool.h>
-#include <libtcc.h>
 
 // passed to cjit_exec with CJIT execution parameters
 struct CJITState {
-	TCCState *TCC; // the tinyCC context
+	void *TCC; // the tinyCC context
 	char *tmpdir; // path to execution temporary directory
 	char *write_pid; // filename to write the pid of execution
 	char *entry; // entry point, default "main" if left NULL
@@ -47,14 +46,34 @@ struct CJITState {
 typedef struct CJITState CJITState;
 
 extern CJITState* cjit_new();
-extern bool cjit_setup(CJITState *cjit);
+// extern bool cjit_setup(CJITState *cjit);
 extern bool cjit_status(CJITState *cjit);
-extern bool cjit_compile_file(CJITState *cjit, const char *_path);
-extern bool cjit_add_file(CJITState *cjit, const char *path);
 
-extern int cjit_exec(CJITState *cjit, int argc, char **argv);
+// setup functions to add source and libs
+extern bool cjit_add_file(CJITState *cjit, const char *path);
+extern bool cjit_add_source(CJITState *cjit, const char *path);
+extern bool cjit_add_buffer(CJITState *cjit, const char *buffer);
+
+// end game functions
+extern int cjit_link(CJITState *cjit); // link and create an executable file
+extern int cjit_exec(CJITState *cjit, int argc, char **argv); // exec in mem
+extern bool cjit_compile_file(CJITState *cjit, const char *_path); // compile a single file to a bytecode object
 
 extern void cjit_free(CJITState *CJIT);
+
+
+#define MEM 1 /* output will be run in memory */
+#define EXE 2 /* executable file */
+#define OBJ 3 /* object file */
+#define DLL 4 /* dynamic library */
+#define PRE 5 /* only preprocess */
+void cjit_set_output(CJITState *cjit, int output);
+
+void cjit_define_symbol(CJITState *cjit, const char *sym, const char *value);
+void cjit_add_include_path(CJITState *cjit, const char *path);
+void cjit_add_library_path(CJITState *cjit, const char *path);
+void cjit_add_library(CJITState *cjit, const char *path);
+void cjit_set_tcc_options(CJITState *cjit, const char *opts);
 
 /////////////
 // from embedded.c - generated at build time
