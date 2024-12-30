@@ -40,6 +40,12 @@ SPDX-FileCopyrightText = "Copyright (c) 2016 Jer Wilson"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
+path = ["examples/opengl.c"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (c) 2020 Andrew Dailey"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = "examples/tinyc.games/res/PixelatedEleganceRegular.ttf"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2024 GGBotNet"

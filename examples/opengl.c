@@ -24,8 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SDL_DISABLE_IMMINTRIN_H 1
-#define SDL_MAIN_HANDLED 1
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
