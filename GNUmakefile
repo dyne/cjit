@@ -29,6 +29,11 @@ linux-x86: ## 🐧 Build a dynamically linked cjit using libs found on Linux x86
 	@rm -f .build_done*
 	date | tee .build_done_linux
 
+linux-riscv64: ## 🐧 Build a dynamically linked cjit using libs found on RISC-V 64
+	$(MAKE) -f build/linux.mk embed-posix cjit
+	@rm -f .build_done*
+	date | tee .build_done_linux
+
 win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
 	$(MAKE) -f build/win-wsl.mk cross-win embed-win cjit.exe
 	@rm -f .build_done*
