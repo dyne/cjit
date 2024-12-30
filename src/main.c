@@ -77,6 +77,7 @@ const char cli_help[] =
 	" -p pid\t write pid of executed program to file\n"
 	" -c \t compile a single source file, do not execute\n"
 	" -o exe\t compile to an 'exe' file, do not execute\n"
+	" --verb\t don't go quiet, always verbose output\n"
 	" --temp\t create the runtime temporary dir and exit\n"
 #if defined(SELFHOST)
 	" --src\t  extract source code to cjit_source\n"
@@ -95,6 +96,7 @@ int main(int argc, char **argv) {
   // they are overridden by explicit command-line options
   static ko_longopt_t longopts[] = {
 	  { "help", ko_no_argument, 100 },
+	  { "verb", ko_no_argument, 101 },
 #if defined(SELFHOST)
 	  { "src",  ko_no_argument, 311 },
 #endif
@@ -106,9 +108,9 @@ int main(int argc, char **argv) {
   // tolerated and ignored: -f -W -O -g -U -E -S -M
   while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:co:f:W:O:gU:ESM:m:", longopts)) >= 0) {
 	  if(c == 'q') {
-		  CJIT->quiet = true;
-	  }
-	  if (c == 'v') {
+		  if(!CJIT->verbose)
+			  CJIT->quiet = true;
+	  } else if (c == 'v') {
 		  cjit_status(CJIT);
 		  cjit_free(CJIT);
 		  exit(0); // print and exit
@@ -116,6 +118,9 @@ int main(int argc, char **argv) {
 		  _err(cli_help,VERSION);
 		  cjit_free(CJIT);
 		  exit(0); // print and exit
+	  } else if (c==101 ) { // verb
+		  CJIT->quiet = false;
+		  CJIT->verbose = true;
 	  } else if (c == 'D') { // define
 		  int _res;
 		  _res = parse_value(opt.arg);

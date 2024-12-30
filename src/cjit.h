@@ -32,6 +32,7 @@ struct CJITState {
 	char *entry; // entry point, default "main" if left NULL
 	bool live; // live coding mode
 	bool quiet; // print less to stderr
+	bool verbose; // print more to stderr
 	bool fresh; // tempdir is freshly created and needs to be populated
 	int tcc_output; //
 	// #define TCC_OUTPUT_MEMORY   1 /* output will be run in memory */
