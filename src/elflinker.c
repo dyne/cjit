@@ -23,22 +23,19 @@
 
 #include <platforms.h>
 #if defined(LINUX)
-
+#define MAX_PATH 512
 #include <cjit.h>
-#include <linker.h>
-
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
+#include <elflinker.h>
+#include <array.h>
+#include <cwalk.h>
 
 #define CH_EOF   (-1) //end of file
 #define LD_TOK_NAME 256
 #define LD_TOK_EOF  (-1)
 
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -46,71 +43,46 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-char* read_ld_so_conf_d(const char *directory) {
+// tinyCC internals used here
+extern void dynarray_add(void *ptab, int *nb_ptr, void *data);
+extern void dynarray_reset(void *pp, int *n);
+extern char *tcc_strdup(const char *str);
+extern char *pstrcpy(char *buf, size_t buf_size, const char *s);
+
+bool read_ldsoconf(xarray_t *dest, const char *directory) {
     DIR *dir;
     struct dirent *entry;
-    char path[1024];
-    char *result = NULL;
-    size_t result_len = 0;
-
+    char path[MAX_PATH];
     dir = opendir(directory);
     if (dir == NULL) {
-        perror("opendir");
-        return NULL;
+		_err("%s: error reading directory: %s",__func__,directory);
+        return false;
     }
-
     while ((entry = readdir(dir)) != NULL) {
-        struct stat st;
-        snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
-
+		struct stat st;
+		cwk_path_join(directory,entry->d_name,path,MAX_PATH);
         // Check if it's a regular file
         if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
             FILE *file = fopen(path, "r");
-            if (file == NULL) {
-                perror("fopen");
+            if (!file) {
+				_err("%s: error opening file: %s",__func__,path);
                 continue;
             }
-
-            char line[256];
+            char line[512];
             while (fgets(line, sizeof(line), file) != NULL) {
-                // Remove newline character at the end of the line
-                line[strcspn(line, "\n")] = 0;
                 // Skip lines that are comments
-                if (line[0] == '#') continue;
-
-                // Append the line to the result string
-                size_t line_len = strlen(line);
-                result = realloc(result, result_len + line_len + 2); // +2 for colon and null terminator
-                if (result == NULL) {
-                    perror("realloc");
-                    fclose(file);
-                    closedir(dir);
-                    return NULL;
-                }
-                if (result_len == 0) {
-                    strcpy(result, line);
-                } else {
-                    strcat(result, ":");
-                    strcat(result, line);
-                }
-                result_len += line_len + 1;
+                if (line[0] != '/') continue;
+				size_t len = strlen(line);
+				if(line[len-1]=='\n') line[len-1]=0x0;
+                // add the line to the result array
+				XArray_AddData(dest,line,len);
             }
             fclose(file);
         }
     }
-
     closedir(dir);
-    return result;
+    return true;
 }
-
-// int main() {
-//     char *result = read_ld_so_conf_d("/etc/ld.so.conf.d");
-//     if (result != NULL) {
-//         printf("Colon-separated string: %s\n", result);
-//         free(result);
-//     }
-//     return 0;
-// }
 
 void detect_file_type(const char *filename) {
     struct stat st;
@@ -310,7 +282,7 @@ static int ld_add_file(LDState *s1, const char filename[]) {
 }
 
 static int tcc_error_noabort(char *msg) {
-	_err("ldscript: %s",msg);
+	_err("Error in ldscript parser: %s",msg);
 	return 1;
 }
 
