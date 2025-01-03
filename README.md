@@ -6,27 +6,27 @@ More info on [Dyne.org/CJIT](https://dyne.org/cjit).
 
 ## 🚀 Quick start
 
-Download the CJIT executable for your system
+Download [the latest CJIT release](https://github.com/dyne/cjit/releases/) for your system.
 
-- Windows x86 64bit: [cjit.exe](https://github.com/dyne/cjit/releases/latest/download/cjit.exe)
-- Apple/OSX: [cjit-Darwin-arm64](https://github.com/dyne/cjit/releases/download/v0.10.5/cjit-Darwin-arm64)
-- GNU/Linux: [cjit-Linux-x86_64-static](https://github.com/dyne/cjit/releases/download/v0.10.5/cjit-Linux-x86_64-static)
-
-and run it with c source files as well dynamic libraries as arguments:
+Launch CJIT from a terminal console command prompt: one can mix c source files and dynamic libraries as arguments:
 
 ```
 ./cjit.exe mysource.c mylib.dll
 ```
 
-CJIT can do a lot more! continue reading its tutorial for a hands-on introduction.
+If you like a tour, follow the [CJIT tutorial](https://dyne.org/docs/cjit).
 
-### 📖 [The CJIT tutorial](https://dyne.org/docs/cjit)
+To quickly download a demo package (with games inside!) fire our installer script:
 
-## 💾 Downloads
+### 🪟 On Windows
 
-We provide ready to execute binary builds on [github releases](https://github.com/dyne/cjit/releases).
+    iex ((New-Object System.Net.WebClient).DownloadString('https://dyne.org/cjit/demo'))
 
-Some systems may warn you about a virus in the file. There isn't, we submit each built executable to Virustotal via [github actions](https://github.com/dyne/cjit/actions).
+### 🍎 / 🐧 On Apple/OSX and GNU/Linux
+
+    curl -sL https://dyne.org/cjit/demo.sh | bash
+
+### 📖 Go to the [The CJIT tutorial](https://dyne.org/docs/cjit)
 
 
 ## ⚙️ Build from source
@@ -65,17 +65,20 @@ CJIT is a bit complex inside.
 
 The [CJIT's Frequently Asked Questions](https://dyne.org/docs/cjit/faq/) page may provide more information.
 
-## 📑 License
+## 📑 Acknowledgements
 
-CJIT is copyright (C) 2024 by the Dyne.org foundation
+CJIT is copyright (C) 2024-2025 by the Dyne.org foundation. 
+Designed, written and maintained by [Jaromil](https://jaromil.dyne.org).
+Free and open source (GNU General Public License v3).
 
-CJIT is distributed under the GNU General Public License v3
+The TinyCC core component is copyright (C) 2001-2004 by Fabrice
+Bellard. TinyCC is also free and open source (GNU Lesser General
+Public License).
 
-TinyCC is copyright (C) 2001-2004 by Fabrice Bellard
-
-TinyCC is distributed under the GNU Lesser General Public License
-
-For more information on licensing please refer to the Reuse report and
-license texts included in [LICENSES](https://github.com/dyne/cjit/tree/main/LICENSES).
+CJIT relies on more free and open source components, detailed
+information on authors and licenses is available in the
+[REUSE.toml](https://github.com/dyne/cjit/blob/main/REUSE.toml) file
+and license texts included in
+[LICENSES](https://github.com/dyne/cjit/tree/main/LICENSES).
 
 [![software by Dyne.org](https://files.dyne.org/software_by_dyne.png)](http://www.dyne.org)
