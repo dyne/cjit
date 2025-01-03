@@ -5,10 +5,12 @@ cc := gcc
 cflags += -DLIBC_GNU -D_GNU_SOURCE
 cflags += -DKILO_SUPPORTED
 cflags += -DCJIT_BUILD_LINUX
+SOURCES += src/elflinker.o
 
 all: embed-posix cjit
 
 tinycc_config += --with-libgcc
+$(info Ignore any error about sestatus below)
 ifeq ($(shell sestatus | awk -F': *' '/SELinux status:/ {print $2}'), enabled)
 tinycc_config += --with-selinux
 endif

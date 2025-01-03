@@ -39,7 +39,7 @@
 #define tcc(cjit) (TCCState*)cjit->TCC
 #define setup if(!cjit->done_setup)cjit_setup(cjit)
 #define debug(fmt,par) if(cjit->verbose)_err(fmt,par)
-#define add(buf,s) if(s)XArray_AddData((xarray_t*)cjit->buf,(char*)s,strlen(s)+1); else _err("!!! NULL var added to array: %s","buf")
+#define add(buf,s) if(s!=NULL)XArray_AddData((xarray_t*)cjit->buf,(char*)s,strlen(s)+1); else _err("!!! NULL var added to array: %s","buf")
 
 // declared at bottom
 void _out(const char *fmt, ...);
@@ -177,8 +177,9 @@ static bool cjit_setup(CJITState *cjit) {
 	{ // search libs also in current dir
 		char pwd[MAX_PATH];
 		// Get the current working directory
-		if(getcwd(pwd, MAX_PATH))
+		if(getcwd(pwd, MAX_PATH)) {
 			add(libpaths,pwd);
+		}
 	}
 	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
 	tcc_add_sysinclude_path(tcc(cjit), ".");
@@ -211,6 +212,19 @@ static bool cjit_setup(CJITState *cjit) {
 		free(sdkpath);
 	}
 #endif
+
+#if defined(LINUX)
+	{
+		xarray_t ldsoconf;
+		XArray_Init(&ldsoconf,3,0);
+		read_ldsoconf(&ldsoconf,"/etc/ld.so.conf.d");
+		int len = XArray_Used(&ldsoconf);
+		for(int i=0;i<len;i++) {
+			add(libpaths,XArray_GetData(&ldsoconf,i));
+		}
+	}
+#endif
+
 	cjit->done_setup = true;
 	return(true);
 }
