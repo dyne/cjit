@@ -5,7 +5,6 @@ cc := gcc
 cflags += -DLIBC_GNU -D_GNU_SOURCE
 cflags += -DKILO_SUPPORTED
 cflags += -DCJIT_BUILD_LINUX
-SOURCES += src/elflinker.o
 
 all: embed-posix cjit
 

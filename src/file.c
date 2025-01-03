@@ -171,6 +171,7 @@ bool write_to_file(const char *path, const char *filename, const char *buf, unsi
   return true;
 }
 
+#if 0 // unused for now, dangerous to have if unnecessary
 static int rm_ftw(const char *pathname,
                   const struct stat *sbuf,
                   int type, struct FTW *ftwb) {
@@ -205,7 +206,10 @@ bool rm_recursive(char *path) {
   }
   return true;
 }
+#endif
 
+
+#if 0
 #if !defined(WINDOWS)
 
 static char *full_content = NULL;
@@ -273,3 +277,4 @@ char *dir_load(const char *path)
 
 
 #endif
+#endif // 0

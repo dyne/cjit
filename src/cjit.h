@@ -91,10 +91,6 @@ extern bool extract_assets(CJITState *CJIT);
 /////////////
 // from file.c
 extern char* file_load(const char *filename, unsigned int *len);
-extern char *load_stdin();
-extern char* dir_load(const char *path);
-extern bool write_to_file(const char *path, const char *filename,
-			  const char *buf, unsigned int len);
 
 // terminal printing functions
 extern void _out(const char *fmt, ...);
@@ -103,8 +99,5 @@ extern void _err(const char *fmt, ...);
 /////////////
 // from repl.c
 extern int cjit_cli_tty(CJITState *cjit);
-#ifdef KILO_SUPPORTED
-extern int cjit_cli_kilo(CJITState *cjit);
-#endif
 
 #endif
