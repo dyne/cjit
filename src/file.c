@@ -18,6 +18,7 @@
  */
 
 #include <cjit.h>
+#include <cwalk.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,6 +102,48 @@ char *load_stdin() {
   }
   return(code);
 #endif
+}
+
+char *new_abspath(const char *path) {
+	char tpath[MAX_PATH];
+	char *res = NULL;
+	size_t len;
+	if(path[0]=='.' && path[1]==0x0) {
+		// argument is just .
+		if( getcwd(tpath,MAX_PATH) ) {
+			res = malloc(strlen(tpath)+1);
+			strcpy(res,tpath);
+			return(res);
+		}
+	}
+	if(path[0]=='.' && path[1]=='/') {
+		if( !getcwd(tpath,MAX_PATH) ) {
+			_err("%s: getcwd error: %s",__func__,strerror(errno));
+			return(NULL);
+		}
+		res = malloc(strlen(tpath)+1);
+		strcpy(res,tpath);
+		len = cwk_path_get_absolute(res,path,tpath,MAX_PATH);
+		res = realloc(res, len+1);
+		strcpy(res,tpath);
+		return(res);
+	}
+	if(path[0]!='/') {
+		if( !getcwd(tpath,MAX_PATH) ) {
+			_err("%s: getcwd error: %s",__func__,strerror(errno));
+			return(NULL);
+		}
+		res = malloc(strlen(tpath)+strlen(path)+16);
+		strcpy(res,tpath);
+		len = cwk_path_get_absolute(res,path,tpath,MAX_PATH);
+		res = realloc(res,len+1);
+		strcpy(res,tpath);
+		return(res);
+	}
+	len = cwk_path_normalize(path,tpath,MAX_PATH);
+	res = malloc(len+1);
+	strcpy(res,tpath);
+	return(res);
 }
 
 bool write_to_file(const char *path, const char *filename, const char *buf, unsigned int len) {
