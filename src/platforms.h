@@ -19,18 +19,24 @@
   #endif
   #if defined(__linux__)
   #define LINUX
+  #define POSIX
+  #define UNIX
   #define PLATFORM "GNU/Linux"
   #endif
   #if defined(__APPLE__)
   #define APPLE
+  #define POSIX
   #define PLATFORM "Apple/OSX"
   #endif
   #if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
   #define BSD
+  #define POSIX
+  #define UNIX
   #define PLATFORM "BSD"
   #endif
   #if defined(__ANDROID__)
   #define ANDROID
+  #define POSIX
   #define PLATFORM "Android"
   #endif
   #if defined(__EMSCRIPTEN__)
@@ -39,10 +45,12 @@
   #endif
   #if defined(__BEOS__) || defined(__HAIKU__)
   #define BEOS
+  #define POSIX
   #define PLATFORM "BEOS"
   #endif
   #if defined(__HAIKU__)
   #define HAIKU
+  #define POSIX
   #define PLATFORM "Haiku"
   #endif
 #endif

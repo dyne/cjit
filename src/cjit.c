@@ -216,7 +216,7 @@ static bool cjit_setup(CJITState *cjit) {
 	}
 #endif
 
-#if defined(POSIX)
+#if defined(UNIX)
 	read_ldsoconf(cjit->libpaths,"/etc/ld.so.conf");
 	read_ldsoconf_dir(cjit->libpaths,"/etc/ld.so.conf.d");
 #endif
@@ -593,7 +593,7 @@ void cjit_define_symbol(CJITState *cjit, const char *sym, const char *value) {
 	if(cjit->verbose)_err("+D %s %s",sym,value?value:"");
 }
 void cjit_add_include_path(CJITState *cjit, const char *path) {
-	const char *restrict toadd = new_abspath(path);
+	char *restrict toadd = new_abspath(path);
 	if(!toadd) {
 		_err("%s: absolute path error: %s",__func__,path);
 		return;
@@ -604,7 +604,7 @@ void cjit_add_include_path(CJITState *cjit, const char *path) {
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library_path(CJITState *cjit, const char *path) {
-	const char *restrict toadd = new_abspath(path);
+	char *restrict toadd = new_abspath(path);
 	if(!toadd) {
 		_err("%s: absolute path error: %s",__func__,path);
 		return;

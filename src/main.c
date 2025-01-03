@@ -31,6 +31,8 @@
 #include <muntar.h>
 #include <assets.h>
 
+extern char *load_stdin();
+
 #define MAX_ARG_STRING 1024
 static int parse_value(char *str) {
   int i = 0;
@@ -141,19 +143,19 @@ int main(int argc, char **argv) {
 		  strcpy(CJIT->output_filename,opt.arg);
 		  cjit_set_output(CJIT, EXE);
 	  } else if (c == 'L') { // library path
-		  if(!CJIT->quiet)_err("lib path: %s",opt.arg);
+		  if(CJIT->verbose)_err("arg lib path: %s",opt.arg);
 		  cjit_add_library_path(CJIT, opt.arg);
 	  } else if (c == 'l') { // library link
-		  if(!CJIT->quiet)_err("lib: %s",opt.arg);
+		  if(CJIT->verbose)_err("arg lib: %s",opt.arg);
 		  cjit_add_library(CJIT, opt.arg);
 	  } else if (c == 'C') { // cflags compiler options
-		  if(!CJIT->quiet)_err("cflags: %s",opt.arg);
+		  if(CJIT->verbose)_err("arg cflags: %s",opt.arg);
 		  cjit_set_tcc_options(CJIT->TCC, opt.arg);
 	  } else if (c == 'I') { // include paths in cflags
-		  if(!CJIT->quiet)_err("inc: %s",opt.arg);
+		  if(CJIT->verbose)_err("arg inc: %s",opt.arg);
 		  cjit_add_include_path(CJIT, opt.arg);
 	  } else if (c == 'e') { // entry point (default main)
-		  if(!CJIT->quiet)_err("entry: %s",opt.arg);
+		  if(!CJIT->quiet)_err("entry function: %s",opt.arg);
 		  if(CJIT->entry) free(CJIT->entry);
 		  CJIT->entry = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->entry,opt.arg);
