@@ -1,5 +1,7 @@
-#ifndef __LDSCRIPT_H__
-#define __LDSCRIPT_H__
+#ifndef __ELFLINKER_H__
+#define __ELFLINKER_H__
+
+#include <array.h>
 
 struct LDState {
 	int cc;
@@ -9,6 +11,8 @@ struct LDState {
 };
 typedef struct LDState LDState;
 
+bool read_ldsoconf(xarray_t *dest, char *path);
+bool read_ldsoconf_dir(xarray_t *dest, const char *directory);
 int cjit_load_ldscript(LDState *s1, char *path);
 
 #endif

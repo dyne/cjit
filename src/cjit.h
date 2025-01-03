@@ -23,6 +23,10 @@
 #include <platforms.h>
 #include <stdbool.h>
 
+#if !defined(MAX_PATH)
+#define MAX_PATH 512
+#endif
+
 // passed to cjit_exec with CJIT execution parameters
 struct CJITState {
 	void *TCC; // the tinyCC context

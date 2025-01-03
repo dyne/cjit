@@ -22,12 +22,11 @@
 // interpret a subset of GNU ldscripts to handle dummy .so files
 
 #include <platforms.h>
-#if defined(LINUX)
+#if defined(POSIX)
 #define MAX_PATH 512
 #include <cjit.h>
-#include <elflinker.h>
-#include <array.h>
 #include <cwalk.h>
+#include <elflinker.h>
 
 #define CH_EOF   (-1) //end of file
 #define LD_TOK_NAME 256
@@ -38,6 +37,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -49,7 +49,29 @@ extern void dynarray_reset(void *pp, int *n);
 extern char *tcc_strdup(const char *str);
 extern char *pstrcpy(char *buf, size_t buf_size, const char *s);
 
-bool read_ldsoconf(xarray_t *dest, const char *directory) {
+bool read_ldsoconf(xarray_t *dest, char *path) {
+	FILE *file = fopen(path, "r");
+	if (!file) {
+		_err("%s: error opening file: %s",__func__,path);
+		_err("%s: %s",strerror(errno));
+		return false;
+	}
+	// TODO: optimize by allocating the buffer inside a xarray data
+	// struct to avoid double memcpy
+	char line[MAX_PATH];
+	while (fgets(line, MAX_PATH, file) != NULL) {
+		// Skip lines that aren't paths
+		if (line[0] != '/') continue;
+		size_t len = strlen(line);
+		if(line[len-1]=='\n') line[len-1]=0x0;
+		// add the line to the result array
+		XArray_AddData(dest,line,len+1);
+	}
+	fclose(file);
+    return true;
+}
+
+bool read_ldsoconf_dir(xarray_t *dest, const char *directory) {
     DIR *dir;
     struct dirent *entry;
     char path[MAX_PATH];
@@ -63,23 +85,12 @@ bool read_ldsoconf(xarray_t *dest, const char *directory) {
 		cwk_path_join(directory,entry->d_name,path,MAX_PATH);
         // Check if it's a regular file
         if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
-            FILE *file = fopen(path, "r");
-            if (!file) {
-				_err("%s: error opening file: %s",__func__,path);
-                continue;
-            }
-            char line[512];
-            while (fgets(line, sizeof(line), file) != NULL) {
-                // Skip lines that are comments
-                if (line[0] != '/') continue;
-				size_t len = strlen(line);
-				if(line[len-1]=='\n') line[len-1]=0x0;
-                // add the line to the result array
-				XArray_AddData(dest,line,len);
-            }
-            fclose(file);
-        }
-    }
+			if(! read_ldsoconf(dest,path) ) {
+				_err("%s: Xarray_AddData error: %s",__func__,directory);
+				continue;
+			}
+		}
+	}
     closedir(dir);
     return true;
 }

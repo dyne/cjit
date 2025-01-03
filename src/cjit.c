@@ -21,7 +21,7 @@
 #include <libtcc.h>
 #include <cwalk.h>
 #include <array.h>
-
+#include <elflinker.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h> // _err/_out
@@ -49,6 +49,9 @@ void _err(const char *fmt, ...);
 extern void    win_compat_usleep(unsigned int microseconds);
 extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
 extern bool    get_winsdkpath(char *dst, size_t destlen);
+
+// from file.c
+extern char *new_abspath(const char *path);
 
 static bool cjit_mkdtemp(CJITState *cjit) {
 	char tempDir[MAX_PATH];
@@ -182,8 +185,8 @@ static bool cjit_setup(CJITState *cjit) {
 		}
 	}
 	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
-	tcc_add_sysinclude_path(tcc(cjit), ".");
-	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
+//	tcc_add_sysinclude_path(tcc(cjit), ".");
+//	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
 
 #if defined(WINDOWS)
 	{
@@ -213,16 +216,9 @@ static bool cjit_setup(CJITState *cjit) {
 	}
 #endif
 
-#if defined(LINUX)
-	{
-		xarray_t ldsoconf;
-		XArray_Init(&ldsoconf,3,0);
-		read_ldsoconf(&ldsoconf,"/etc/ld.so.conf.d");
-		int len = XArray_Used(&ldsoconf);
-		for(int i=0;i<len;i++) {
-			add(libpaths,XArray_GetData(&ldsoconf,i));
-		}
-	}
+#if defined(POSIX)
+	read_ldsoconf(cjit->libpaths,"/etc/ld.so.conf");
+	read_ldsoconf_dir(cjit->libpaths,"/etc/ld.so.conf.d");
 #endif
 
 	cjit->done_setup = true;
@@ -261,6 +257,9 @@ bool cjit_status(CJITState *cjit) {
 #if !(defined TCC_TARGET_PE || defined TCC_TARGET_MACHO)
 	_err("ELF interpreter: %s",CONFIG_TCC_ELFINTERP);
 #endif
+
+	////////////////////////
+	// call cjit_setup here
 	setup;
 	{
 		int i;
@@ -274,8 +273,10 @@ bool cjit_status(CJITState *cjit) {
 		used = XArray_Used(cjit->libpaths);
 		if(used) {
 			_err("Library paths (%u)",used);
-			for(i=0;i<used;i++)
-				_err("+ %s",XArray_GetData(cjit->libpaths,i));
+			for(i=0;i<used;i++) {
+				char *d = XArray_GetData(cjit->libpaths,i);
+				_err("+ %s",d?d:"(null)");
+			}
 		}
 		used = XArray_Used(cjit->libs);
 		if(used) {
@@ -592,14 +593,26 @@ void cjit_define_symbol(CJITState *cjit, const char *sym, const char *value) {
 	if(cjit->verbose)_err("+D %s %s",sym,value?value:"");
 }
 void cjit_add_include_path(CJITState *cjit, const char *path) {
-	tcc_add_include_path(tcc(cjit), path);
+	const char *restrict toadd = new_abspath(path);
+	if(!toadd) {
+		_err("%s: absolute path error: %s",__func__,path);
+		return;
+	}
+	tcc_add_include_path(tcc(cjit), toadd);
+	free(toadd);
 	debug("+I %s",path);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library_path(CJITState *cjit, const char *path) {
-	tcc_add_library_path(tcc(cjit), path);
-	add(libpaths,path);
-	debug("+L %s",path);
+	const char *restrict toadd = new_abspath(path);
+	if(!toadd) {
+		_err("%s: absolute path error: %s",__func__,path);
+		return;
+	}
+	tcc_add_library_path(tcc(cjit), toadd);
+	add(libpaths,toadd);
+	free(toadd);
+	debug("+L %s",toadd);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library(CJITState *cjit, const char *path) {
