@@ -20,6 +20,7 @@
 #include <cjit.h>
 #include <libtcc.h>
 #include <cwalk.h>
+#include <array.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -38,6 +39,8 @@
 #define tcc(cjit) (TCCState*)cjit->TCC
 #define setup if(!cjit->done_setup)cjit_setup(cjit)
 #define debug(fmt,par) if(cjit->verbose)_err(fmt,par)
+#define add(buf,s) if(s)XArray_AddData((xarray_t*)cjit->buf,(char*)s,strlen(s)+1); else _err("!!! NULL var added to array: %s","buf")
+
 // declared at bottom
 void _out(const char *fmt, ...);
 void _err(const char *fmt, ...);
@@ -135,6 +138,10 @@ CJITState* cjit_new() {
 	}
 	// error handler callback for TCC
 	tcc_set_error_func(tcc(cjit), stderr, cjit_tcc_handle_error);
+	// initialize internal arrays
+	cjit->sources  = (void*)XArray_New(2, 0);
+	cjit->libs     = (void*)XArray_New(2, 0);
+	cjit->libpaths = (void*)XArray_New(2, 0);
 	return(cjit);
 }
 
@@ -154,7 +161,7 @@ static bool cjit_setup(CJITState *cjit) {
 		_err("CFLAGS: %s",extra_cflags);
 		tcc_set_options(tcc(cjit), extra_cflags);
 	}
-#if defined(_WIN32)
+#if defined(WINDOWS)
 	// add symbols for windows compatibility
 	tcc_add_symbol(tcc(cjit), "usleep", &win_compat_usleep);
 	tcc_add_symbol(tcc(cjit), "getline", &win_compat_getline);
@@ -164,35 +171,42 @@ static bool cjit_setup(CJITState *cjit) {
 	tcc_define_symbol(tcc(cjit),"SDL_MAIN_HANDLED",NULL);
 
 	// where is libtcc1.a found
-	tcc_add_library_path(tcc(cjit), cjit->tmpdir);
-
-	// tcc_set_lib_path(TCC,tmpdir); // this overrides all?
-
+	// add(libpaths,cjit->tmpdir);
+	// tinyCC needs libtcc1.a in library path (not added as file)
+	tcc_add_library_path(tcc(cjit),cjit->tmpdir);
+	{ // search libs also in current dir
+		char pwd[MAX_PATH];
+		// Get the current working directory
+		if(getcwd(pwd, MAX_PATH))
+			add(libpaths,pwd);
+	}
 	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
 	tcc_add_sysinclude_path(tcc(cjit), ".");
-	tcc_add_sysinclude_path(tcc(cjit), "include");
-	tcc_add_library_path(tcc(cjit), ".");
+	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
 
-#if defined(_WIN32)
+#if defined(WINDOWS)
 	{
-		// windows system32 libraries
-		//tcc_add_library_path(TCC, "C:\\Windows\\System32")
-		// 64bit
+		size_t plen;
+		char *tpath;
+		// TODO: support WIN32 here: "C:\\Windows\\System32"
+		add(libpaths,"C:\\Windows\\SysWOW64");
 		tcc_add_library_path(tcc(cjit), "C:\\Windows\\SysWOW64");
 		// tinycc win32 headers
-		char *tpath = malloc(strlen(cjit->tmpdir)+32);
-		strcpy(tpath,cjit->tmpdir);
-		strcat(tpath,"/tinycc_win32/winapi");
+		plen = strlen(cjit->tmpdir)+strlen("/tinycc_win32/winapi")+8;
+		tpath = malloc(plen);
+		cwk_path_join(cjit->tmpdir,"/tinycc_win32/winapi",tpath,plen);
 		tcc_add_sysinclude_path(tcc(cjit), tpath);
 		free(tpath);
 		// windows SDK headers
 		char *sdkpath = malloc(512);
 		if( get_winsdkpath(sdkpath,511) ) {
-			int pathend = strlen(sdkpath);
-			strcpy(&sdkpath[pathend],"\\um"); // um/GL
-			tcc_add_sysinclude_path(tcc(cjit), sdkpath);
-			strcpy(&sdkpath[pathend],"\\shared"); // winapifamili.h etc.
-			tcc_add_sysinclude_path(tcc(cjit), sdkpath);
+			plen = strlen(sdkpath)+16;
+			tpath = malloc(plen);
+			cwk_path_join(sdkpath,"/um",tpath,plen); // um/GL
+			tcc_add_sysinclude_path(tcc(cjit), tpath);
+			cwk_path_join(sdkpath,"/shared",tpath,plen); // winapifamili.h etc.
+			tcc_add_sysinclude_path(tcc(cjit), tpath);
+			free(tpath);
 		}
 		free(sdkpath);
 	}
@@ -233,6 +247,29 @@ bool cjit_status(CJITState *cjit) {
 #if !(defined TCC_TARGET_PE || defined TCC_TARGET_MACHO)
 	_err("ELF interpreter: %s",CONFIG_TCC_ELFINTERP);
 #endif
+	setup;
+	{
+		int i;
+		size_t used;
+		used= XArray_Used(cjit->sources);
+		if(used) {
+			_err("Sources (%u)",used);
+			for(i=0;i<used;i++)
+				_err("+ %s",XArray_GetData(cjit->sources,i));
+		}
+		used = XArray_Used(cjit->libpaths);
+		if(used) {
+			_err("Library paths (%u)",used);
+			for(i=0;i<used;i++)
+				_err("+ %s",XArray_GetData(cjit->libpaths,i));
+		}
+		used = XArray_Used(cjit->libs);
+		if(used) {
+			_err("Libraries (%u)",used);
+			for(int i=0;i<used;i++)
+				_err("+ %s",XArray_GetData(cjit->libs,i));
+		}
+	}
 	return true;
 }
 
@@ -339,14 +376,16 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 	fread(contents+spath_len, 1, length, file);
 	contents[length+spath_len] = 0x0;
 	fclose(file);
-	size_t dirname;
-	cwk_path_get_dirname(path,&dirname);
-	if(dirname) {
-		char *tmp = malloc(dirname+1);
-		strncpy(tmp,path,dirname);
-		tmp[dirname] = 0x0;
-		tcc_add_include_path(tcc(cjit),tmp);
-		free(tmp);
+	{ // if inside a dir then add dir to includes too
+		size_t dirname;
+		cwk_path_get_dirname(path,&dirname);
+		if(dirname) {
+			char *tmp = malloc(dirname+1);
+			strncpy(tmp,path,dirname);
+			tmp[dirname] = 0x0;
+			tcc_add_include_path(tcc(cjit),tmp);
+			free(tmp);
+		}
 	}
 	tcc_compile_string(tcc(cjit),contents);
 	free(contents);
@@ -520,6 +559,9 @@ void cjit_free(CJITState *cjit) {
 	if(cjit->entry) free(cjit->entry);
 	if(cjit->output_filename) free(cjit->output_filename);
 	if(cjit->TCC) tcc_delete(tcc(cjit));
+	XArray_Free((xarray_t**)&cjit->sources);
+	XArray_Free((xarray_t**)&cjit->libs);
+	XArray_Free((xarray_t**)&cjit->libpaths);
 	free(cjit);
 }
 
@@ -542,11 +584,13 @@ void cjit_add_include_path(CJITState *cjit, const char *path) {
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library_path(CJITState *cjit, const char *path) {
 	tcc_add_library_path(tcc(cjit), path);
+	add(libpaths,path);
 	debug("+L %s",path);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library(CJITState *cjit, const char *path) {
 	tcc_add_library(tcc(cjit), path);
+	add(libs,path);
 	debug("+l %s",path);
 }
 void cjit_set_tcc_options(CJITState *cjit, const char *opts) {

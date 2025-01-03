@@ -42,6 +42,11 @@ struct CJITState {
 	char *output_filename; // output in case of compilation mode
 	bool done_setup;
 	bool done_exec;
+	// INTERNAL
+	// sources and libs used and paths to libs
+	void *sources;
+	void *libs;
+	void *libpaths;
 };
 typedef struct CJITState CJITState;
 
