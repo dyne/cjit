@@ -51,15 +51,14 @@ static bool cjit_mkdtemp(CJITState *cjit) {
 	char tempDir[MAX_PATH];
 #if defined(WINDOWS)
 	char tempPath[MAX_PATH];
-	char filename [64];
-	snprintf(filename,63,"CJIT-%s",VERSION);
+	char dirname [64];
+	snprintf(dirname,63,"CJIT-%s",VERSION);
 	// Get the temporary path
 	if (GetTempPath(MAX_PATH, tempPath) == 0) {
 		_err("Failed to get temporary path");
 		return false;
 	}
-	PathCombine(tempDir, tempPath, filename);
-	// return already if found existing
+	cwk_path_join(tempPath,dirname,tempDir,MAX_PATH);
 	DWORD attributes = GetFileAttributes(tempDir);
 	if (attributes == INVALID_FILE_ATTRIBUTES) {
 		// The path does not exist
