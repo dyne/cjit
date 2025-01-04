@@ -195,8 +195,8 @@ static bool cjit_setup(CJITState *cjit) {
 		}
 	}
 	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
-//	tcc_add_sysinclude_path(tcc(cjit), ".");
-//	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
+	tcc_add_sysinclude_path(tcc(cjit), ".");
+	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
 
 #if defined(WINDOWS)
 	{
@@ -294,6 +294,7 @@ bool cjit_status(CJITState *cjit) {
 			for(int i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->libs,i));
 		}
+#if defined(UNIX)
 		resolve_libs(cjit);
 		used = XArray_Used(cjit->reallibs);
 		if(used) {
@@ -301,6 +302,7 @@ bool cjit_status(CJITState *cjit) {
 			for(int i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->reallibs,i));
 		}
+#endif
 
 	}
 	return true;
@@ -404,7 +406,11 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 	}
 	strcpy(contents,spath);
 	free(spath);
-	fread(contents+spath_len, 1, length, file);
+	if(0== fread(contents+spath_len, 1, length, file)) {
+		fail(file);
+		fclose(file);
+		return false;
+	}
 	contents[length+spath_len] = 0x0;
 	fclose(file);
 	{ // if inside a dir then add dir to includes too
@@ -517,7 +523,6 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 	for(int i=0;i<found;i++) {
 		char *f = XArray_GetData(cjit->reallibs,i);
 		if(f) {
-			_err("%i add file: %s",i, f);
 			tcc_add_file(tcc(cjit), f);
 		}
 	}
@@ -624,15 +629,21 @@ void cjit_add_library_path(CJITState *cjit, const char *path) {
 		_err("%s: absolute path error: %s",__func__,path);
 		return;
 	}
-	tcc_add_library_path(tcc(cjit), toadd);
+#if defined(UNIX)
 	add(libpaths,toadd);
+#else
+	tcc_add_library_path(tcc(cjit), toadd);
+#endif
 	debug("+L %s",toadd);
 	free(toadd);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library(CJITState *cjit, const char *path) {
-	tcc_add_library(tcc(cjit), path);
+#if defined(UNIX)
 	add(libs,path);
+#else
+	tcc_add_library(tcc(cjit), path);
+#endif
 	debug("+l %s",path);
 }
 void cjit_set_tcc_options(CJITState *cjit, const char *opts) {

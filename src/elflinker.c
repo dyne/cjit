@@ -124,6 +124,9 @@ int resolve_libs(CJITState *cjit) {
 				break;
 			}
 		}
+		if(found!=0)
+			_err("Library not found: lib%s.so",lname);
+		// continue anyway (will log missing symbol names)
 	}
 	return(XArray_Used(cjit->reallibs));
 }
@@ -146,14 +149,12 @@ static int find_library(xarray_t *results, const char *path) {
 			return -1;
         }
 		tpath[len] = 0x0;
-		_err("symlink to: %s (%i)",tpath,len);
 		size_t rlen = tlen + len;
 		reallib = malloc(rlen+1); // ALLOC
 		cwk_path_get_dirname(path,&rlen);
 		memcpy(reallib,path,rlen);
 		strcpy(&reallib[rlen],tpath);
 		free(tpath);               // FREE tpath
-		// _err("symlink to: %s",reallib);
     } else if (S_ISREG(statbuf.st_mode)) {
 		reallib = malloc(strlen(path)+1); // ALLOC
 		strcpy(reallib,path);
@@ -162,7 +163,6 @@ static int find_library(xarray_t *results, const char *path) {
 		_err("%s: internal error: %s",__func__,path);
 		return -1;
 	}
-	_err("reallib: %s",reallib);
 	FILE *fd = fopen(reallib,"r");
 	if(!fd) {
 		free(reallib);

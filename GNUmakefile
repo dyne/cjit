@@ -64,15 +64,18 @@ _: ##
 
 check: ## 🧪 Run all tests using the currently built binary ./cjit
 	@./test/bats/bin/bats test/cli.bats
+	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
 	@./test/bats/bin/bats test/windows.bats
 	@./test/bats/bin/bats test/muntar.bats
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/dmon.bats; fi
 
-
 check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@./test/bats/bin/bats test/cli.bats
+	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
 	@./test/bats/bin/bats test/windows.bats
 	@./test/bats/bin/bats test/muntar.bats
+
+# dmon filesystem monitoring doesn't works in CI
 
 _: ##
 clean: ## 🧹 Clean the source from all built objects
