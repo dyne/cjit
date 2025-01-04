@@ -58,6 +58,8 @@
   #define PLATFORM "Unknown"
 #endif
 
+#define fail(msg) _err("%s: %s: %s",__func__,msg,strerror(errno))
+
 #if defined(WINDOWS)
 #    ifndef WIN32_LEAN_AND_MEAN
 #        define WIN32_LEAN_AND_MEAN

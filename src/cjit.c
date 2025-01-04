@@ -135,8 +135,7 @@ CJITState* cjit_new() {
 	cjit->tcc_output = TCC_OUTPUT_MEMORY;
 	// call the generated function to populate the tmpdir
 	if(!extract_assets(cjit)) {
-		_err("Error extracting assets in temp dir: %s",
-		     strerror(errno));
+		fail("error extracting assets in temp dir");
 		return(NULL);
 	}
 	// error handler callback for TCC
@@ -145,7 +144,21 @@ CJITState* cjit_new() {
 	cjit->sources  = (void*)XArray_New(2, 0);
 	cjit->libs     = (void*)XArray_New(2, 0);
 	cjit->libpaths = (void*)XArray_New(2, 0);
+	cjit->reallibs = (void*)XArray_New(2, 0);
 	return(cjit);
+}
+
+void cjit_free(CJITState *cjit) {
+	if(cjit->tmpdir) free(cjit->tmpdir);
+	if(cjit->write_pid) free(cjit->write_pid);
+	if(cjit->entry) free(cjit->entry);
+	if(cjit->output_filename) free(cjit->output_filename);
+	if(cjit->TCC) tcc_delete(tcc(cjit));
+	XArray_Free((xarray_t**)&cjit->sources);
+	XArray_Free((xarray_t**)&cjit->libs);
+	XArray_Free((xarray_t**)&cjit->libpaths);
+	XArray_Free((xarray_t**)&cjit->reallibs);
+	free(cjit);
 }
 
 static bool cjit_setup(CJITState *cjit) {
@@ -313,14 +326,12 @@ static int detect_bom(const char *filename,size_t *filesize) {
 	int res;
 	int fd = open(filename, O_RDONLY | O_BINARY);
 	if(fd<0) {
-		_err("%s: error opening file: %s",__func__,filename);
-		_err("%s",strerror(errno));
+		fail(filename);
 		return -1;
 	}
 	struct stat st;
 	if (fstat(fd, &st) == -1) {
-		_err("%s: error analyzing file: %s",__func__,filename);
-		_err("%s",strerror(errno));
+		fail(filename);
 		close(fd);
 		return -1;
 	}
@@ -328,8 +339,7 @@ static int detect_bom(const char *filename,size_t *filesize) {
 	res = read(fd,bom,3);
 	close(fd);
 	if (res!=3) {
-		_err("%s: error reading file: %s",__func__,filename);
-		_err("%s",strerror(errno));
+		fail(filename);
 		return -1;
 	}
 	// _err("%s bom: %x %x %x",filename,bom[0],bom[1],bom[2]);
@@ -355,8 +365,7 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 	size_t length;
 	int res = detect_bom(path,&length);
 	if(res<0) {
-		_err("Cannot open file: %s",path);
-		_err("Execution aborted.");
+		fail(path);
 		return false;
 	} else if(res>0) {
 		_err("UTF BOM detected in file: %s",path);
@@ -365,12 +374,12 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 	}
 	FILE *file = fopen(path, "rb");
 	if (!file) {
-		_err("%s: fopen error: ", __func__, strerror(errno));
+		fail(path);
 		return false;
 	}
 	char *spath = (char*)malloc((strlen(path)+16)*sizeof(char));
 	if (!spath) {
-		_err("%s: malloc error: %s",__func__, strerror(errno));
+		fail(path);
 		fclose(file);
 		return false;
 	}
@@ -381,7 +390,7 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 		((spath_len + length + 1)
 		 * sizeof(char));
 	if (!contents) {
-		_err("%s: malloc error: %s",__func__, strerror(errno));
+		fail(path);
 		free(spath);
 		fclose(file);
 		return false;
@@ -413,19 +422,19 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 	int is_source = has_source_extension(path);
 	if(is_source == 0) { // no extension, we still add
 		if(tcc_add_file(tcc(cjit), path)<0) {
-			_err("%s: tcc_add_file error: %s",__func__,path);
+			fail(path);
 			return false;
 		}
 		return true;
 	}
 	if(is_source>0) {
 		if(!cjit_add_source(cjit, path)) {
-			_err("%s: error: %s",__func__,path);
+			fail(path);
 			return false;
 		}
 	} else {
 		if(tcc_add_file(tcc(cjit), path)<0) {
-			_err("%s: tcc_add_file error: %s",__func__,path);
+			fail(path);
 			return false;
 		}
 	}
@@ -437,13 +446,13 @@ bool cjit_compile_file(CJITState *cjit, const char *path) {
 	int is_source = has_source_extension(path);
 	// _err("basename: %s",tmp);
 	if( is_source == 0) {
-		_err("%s: filename has no extension: %s",
-		     __func__,path);
+		fail(path);
+		_err("filename has no extension");
 		return false;
 	}
 	if( is_source < 0) {
-		_err("%s: filename has wrong extension: %s",
-		     __func__,path);
+		fail(path);
+		_err("filename has wrong extension");
 		return false;
 	}
 	setup;
@@ -513,8 +522,8 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 		pid_t pid = getpid();
 		FILE *fd = fopen(cjit->write_pid, "w");
 		if(!fd) {
-			_err("Cannot create pid file %s: %s",
-			     cjit->write_pid, strerror(errno));
+			fail(cjit->write_pid);
+			_err("Cannot create pid file");
 			return -1;
 		}
 		fprintf(fd,"%d\n",pid);
@@ -535,8 +544,8 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 			// pid_t pid = getpid();
 			FILE *fd = fopen(cjit->write_pid, "w");
 			if(!fd) {
-				_err("Cannot create pid file %s: %s",
-				     cjit->write_pid, strerror(errno));
+				fail(cjit->write_pid);
+				_err("Cannot create pid file");
 				return -1;
 			}
 			fprintf(fd,"%d\n",pid);
@@ -546,7 +555,7 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 		int ret;
 		ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
 		if (ret != pid){
-			_err("Wait error in source: %s","main");
+			_err("Wait error in source: %s",cjit->entry);
 		}
 		if (WIFEXITED(status)) {
 			res = WEXITSTATUS(status);
@@ -566,18 +575,6 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 	}
 	return res;
 #endif // cjit_exec with fork()
-}
-
-void cjit_free(CJITState *cjit) {
-	if(cjit->tmpdir) free(cjit->tmpdir);
-	if(cjit->write_pid) free(cjit->write_pid);
-	if(cjit->entry) free(cjit->entry);
-	if(cjit->output_filename) free(cjit->output_filename);
-	if(cjit->TCC) tcc_delete(tcc(cjit));
-	XArray_Free((xarray_t**)&cjit->sources);
-	XArray_Free((xarray_t**)&cjit->libs);
-	XArray_Free((xarray_t**)&cjit->libpaths);
-	free(cjit);
 }
 
 
