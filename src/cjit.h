@@ -23,9 +23,12 @@
 #include <platforms.h>
 #include <stdbool.h>
 
-#if !defined(MAX_PATH)
-#define MAX_PATH 512
+#if !defined(PATH_MAX)
+#define PATH_MAX 1024
 #endif
+#if !defined(MAX_PATH)
+#define MAX_PATH PATH_MAX
+#endifx
 
 // passed to cjit_exec with CJIT execution parameters
 struct CJITState {
