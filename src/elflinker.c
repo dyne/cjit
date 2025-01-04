@@ -130,26 +130,42 @@ int resolve_libs(CJITState *cjit) {
 
 static int find_library(xarray_t *results, const char *path) {
     struct stat statbuf;
-	char reallib[PATH_MAX];
+	char *reallib = NULL;
 
 	if (lstat(path, &statbuf) == -1) {
 		// fail(path);
         return -1;
     }
     if (S_ISLNK(statbuf.st_mode)) {
-        ssize_t len = readlink(path, reallib, PATH_MAX - 1);
+		int tlen = strlen(path);
+		char *tpath = malloc(tlen); // ALLOC tpath
+        ssize_t len = readlink(path, tpath, tlen-1);
         if (len == -1) {
+			free(tpath);
             fail(path);
 			return -1;
         }
-        reallib[len] = 0x0;
+		tpath[len] = 0x0;
+		_err("symlink to: %s (%i)",tpath,len);
+		size_t rlen = tlen + len;
+		reallib = malloc(rlen+1); // ALLOC
+		cwk_path_get_dirname(path,&rlen);
+		memcpy(reallib,path,rlen);
+		strcpy(&reallib[rlen],tpath);
+		free(tpath);               // FREE tpath
 		// _err("symlink to: %s",reallib);
     } else if (S_ISREG(statbuf.st_mode)) {
+		reallib = malloc(strlen(path)+1); // ALLOC
 		strcpy(reallib,path);
     }
+	if(!reallib) {
+		_err("%s: internal error: %s",__func__,path);
+		return -1;
+	}
+	_err("reallib: %s",reallib);
 	FILE *fd = fopen(reallib,"r");
 	if(!fd) {
-		// fail(reallib);
+		free(reallib);
 		return -2;
 	}
 	int ch;
@@ -186,6 +202,7 @@ static int find_library(xarray_t *results, const char *path) {
 	} else {
 		XArray_AddData(results,reallib,strlen(reallib));
 	}
+	free(reallib);
 	return 0;
 }
 
