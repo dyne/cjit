@@ -8,11 +8,12 @@ struct LDState {
 	int fd;
 	int new_undef_sym;
 	int static_link;
+	xarray_t *libs;
 };
 typedef struct LDState LDState;
 
 bool read_ldsoconf(xarray_t *dest, char *path);
 bool read_ldsoconf_dir(xarray_t *dest, const char *directory);
-int cjit_load_ldscript(LDState *s1, char *path);
+int resolve_libs(CJITState *cjit);
 
 #endif
