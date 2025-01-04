@@ -294,6 +294,14 @@ bool cjit_status(CJITState *cjit) {
 			for(int i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->libs,i));
 		}
+		resolve_libs(cjit);
+		used = XArray_Used(cjit->reallibs);
+		if(used) {
+			_err("Lib files (%u)",used);
+			for(int i=0;i<used;i++)
+				_err("+ %s",XArray_GetData(cjit->reallibs,i));
+		}
+
 	}
 	return true;
 }
@@ -352,9 +360,11 @@ static int detect_bom(const char *filename,size_t *filesize) {
 }
 
 bool cjit_add_buffer(CJITState *cjit, const char *buffer) {
+	int res;
 	setup;
-	tcc_compile_string(tcc(cjit),buffer);
+	res = tcc_compile_string(tcc(cjit),buffer);
 	debug("+B %p",buffer);
+	return((res<0)?false:true);
 }
 
 bool cjit_add_source(CJITState *cjit, const char *path) {
@@ -501,6 +511,17 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 		_err("%s: CJIT already executed once",__func__);
 		return 1;
 	}
+	// resolve library files on UNIX systems
+#if defined(UNIX)
+	int found = resolve_libs(cjit);
+	for(int i=0;i<found;i++) {
+		char *f = XArray_GetData(cjit->reallibs,i);
+		if(f) {
+			_err("%i add file: %s",i, f);
+			tcc_add_file(tcc(cjit), f);
+		}
+	}
+#endif
 	int res = 1;
 	int (*_ep)(int, char**);
 	// relocate the code (link symbols)
@@ -605,8 +626,8 @@ void cjit_add_library_path(CJITState *cjit, const char *path) {
 	}
 	tcc_add_library_path(tcc(cjit), toadd);
 	add(libpaths,toadd);
-	free(toadd);
 	debug("+L %s",toadd);
+	free(toadd);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library(CJITState *cjit, const char *path) {
@@ -618,6 +639,8 @@ void cjit_set_tcc_options(CJITState *cjit, const char *opts) {
 	tcc_set_options(tcc(cjit),opts);
 	debug("+O %s",opts);
 }
+
+#define MAX_STRING 508
 
 // stdout message free from context
 void _out(const char *fmt, ...) {

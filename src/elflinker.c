@@ -49,6 +49,10 @@ extern void dynarray_reset(void *pp, int *n);
 extern char *tcc_strdup(const char *str);
 extern char *pstrcpy(char *buf, size_t buf_size, const char *s);
 
+// implemented further down
+static int resolve_ldscript(LDState *s1, char *path);
+static int find_library(xarray_t *results, const char *path);
+
 bool read_ldsoconf(xarray_t *dest, char *path) {
 	FILE *file = fopen(path, "r");
 	if (!file) {
@@ -71,90 +75,119 @@ bool read_ldsoconf(xarray_t *dest, char *path) {
 }
 
 bool read_ldsoconf_dir(xarray_t *dest, const char *directory) {
-    DIR *dir;
-    struct dirent *entry;
+    struct dirent **namelist;
     char path[MAX_PATH];
-    dir = opendir(directory);
-    if (dir == NULL) {
-		fail(directory);
-        return false;
+    int n;
+
+    // Open the directory and read its sorted contents
+    n = scandir(directory, &namelist, NULL, alphasort);
+    if (n < 0) {
+        fail(directory);
+        return(false);
     }
-    while ((entry = readdir(dir)) != NULL) {
-		struct stat st;
-		cwk_path_join(directory,entry->d_name,path,MAX_PATH);
-        // Check if it's a regular file
-        if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
+    // go through sorted filenames
+    for (int i = 0; i < n; i++) {
+        if (namelist[i]->d_type == DT_REG) {
+			// Regular files only
+			//  || namelist[i]->d_type == DT_LNK
+			cwk_path_join(directory,namelist[i]->d_name,path,MAX_PATH);
 			if(! read_ldsoconf(dest,path) ) {
 				fail(directory);
 				continue;
 			}
-		}
-	}
-    closedir(dir);
+        }
+        free(namelist[i]);
+    }
+    free(namelist);
     return true;
 }
 
-void detect_file_type(const char *filename) {
-    struct stat st;
-    if (lstat(filename, &st) == -1) {
-        perror("lstat");
-        return;
+int resolve_libs(CJITState *cjit) {
+	char tryfile[PATH_MAX];
+	int i,ii;
+	int libpaths_num, libnames_num;
+	char *lpath, *lname;
+	int found;
+	// search in all paths if lib%s.so exists
+	// TODO: support --static here
+	libpaths_num = XArray_Used(cjit->libpaths);
+	libnames_num = XArray_Used(cjit->libs);
+	for(i=0;i<libnames_num;i++) {
+		lname = XArray_GetData(cjit->libs,i);
+		for(ii=0;ii<libpaths_num;ii++) {
+			lpath = XArray_GetData(cjit->libpaths,ii);
+			snprintf(tryfile,PATH_MAX-2,"%s/lib%s.so",lpath,lname);
+			// _err("%s: try: %s",__func__,tryfile);
+			found = find_library(cjit->reallibs, tryfile);
+			if(found==0) {
+				// _err("library found: %s",tryfile);
+				break;
+			}
+		}
+	}
+	return(XArray_Used(cjit->reallibs));
+}
+
+static int find_library(xarray_t *results, const char *path) {
+    struct stat statbuf;
+	char reallib[PATH_MAX];
+
+	if (lstat(path, &statbuf) == -1) {
+		// fail(path);
+        return -1;
     }
-
-    if (S_ISLNK(st.st_mode)) {
-        printf("%s is a symbolic link.\n", filename);
-        return;
-    }
-
-    int fd = open(filename, O_RDONLY);
-    if (fd == -1) {
-        perror("open");
-        return;
-    }
-
-    unsigned char buffer[512];
-    ssize_t bytes_read = read(fd, buffer, sizeof(buffer));
-    if (bytes_read == -1) {
-        perror("read");
-        close(fd);
-        return;
-    }
-
-    close(fd);
-
-    // Check for plain text ASCII
-    int is_ascii = 1;
-    for (ssize_t i = 0; i < bytes_read; i++) {
-        if (buffer[i] > 127 || (buffer[i] < 32 && buffer[i] != '\n' && buffer[i] != '\r' && buffer[i] != '\t')) {
-            is_ascii = 0;
-            break;
+    if (S_ISLNK(statbuf.st_mode)) {
+        ssize_t len = readlink(path, reallib, PATH_MAX - 1);
+        if (len == -1) {
+            fail(path);
+			return -1;
         }
+        reallib[len] = 0x0;
+		// _err("symlink to: %s",reallib);
+    } else if (S_ISREG(statbuf.st_mode)) {
+		strcpy(reallib,path);
     }
+	FILE *fd = fopen(reallib,"r");
+	if(!fd) {
+		// fail(reallib);
+		return -2;
+	}
+	int ch;
+	int i = 0;
+	char elf[4];
+	bool is_ldscript = true;
+	while ((ch = fgetc(fd)) != EOF) {
 
-    if (is_ascii) {
-        printf("%s is a plain text ASCII file.\n", filename);
-        return;
-    }
+		// Check for ELF binary signature
+		if(i<4) elf[i]=ch;
+		if(i==4
+		   && elf[0] == 0x7f
+		   && elf[1] == 'E'
+		   && elf[2] == 'L'
+		   && elf[3] == 'F') {
+			is_ldscript = false;
+			break;
+		}
 
-    // Check for ELF binary (common format for shared libraries)
-    if (bytes_read >= 4 && buffer[0] == 0x7f && buffer[1] == 'E' && buffer[2] == 'L' && buffer[3] == 'F') {
-        printf("%s is a binary shared library (ELF).\n", filename);
-        return;
-    }
-
-    printf("%s is an unknown binary file.\n", filename);
+		// check for ASCII
+		if (ch < 0 || ch > 127) {
+			is_ldscript = false;
+			break;
+		}
+		if(i++ > 64) break; // just the first 64 bytes should be
+							// enough to know if file is a gnu ld
+							// script or not ?
+	}
+	fclose(fd);
+	if(is_ldscript) {
+		LDState s1;
+		s1.libs = results;
+		resolve_ldscript(&s1, reallib);
+	} else {
+		XArray_AddData(results,reallib,strlen(reallib));
+	}
+	return 0;
 }
-
-#if defined(TEST_LINKER)
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-    detect_file_type(argv[1]);
-    return EXIT_SUCCESS;
-}
-#endif
 
 static int ld_inp(LDState *s1)
 {
@@ -287,7 +320,7 @@ static int ld_next(LDState *s1, char *name, int name_size)
 }
 
 static int ld_add_file(LDState *s1, const char filename[]) {
-	_err("LD: %s",filename);
+	XArray_AddData(s1->libs, (char*)filename, strlen(filename));
 	return 1;
 }
 
@@ -296,12 +329,10 @@ static int tcc_error_noabort(char *msg) {
 	return 1;
 }
 
-static int ld_add_file_list(LDState *s1, const char *cmd, int as_needed)
-{
-    char filename[1024], libname[1024];
+static int ld_add_file_list(LDState *s1, const char *cmd, int as_needed) {
+    char filename[MAX_PATH], libname[MAX_PATH-8];
     int t, group, nblibs = 0, ret = 0;
     char **libs = NULL;
-
     group = !strcmp(cmd, "GROUP");
     if (!as_needed)
         s1->new_undef_sym = 0;
@@ -339,19 +370,16 @@ static int ld_add_file_list(LDState *s1, const char *cmd, int as_needed)
             if (ret)
                 goto lib_parse_error;
         } else {
-            /* TODO: Implement AS_NEEDED support. */
-	    /*       DT_NEEDED is not used any more so ignore as_needed */
-            if (1 || !as_needed) {
-                ret = ld_add_file(s1, filename);
-                if (ret)
-                    goto lib_parse_error;
-                if (group) {
-                    /* Add the filename *and* the libname to avoid future conversions */
-                    dynarray_add(&libs, &nblibs, tcc_strdup(filename));
-                    if (libname[0] != '\0')
-                        dynarray_add(&libs, &nblibs, tcc_strdup(libname));
-                }
-            }
+			ret = ld_add_file(s1, filename);
+			if (ret)
+				goto lib_parse_error;
+			if (group) {
+				/* Add the filename *and* the libname to avoid future conversions */
+				dynarray_add(&libs, &nblibs, tcc_strdup(filename));
+				if (libname[0] != '\0')
+					dynarray_add(&libs, &nblibs, tcc_strdup(libname));
+			}
+
         }
         t = ld_next(s1, filename, sizeof(filename));
         if (t == ',') {
@@ -366,18 +394,21 @@ static int ld_add_file_list(LDState *s1, const char *cmd, int as_needed)
                 ld_add_file(s1, libs[i]);
         }
     }
-lib_parse_error:
+ lib_parse_error:
     dynarray_reset(&libs, &nblibs);
     return ret;
 }
 
 // fd = open(filename, O_RDONLY | O_BINARY);
-int cjit_load_ldscript(LDState *s1, char *path) {
+static int resolve_ldscript(LDState *s1, char *path) {
     char cmd[64];
     char filename[1024];
     int t, ret;
 	int fd = open(path, O_RDONLY | O_BINARY);
-
+	if(fd<0) {
+		fail(path);
+		return -1;
+	}
     s1->fd = fd;
     s1->cc = -1;
     for(;;) {
@@ -395,7 +426,7 @@ int cjit_load_ldscript(LDState *s1, char *path) {
             ret = ld_add_file_list(s1, cmd, 0);
             if (ret) {
 				close(fd);
-				return ret;
+				break;
 			}
         } else if (!strcmp(cmd, "OUTPUT_FORMAT") ||
                    !strcmp(cmd, "TARGET")) {
@@ -405,7 +436,7 @@ int cjit_load_ldscript(LDState *s1, char *path) {
 					_err("%s: ( expected while parsing %s",
 						 __func__,path);
 					close(fd);
-					return 0;
+					break;
 			}
             for(;;) {
                 t = ld_next(s1, filename, sizeof(filename));
@@ -424,7 +455,7 @@ int cjit_load_ldscript(LDState *s1, char *path) {
         }
     }
 	close(fd);
-    return 0;
+    return ret;
 }
 
 #endif // only GNU/Linux platform

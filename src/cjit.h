@@ -28,7 +28,7 @@
 #endif
 #if !defined(MAX_PATH)
 #define MAX_PATH PATH_MAX
-#endifx
+#endif
 
 // passed to cjit_exec with CJIT execution parameters
 struct CJITState {
@@ -54,6 +54,7 @@ struct CJITState {
 	void *sources;
 	void *libs;
 	void *libpaths;
+	void *reallibs;
 };
 typedef struct CJITState CJITState;
 
