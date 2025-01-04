@@ -33,9 +33,6 @@
 #include <inttypes.h>
 #include <sys/stat.h> // fstat(2)
 
-#define MAX_PATH 260 // rather short paths
-#define MAX_STRING 20480 // max 20KiB strings
-
 #define tcc(cjit) (TCCState*)cjit->TCC
 #define setup if(!cjit->done_setup)cjit_setup(cjit)
 #define debug(fmt,par) if(cjit->verbose)_err(fmt,par)
