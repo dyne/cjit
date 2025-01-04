@@ -52,8 +52,7 @@ extern char *pstrcpy(char *buf, size_t buf_size, const char *s);
 bool read_ldsoconf(xarray_t *dest, char *path) {
 	FILE *file = fopen(path, "r");
 	if (!file) {
-		_err("%s: error opening file: %s",__func__,path);
-		_err("%s: %s",strerror(errno));
+		fail(path);
 		return false;
 	}
 	// TODO: optimize by allocating the buffer inside a xarray data
@@ -77,7 +76,7 @@ bool read_ldsoconf_dir(xarray_t *dest, const char *directory) {
     char path[MAX_PATH];
     dir = opendir(directory);
     if (dir == NULL) {
-		_err("%s: error reading directory: %s",__func__,directory);
+		fail(directory);
         return false;
     }
     while ((entry = readdir(dir)) != NULL) {
@@ -86,7 +85,7 @@ bool read_ldsoconf_dir(xarray_t *dest, const char *directory) {
         // Check if it's a regular file
         if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
 			if(! read_ldsoconf(dest,path) ) {
-				_err("%s: Xarray_AddData error: %s",__func__,directory);
+				fail(directory);
 				continue;
 			}
 		}

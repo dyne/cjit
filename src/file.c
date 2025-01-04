@@ -36,7 +36,7 @@
 static long file_size(const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
-        _err("%s: fopen error: %s",__func__,strerror(errno));
+		fail(filename);
         return -1;
     }
     fseek(file, 0, SEEK_END);
@@ -53,13 +53,13 @@ char* file_load(const char *filename, unsigned int *len) {
 
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
-        perror("Error opening file");
+		fail(filename);
         return NULL;
     }
 
     char *contents = (char*)malloc((length + 1) * sizeof(char));
     if (contents == NULL) {
-        perror("Error allocating memory");
+		fail(filename);
         fclose(file);
         return NULL;
     }
@@ -76,31 +76,31 @@ char* file_load(const char *filename, unsigned int *len) {
 
 char *load_stdin() {
 #if defined(WINDOWS)
-  return NULL;
+	return NULL;
 #else
-  char *code = NULL;
-  char *line = NULL;
-  size_t len = 0;
-  ssize_t rd;
-  fflush(stdout);
-  fflush(stderr);
-  while(1) {
-    rd = getline(&line, &len, stdin);
-    if(rd == -1) { // ctrl+d
-      free(line);
-      break;
-    }
-    code = realloc(code, (code?strlen(code):0) + len + 1);
-    if (!code) {
-      _err("Memory allocation error");
-      free(line);
-      return NULL;
-    }
-    strcat(code, line);
-    free(line);
-    line = NULL;
-  }
-  return(code);
+	char *code = NULL;
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t rd;
+	fflush(stdout);
+	fflush(stderr);
+	while(1) {
+		rd = getline(&line, &len, stdin);
+		if(rd == -1) { // ctrl+d
+			free(line);
+			break;
+		}
+		code = realloc(code, (code?strlen(code):0) + len + 1);
+		if (!code) {
+			fail("malloc error");
+			free(line);
+			return NULL;
+		}
+		strcat(code, line);
+		free(line);
+		line = NULL;
+	}
+	return(code);
 #endif
 }
 
@@ -118,7 +118,7 @@ char *new_abspath(const char *path) {
 	}
 	if(path[0]=='.' && path[1]=='/') {
 		if( !getcwd(tpath,MAX_PATH) ) {
-			_err("%s: getcwd error: %s",__func__,strerror(errno));
+			fail(path);
 			return(NULL);
 		}
 		res = malloc(strlen(tpath)+1);
@@ -130,7 +130,7 @@ char *new_abspath(const char *path) {
 	}
 	if(path[0]!='/') {
 		if( !getcwd(tpath,MAX_PATH) ) {
-			_err("%s: getcwd error: %s",__func__,strerror(errno));
+			fail(path);
 			return(NULL);
 		}
 		res = malloc(strlen(tpath)+strlen(path)+16);
@@ -147,28 +147,22 @@ char *new_abspath(const char *path) {
 }
 
 bool write_to_file(const char *path, const char *filename, const char *buf, unsigned int len) {
-  FILE *fd;
-  size_t written;
-  char fullpath[256];
-#if defined(WINDOWS)
-  snprintf(fullpath,255,"%s\\%s",path,filename);
-#else
-  snprintf(fullpath,255,"%s/%s",path,filename);
-#endif
-  fd = fopen(fullpath,"wb");
-  if(!fd) {
-    _err("Error: fopen file %s",fullpath);
-    _err("%s",strerror(errno));
-    return false;
-  }
-  written = fwrite(buf,1,len,fd);
-  fclose(fd);
-  if(written != len) {
-    _err("Error: fwrite file %s",fullpath);
-    _err("%s",strerror(errno));
-    return false;
-  }
-  return true;
+	FILE *fd;
+	size_t written;
+	char fullpath[MAX_PATH];
+	cwk_path_join(path,filename,fullpath,MAX_PATH);
+	fd = fopen(fullpath,"wb");
+	if(!fd) {
+		fail(fullpath);
+		return false;
+	}
+	written = fwrite(buf,1,len,fd);
+	fclose(fd);
+	if(written != len) {
+		fail(fullpath);
+		return false;
+	}
+	return true;
 }
 
 #if 0 // unused for now, dangerous to have if unnecessary
