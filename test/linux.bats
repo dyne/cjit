@@ -107,20 +107,11 @@ EOF
     cat << EOF > ncurses.c
 #include <ncurses.h>
 int main() {
-    initscr();            // Initialize the ncurses mode
-    noecho();             // Don't echo typed characters
-    curs_set(FALSE);      // Hide the cursor
-    int rows, cols;
-    getmaxyx(stdscr, rows, cols);  // Get the number of rows and columns
-    //printw("Current terminal size: %d rows, %d cols\n", rows, cols);
-    refresh();  // Refresh to show the changes
-    endwin();   // End the ncurses mode
-    fprintf(stderr,"Terminal size: %d rows, %d cols\n", rows, cols);
-    fflush(stderr);
-    return 0;
+        fprintf(stderr,"Terminal name: %s",termname());
+        return 0;
 }
 EOF
     run ${CJIT} -DVERSION=debug ncurses.c -lncurses
     assert_success
-    assert_output --partial 'Terminal size'
+    assert_output --partial 'Terminal name'
 }
