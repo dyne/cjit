@@ -9,6 +9,7 @@ struct LDState {
 	int new_undef_sym;
 	int static_link;
 	xarray_t *libs;
+	xarray_t *libpaths;
 };
 typedef struct LDState LDState;
 

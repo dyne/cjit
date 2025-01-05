@@ -445,6 +445,7 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 			fail(path);
 			return false;
 		}
+		return true;
 	} else {
 		if(tcc_add_file(tcc(cjit), path)<0) {
 			fail(path);
