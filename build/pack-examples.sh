@@ -9,12 +9,12 @@ function fetch() {
 		>&2 echo "Script error: \$odir not set"
 		exit 1
 	}
-	out="$1"
-	url="$2"
-	REPO_OWNER="$3"
-	REPO_NAME="$4"
-	TAG="$5"
-	FILE_NAME="$out"
+	local out="$1"
+	local url="$2"
+	local REPO_OWNER="$3"
+	local REPO_NAME="$4"
+	local TAG="$5"
+	local FILE_NAME="$out"
 	if [ -r ${odir}/${out} ]; then
 			>&2 echo "Found   : ${odir}/${out}"
 	else
@@ -115,5 +115,5 @@ fetch ${file} ${url}/${file} ${org} ${proj} glew-${ver}
 
 tar  --format ustar -cf cjit-demo.tar cjit-demo
 gzip -f -9 cjit-demo.tar
-rm -rf cjit-demo
+# rm -rf cjit-demo
 exit 0
