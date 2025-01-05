@@ -652,7 +652,7 @@ void cjit_set_tcc_options(CJITState *cjit, const char *opts) {
 	debug("+O %s",opts);
 }
 
-#define MAX_STRING 508
+#define MAX_STRING 2040
 
 // stdout message free from context
 void _out(const char *fmt, ...) {
