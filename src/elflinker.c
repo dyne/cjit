@@ -51,7 +51,7 @@ extern char *pstrcpy(char *buf, size_t buf_size, const char *s);
 
 // implemented further down
 static int resolve_ldscript(LDState *s1, char *path);
-static int find_library(xarray_t *results, const char *path);
+static int find_library(CJITState *cjit, const char *path);
 
 bool read_ldsoconf(xarray_t *dest, char *path) {
 	FILE *file = fopen(path, "r");
@@ -118,7 +118,7 @@ int resolve_libs(CJITState *cjit) {
 			lpath = XArray_GetData(cjit->libpaths,ii);
 			snprintf(tryfile,PATH_MAX-2,"%s/lib%s.so",lpath,lname);
 			// _err("%s: try: %s",__func__,tryfile);
-			found = find_library(cjit->reallibs, tryfile);
+			found = find_library(cjit, tryfile);
 			if(found==0) {
 				// _err("library found: %s",tryfile);
 				break;
@@ -131,13 +131,12 @@ int resolve_libs(CJITState *cjit) {
 	return(XArray_Used(cjit->reallibs));
 }
 
-static int find_library(xarray_t *results, const char *path) {
+static char *new_solve_symlink(const char *path) {
     struct stat statbuf;
 	char *reallib = NULL;
-
 	if (lstat(path, &statbuf) == -1) {
 		// fail(path);
-        return -1;
+        return NULL;
     }
     if (S_ISLNK(statbuf.st_mode)) {
 		int tlen = strlen(path);
@@ -146,7 +145,7 @@ static int find_library(xarray_t *results, const char *path) {
         if (len == -1) {
 			free(tpath);
             fail(path);
-			return -1;
+			return NULL;
         }
 		tpath[len] = 0x0;
 		size_t rlen = tlen + len;
@@ -161,8 +160,14 @@ static int find_library(xarray_t *results, const char *path) {
     }
 	if(!reallib) {
 		_err("%s: internal error: %s",__func__,path);
-		return -1;
+		return NULL;
 	}
+	return(reallib);
+}
+
+static int find_library(CJITState *cjit, const char *path) {
+	char *reallib = new_solve_symlink(path);
+	if(!reallib) return -1;
 	FILE *fd = fopen(reallib,"r");
 	if(!fd) {
 		free(reallib);
@@ -197,10 +202,13 @@ static int find_library(xarray_t *results, const char *path) {
 	fclose(fd);
 	if(is_ldscript) {
 		LDState s1;
-		s1.libs = results;
-		resolve_ldscript(&s1, reallib);
+		int rr;
+		s1.libs = cjit->reallibs;
+		s1.libpaths = cjit->libpaths;
+		rr = resolve_ldscript(&s1, reallib);
+		if(rr<1)_err("Library not found: %s",reallib);
 	} else {
-		XArray_AddData(results,reallib,strlen(reallib));
+		XArray_AddData(cjit->reallibs,reallib,strlen(reallib));
 	}
 	free(reallib);
 	return 0;
@@ -337,7 +345,57 @@ static int ld_next(LDState *s1, char *name, int name_size)
 }
 
 static int ld_add_file(LDState *s1, const char filename[]) {
-	XArray_AddData(s1->libs, (char*)filename, strlen(filename));
+	char tryfile[PATH_MAX];
+	int libpaths_num;
+	char *lpath;
+	bool found;
+    struct stat statbuf;
+	if(cwk_path_is_absolute(filename)) {
+		if (lstat(filename, &statbuf) == -1) {
+			fail(filename);
+			return 0;
+		}
+		if (S_ISREG(statbuf.st_mode)) {
+			strcpy(tryfile,filename);
+		} else if (S_ISLNK(statbuf.st_mode)) {
+			ssize_t len = readlink(filename, tryfile, PATH_MAX-1);
+			if (len == -1) {
+				fail(filename);
+				return 0;
+			}
+			tryfile[len] = 0x0;
+		} else {
+			_err("Library file not recognized: %s",filename);
+			return 0;
+		}
+	} else {
+		libpaths_num = XArray_Used(s1->libpaths);
+		// search in all paths if lib%s.so exists
+		// TODO: support --static here
+		for(int ii=0;ii<libpaths_num;ii++) {
+			lpath = XArray_GetData(s1->libpaths,ii);
+			cwk_path_join(lpath,filename,tryfile,PATH_MAX);
+			if (lstat(tryfile, &statbuf) == -1) continue;
+			if (S_ISREG(statbuf.st_mode)) break;
+			if (S_ISLNK(statbuf.st_mode)) {
+				int tlen = strlen(tryfile)+64;
+				char *tpath = malloc(tlen); // ALLOC tpath
+				ssize_t len = readlink(tryfile, tpath, tlen-1);
+				if (len == -1) {
+					free(tpath);
+					fail(tryfile);
+					continue;
+				}
+				tpath[len] = 0x0;
+				cwk_path_join(lpath,tpath,tryfile,PATH_MAX);
+				free(tpath);
+				break;
+			}
+			// check ELF BOM in file
+			_err("Library file not recognized: %s",tryfile);
+		}
+	}
+	XArray_AddData(s1->libs, tryfile, strlen(tryfile));
 	return 1;
 }
 
