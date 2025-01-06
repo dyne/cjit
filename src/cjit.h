@@ -90,8 +90,8 @@ void cjit_set_tcc_options(CJITState *cjit, const char *opts);
 
 /////////////
 // from embedded.c - generated at build time
-extern bool extract_assets(CJITState *CJIT);
-
+extern bool extract_assets(CJITState *CJIT, const char *optional_path);
+extern bool cjit_mkdtemp(CJITState *cjit, const char *optional_path);
 /////////////
 // from file.c
 extern char* file_load(const char *filename, unsigned int *len);

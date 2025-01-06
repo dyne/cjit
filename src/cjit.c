@@ -50,55 +50,84 @@ extern bool    get_winsdkpath(char *dst, size_t destlen);
 // from file.c
 extern char *new_abspath(const char *path);
 
-static bool cjit_mkdtemp(CJITState *cjit) {
-	char tempDir[MAX_PATH];
+// second argument is optional and if left NULL then default path is
+// used: ${TEMPDIR}/CJIT-vN.N.N
+bool cjit_mkdtemp(CJITState *cjit, const char *optional_path) {
+	char *tempDir;
+	if(optional_path) {
+		tempDir = malloc(strlen(optional_path)+512);
+		cwk_path_normalize(optional_path,tempDir,strlen(optional_path)+511);
 #if defined(WINDOWS)
-	char tempPath[MAX_PATH];
-	char dirname [64];
-	snprintf(dirname,63,"CJIT-%s",VERSION);
-	// Get the temporary path
-	if (GetTempPath(MAX_PATH, tempPath) == 0) {
-		_err("Failed to get temporary path");
-		return false;
-	}
-	cwk_path_join(tempPath,dirname,tempDir,MAX_PATH);
-	DWORD attributes = GetFileAttributes(tempDir);
-	if (attributes == INVALID_FILE_ATTRIBUTES) {
-		// The path does not exist
-		cjit->fresh = true;
-	} else if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
-		// The path exists and is a directory
-		cjit->fresh = false;
-	} else {
-		_err("Temp dir is a file, cannot overwrite: %s",tempDir);
-		// The path exists but is not a directory
-		return(false);
-	}
-	if(cjit->fresh) {
-		// Create the temporary directory
 		if (CreateDirectory(tempDir, NULL) == 0) {
 			_err("Failed to create temporary dir: %s",tempDir);
 			return false;
 		}
-	}
-#else // POSIX
-	snprintf(tempDir,259,"/tmp/cjit-%s",VERSION);
-	struct stat info;
-	if (stat(tempDir, &info) != 0) {
-		// stat() failed; the path does not exist
-		cjit->fresh = true;
-	} else if (info.st_mode & S_IFDIR) {
-		// The path exists and is a directory
-		cjit->fresh = false;
-	} else {
-		_err("Temp dir is a file, cannot overwrite: %s",tempDir);
-		// The path exists but is not a directory
-		return(false);
-	}
-	if(cjit->fresh) mkdir(tempDir,0755);
+#else
+		struct stat info;
+		if (stat(tempDir, &info) != 0) {
+			// stat() failed; the path does not exist
+			cjit->fresh = true;
+		} else if (info.st_mode & S_IFDIR) {
+			// The path exists and is a directory
+			cjit->fresh = false;
+		} else {
+			_err("Cannot overwrite runtime include dir: %s",tempDir);
+			// The path exists but is not a directory
+			return(false);
+		}
+		if(cjit->fresh) mkdir(tempDir,0755);
 #endif
+	} else {
+		tempDir = malloc(MAX_PATH+1);
+#if defined(WINDOWS)
+		char tempPath[MAX_PATH];
+		char dirname [64];
+		snprintf(dirname,63,"CJIT-%s",VERSION);
+		// Get the temporary path
+		if (GetTempPath(MAX_PATH, tempPath) == 0) {
+			_err("Failed to get temporary path");
+			return false;
+		}
+		cwk_path_join(tempPath,dirname,tempDir,MAX_PATH);
+		DWORD attributes = GetFileAttributes(tempDir);
+		if (attributes == INVALID_FILE_ATTRIBUTES) {
+			// The path does not exist
+			cjit->fresh = true;
+		} else if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
+			// The path exists and is a directory
+			cjit->fresh = false;
+		} else {
+			_err("Temp dir is a file, cannot overwrite: %s",tempDir);
+			// The path exists but is not a directory
+			return(false);
+		}
+		if(cjit->fresh) {
+			// Create the temporary directory
+			if (CreateDirectory(tempDir, NULL) == 0) {
+				_err("Failed to create temporary dir: %s",tempDir);
+				return false;
+			}
+		}
+#else // POSIX
+		snprintf(tempDir,259,"/tmp/cjit-%s",VERSION);
+		struct stat info;
+		if (stat(tempDir, &info) != 0) {
+			// stat() failed; the path does not exist
+			cjit->fresh = true;
+		} else if (info.st_mode & S_IFDIR) {
+			// The path exists and is a directory
+			cjit->fresh = false;
+		} else {
+			_err("Temp dir is a file, cannot overwrite: %s",tempDir);
+			// The path exists but is not a directory
+			return(false);
+		}
+		if(cjit->fresh) mkdir(tempDir,0755);
+#endif
+	}
 	cjit->tmpdir = malloc(strlen(tempDir)+1);
 	strcpy(cjit->tmpdir, tempDir);
+	free(tempDir);
 	return(true);
 }
 
@@ -114,12 +143,6 @@ CJITState* cjit_new() {
 	// quiet is by default on when cjit's output is redirected
 	// errors will still be printed on stderr
 	cjit->quiet = isatty(fileno(stdout))?false:true;
-	//////////////////////////////////////
-	// initialize the tmpdir for execution
-	if(!cjit_mkdtemp(cjit)) {
-		_err("Error creating CJIT temporary execution directory");
-		return(NULL);
-	}
 	// instantiate TCC before extracting assets because
 	// extract_assets() will also add include paths using TCC
 	cjit->TCC = (void*)tcc_new();
@@ -130,11 +153,6 @@ CJITState* cjit_new() {
 	}
 	// set default execution in memory
 	cjit->tcc_output = TCC_OUTPUT_MEMORY;
-	// call the generated function to populate the tmpdir
-	if(!extract_assets(cjit)) {
-		fail("error extracting assets in temp dir");
-		return(NULL);
-	}
 	// error handler callback for TCC
 	tcc_set_error_func(tcc(cjit), stderr, cjit_tcc_handle_error);
 	// initialize internal arrays
@@ -163,6 +181,11 @@ static bool cjit_setup(CJITState *cjit) {
 	if(cjit->done_setup) {
 		_err("Warning: cjit_setup called twice or more times");
 		return(true);
+	}
+	// extract all runtime assets to tmpdir
+	if(!extract_assets(cjit,NULL)) {
+		fail("error extracting assets in temp dir");
+		return(NULL);
 	}
 	tcc_set_output_type(tcc(cjit), cjit->tcc_output);
 #if defined(LIBC_MUSL)

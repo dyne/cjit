@@ -66,26 +66,25 @@ const char cli_help[] =
 	"\n"
 	"Synopsis: cjit [options] files(*) -- app arguments\n"
 	"  (*) can be any source (.c) or built object (dll, dylib, .so)\n"
-	"Options:\n"
+	"Options and values (+) mandatory (-) default (=) optional:\n"
 	" -h \t print this help\n"
 	" -v \t print version information\n"
 	" -q \t stay quiet and only print errors and output\n"
-	" -D sym\t define a macro symbol or key=value\n"
-	" -C \t set compiler flags (default from env var CFLAGS)\n"
-	" -I dir\t also search folder 'dir' for header files\n"
-	" -l lib\t search the library named 'lib' when linking\n"
-	" -L dir\t also search inside folder 'dir' for -l libs\n"
-	" -e fun\t entry point function (default 'main')\n"
-	" -p pid\t write pid of executed program to file\n"
+	" -C \t set interpreter/compiler flags (-) env var CFLAGS\n"
 	" -c \t compile a single source file, do not execute\n"
-	" -o exe\t compile to an 'exe' file, do not execute\n"
-	" --verb\t don't go quiet, always verbose output\n"
-	" --temp\t create the runtime temporary dir and exit\n"
+	" -o exe\t do not run, compile an executable (+path)\n"
+	" -D sym\t define a macro value (+) symbol or key=value\n"
+	" -I dir\t also search folder (+) dir for header files\n"
+	" -l lib\t link the shared library (+) lib\n"
+	" -L dir\t add folder (+) dir to library search paths\n"
+	" -e fun\t run starting from entry function (-) main\n"
+	" -p pid\t write execution process ID to (+) pid\n"
+	" --verb\t don't go quiet, verbose logs\n"
+	" --xass\t just extract runtime assets (=) to path\n"
 #if defined(SELFHOST)
 	" --src\t  extract source code to cjit_source\n"
 #endif
-	" --xtgz\t extract all contents from a USTAR tar.gz\n";
-
+	" --xtgz\t extract all files in a USTAR (+) tar.gz\n";
 
 int main(int argc, char **argv) {
   CJITState *CJIT = cjit_new();
@@ -102,7 +101,7 @@ int main(int argc, char **argv) {
 #if defined(SELFHOST)
 	  { "src",  ko_no_argument, 311 },
 #endif
-	  { "temp", ko_no_argument, 401 },
+	  { "xass", ko_optional_argument, 401 },
 	  { "xtgz", ko_required_argument, 501 },
 	  { NULL, 0, 0 }
   };
@@ -173,8 +172,14 @@ int main(int argc, char **argv) {
 		  cjit_free(CJIT);
 		  exit(0);
 #endif
-	  } else if (c == 401) { // --temp
-		  fprintf(stdout,"%s\n",CJIT->tmpdir);
+	  } else if (c == 401) { // --xass
+		  if(opt.arg) {
+			  _err("Extracting runtime assets to:",opt.arg);
+			  extract_assets(CJIT,opt.arg);
+		  } else {
+			  extract_assets(CJIT,NULL);
+		  }
+		  _out(CJIT->tmpdir);
 		  cjit_free(CJIT);
 		  exit(0);
 	  } else if (c == 501) { // --xtgz

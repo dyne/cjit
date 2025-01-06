@@ -26,8 +26,9 @@ cat <<EOF > ${code}
 extern int muntargz_to_path(const char *path, const uint8_t *buf, const unsigned int len);
 
 // main function
-bool extract_assets(CJITState *CJIT) {
-  if(!CJIT->tmpdir) return(false);
+bool extract_assets(CJITState *CJIT,const char *optional_path) {
+  if( !cjit_mkdtemp(CJIT, optional_path) ) return false;
+  // if( !CJIT->tmpdir ) return(false);
   bool res = 0;
   char incpath[512];
 EOF
