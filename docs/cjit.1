@@ -1,21 +1,20 @@
 .TH cjit 1 "January 2025" "CJIT" "User Commands"
 .SH NAME
-CJIT \- a Just-In-Time compiler and interpreter for C projects
+CJIT - Just-In-Time interpreter for C
 
 .SH SYNOPSIS
-.B cjit
-.RB [options]
-.I <files>
-.RB [--\ app\ arguments]
-.br
-.IP [options]
+
+cjit [options] <files> [-- app arguments]
+
+[options]
 are prefixed by single or double dash and may require an argument
-.br
-.IP <files>
+
+<files>
 can be one or more paths to any source (.c), object (.o) or libs (dll, dylib, .so)
-.br
-.IP [--\ app\ args]
+
+[-- app args]
 all arguments following a double dash are passed as-is to the running application
+
 .SH DESCRIPTION
 .B CJIT
 is a lightweight C interpreter that lets you run C code
@@ -26,63 +25,49 @@ executables. It is also designed to be a drop-in replacement for gcc(1)
 and clang(1) for instance using CC=cjit as environment setting.
 
 .SH OPTIONS
-.TP
+
 .IP "-h"
 Displays a summary of the command-line options available with `cjit`. It is useful for users who need a quick reference on how to use the tool. This manual is meant to complete that knowledge with more in-depth information.
 
-.TP
 .IP "-v"
 Prints the version number of `cjit`. It's helpful for verifying the specific version you're working with, especially when troubleshooting or reporting issues: always include the version output. It can also be quickly added to any commandline combination to show the internal state of cjit, for instance include and library paths configured, cflags and libraries linked.
 
-.TP
 .IP "-q"
 Suppresses all non-essential output, providing a quieter operation. Only critical errors are displayed. This option is turned on by default when CJIT is launched inside a script (no tty).
 
-.TP
 .IP "-C \fI<--various -C --flags>\fR"
 Use this option to specify custom flags for the interpreter or compiler. If not set, `cjit` uses the flags defined in the environment variable `CFLAGS`.
 
-.TP
 .IP "-c"
 Only compiles a single provided source file, without executing it, to produce an object file. This option will generate a new pre-compiled object file named like the given source, changing its extension from .c to .o, unless a new name is specified using \fI-o\fR.
 
-.TP
 .IP "-o \fI<filename>\fR"
 Specifies a filename output. When included in a command-line it switches CJIT to \fIBUILD\fR mode (see section below) and compiles all the source files into an executable but does not run the resulting program. You must provide the path for the output executable.
 
-.TP
 .IP "-D \fIkey[=value]\fR"
 Defines a "macro" key (and optionally its value) for the preprocessor, just like a \fI#define\fR directive would do when included inside the source. You can specify a simple symbol or use `key=value` to define a macro with a specific value.
 
-.TP
 .IP "-I \fI<path>\fR"
 Adds a directory path to the list of paths searched for header files. This is particularly useful if your project includes headers that are not in the standard system directories, for more information see the \fIPATHS\fR section.
 
-.TP
 .IP "-l \fI<name>\fR>"
 Links a specific shared library. On Windows the name is that of a .DLL file without its extension. On UNIX systems (GNU/Linux and BSD) one needs to provide the name of the library without the `lib` prefix (e.g., use `-lssl` for `libssl.so`).
 
-.TP
 .IP "-L \fI<path>\fR"
 Add a directory path to the library search paths. This is helpful when your project depends on libraries that are located in non-standard directories, for more information see the \fIPATHS\fR section.
 
-.TP
 .IP "-e \fI<function>\fR"
 Specifies a different entry function than the default `main` function. It is useful if your program has multiple potential entry points, of you want to try a different one ... at your own risk.
 
-.TP
 .IP "-p \fI<path>\fR"
 Writes the process ID of the executing program to the specified file. This is useful for managing and monitoring the running process.
 
-.TP
 .IP "--verb"
 Enables verbose logging, which provides more detailed information about the actions CJIT is performing. It's useful for debugging and understanding the compilation and execution process.
 
-.TP
 .IP "--xass \fI[path]\fR"
 Extract runtime assets required by CJIT to run you program. If a path is specified, the assets are extracted to that location; otherwise, they are extracted to the default directory, which is located in \fIAppData\\Local\\Temp\\CJIT-vN.N.N\fR on Windows and in \fI/tmp/cjit-vN.N.N\fR on POSIX systems.
 
-.TP
 .IP "--xtgz \fI<path>\fR"
 Extracts all files from a specified \fIUSTAR\fR format tar.gz archive. This is useful for setting up project dependencies or resources packaged in an archive, for instance is used to setup the \fIcjit-demo.tar.gz\fR tutorial assets by the script found on \fIhttps://dyne.org/cjit/demo\fR.
 
@@ -90,14 +75,13 @@ Extracts all files from a specified \fIUSTAR\fR format tar.gz archive. This is u
 
 This manual is Copyright (c) 2025 by the Dyne.org foundation
 
-Written by Denis Roio <\fIjaromil@dyne.org\fR>
+Written by Denis Roio <\fIhttps://jaromil.dyne.org\fR>
 
 .SH LICENSING
 
 .B CJIT
 is licensed under the GNU General Public License version 3 (GPLv3) or any later version published by the Free Software Foundation.
-
-You are free to:
+.B The GPLv3 grants you 4 freedoms:
 .br
 .B - Use:
 .br
@@ -115,7 +99,7 @@ You may redistribute copies of CJIT so that others can benefit from it.
 .br
 You may distribute your modifications if you grant others the same freedom.
 
-This is a human-readable summary of (and not a substitute for) the license. For the full text of the GPLv3 visit https://www.gnu.org/licenses/gpl-3.0.html. Components included in CJIT are copyright and licensed by their respective vendors, and all are compatible with the GPLv3: a list of component licenses is provided in CJIT's sourcecode inside the LICENSES/ folder and detailed by the REUSE.toml file.
+This is a human-readable summary of (and not a substitute for) the license. For the full text of the GPLv3 visit \fIhttps://www.gnu.org/licenses/gpl-3.0.html\fR. Components included in CJIT are copyright and licensed by their respective vendors, and all are compatible with the GPLv3: a list of component licenses is provided in CJIT's sourcecode inside the LICENSES/ folder and detailed by the REUSE.toml file.
 
 This manpage is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0) or any later version. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
 

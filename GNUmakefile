@@ -1,6 +1,15 @@
 # SPDX-FileCopyrightText: 2024 Dyne.org
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+# Dear maintainers, welcome to CJIT's build system!
+#
+# it is all based on GNU Makefile, its core is in build/*.mk
+# in particular build/init.mk sets up flags and sources (included top)
+# and build/deps.mk sets up dependencies and libs (included bottom)
+#
+# in case of questions, check the FAQ https://dyne.org/docs/cjit/faq/
+# or contact us at https://dyne.org/contact
+
 # Copyright (C) 2024 Dyne.org Foundation
 #
 # This source code is free software; you can redistribute it and/or
@@ -15,6 +24,13 @@
 #
 # You should have received a copy of the GNU Public License along with
 # this source code; if not, , see <https://www.gnu.org/licenses/>.
+
+# POSIX system installation paths
+PROG = cjit
+PREFIX ?= /usr/local
+DATADIR ?= ${PREFIX}/share/cjit
+INCDIR ?= ${PREFIX}/include/cjit
+MANDIR ?= ${PREFIX}/share/man
 
 help:
 	@echo "✨ Welcome to the CJIT build system"
@@ -75,13 +91,18 @@ check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@./test/bats/bin/bats test/windows.bats
 	@./test/bats/bin/bats test/muntar.bats
 
-# dmon filesystem monitoring doesn't works in CI
 
 _: ##
+------: ## __ Installation targets
+
+install: ## 🔌 Install the built binaries in PREFIX
+	$(info Installing CJIT in ${BUILDDIR}${PREFIX})
+	install -Dm755 cjit ${DESTDIR}${PREFIX}/bin/${PROG}
+	install -d ${DESTDIR}${DATADIR}
+	cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
+	cp -ra examples ${DESTDIR}${DATADIR}/
+	${PROG} --xass="${DESTDIR}${INCDIR}"
+
 clean: ## 🧹 Clean the source from all built objects
 	$(MAKE) -f build/deps.mk clean
 	@rm -f cjit cjit.exe cjit.command
-
-PREFIX?=/usr/local
-install: cjit
-	@install cjit $(PREFIX)/bin

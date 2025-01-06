@@ -2,7 +2,7 @@
 
 CJIT is a C interpreter based on tinyCC that compiles C code in-memory and runs it live. It is released as a small, all-in-one executable that can do a lot, including call functions from any installed library on Linux, Windows, and MacOSX.
 
-More info on [Dyne.org/CJIT](https://dyne.org/cjit).
+Homepage at [Dyne.org/CJIT](https://dyne.org/cjit).
 
 ## 🚀 Quick start
 
@@ -14,19 +14,22 @@ Launch CJIT from a terminal console command prompt: one can mix c source files a
 ./cjit.exe mysource.c mylib.dll
 ```
 
-If you like a tour, follow the [CJIT tutorial](https://dyne.org/docs/cjit).
+Take a tour with the [CJIT tutorial](https://dyne.org/docs/cjit).
 
-To quickly download a demo package (with games inside!) fire our installer script:
 
-### 🪟 On Windows
+### 📦 Download the demo
+
+The CJIT demo package comes with running examples
+
+#### 🪟 On Windows
 
     iex ((New-Object System.Net.WebClient).DownloadString('https://dyne.org/cjit/demo'))
 
-### 🍎 / 🐧 On Apple/OSX and GNU/Linux
+#### 🍎 / 🐧 On Apple/OSX and GNU/Linux
 
     curl -sL https://dyne.org/cjit/demo.sh | bash
 
-### 📖 Go to the [The CJIT tutorial](https://dyne.org/docs/cjit)
+### 📖 and follow the [The CJIT tutorial](https://dyne.org/docs/cjit)
 
 
 ## ⚙️ Build from source
@@ -38,20 +41,32 @@ There are various build targets, just type `make` to have a list:
 👇 List of targets:
  _
  ------           __ Production targets
- musl-linux       🗿 Build a fully static cjit using musl-libc on Linux
  linux-x86        🐧 Build a dynamically linked cjit using libs found on Linux x86
  win-wsl          🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
  win-native       🪟 Build cjit.exe for WIN64 on Windows Server
  apple-osx        🍎 Build cjit.command for Apple/OSX using clang static
  _
  ------           __ Debugging targets
+ debug-gdb        🔬 Build using the address sanitizer to detect memory leaks
  debug-asan       🔬 Build using the address sanitizer to detect memory leaks
+ self-host        💎 Build a CJIT that builts itself (embed its source)
  _
  ------           __ Testing targets
  check            🧪 Run all tests using the currently built binary ./cjit
+ check-ci         🧪 Run all tests using the currently built binary ./cjit
  _
+ ------           __ Installation targets
+ install          🔌 Install the built binaries in PREFIX
  clean            🧹 Clean the source from all built objects
 ```
+
+## Manpage
+
+When installed on UNIX systems, CJIT(1) has a manpage! try `man cjit` after installing.
+
+It is also visible [online at dyne.org/docs/cjit](https://dyne.org/docs/cjit/manpage).
+
+This manual gives you insights about the CJIT command-line options.
 
 ## 🔬 Internals
 
@@ -75,10 +90,6 @@ The TinyCC core component is copyright (C) 2001-2004 by Fabrice
 Bellard. TinyCC is also free and open source (GNU Lesser General
 Public License).
 
-CJIT relies on more free and open source components, detailed
-information on authors and licenses is available in the
-[REUSE.toml](https://github.com/dyne/cjit/blob/main/REUSE.toml) file
-and license texts included in
-[LICENSES](https://github.com/dyne/cjit/tree/main/LICENSES).
+The CJIT manual offers [more information on CJIT licensing](https://dyne.org/docs/cjit/manpage/#licensing).
 
 [![software by Dyne.org](https://files.dyne.org/software_by_dyne.png)](http://www.dyne.org)

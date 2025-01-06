@@ -2,6 +2,7 @@
 	$(cc) \
 	$(cflags) \
 	-c $< -o $@ \
+	-DPREFIX=\"${PREFIX}\" \
 	-DVERSION=\"${VERSION}\" \
 	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
 
