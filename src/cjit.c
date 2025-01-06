@@ -301,7 +301,7 @@ bool cjit_status(CJITState *cjit) {
 	// call cjit_setup here
 	setup;
 	{
-		int i;
+		size_t i;
 		size_t used;
 		used= XArray_Used(cjit->sources);
 		if(used) {
@@ -320,7 +320,7 @@ bool cjit_status(CJITState *cjit) {
 		used = XArray_Used(cjit->libs);
 		if(used) {
 			_err("Libraries (%u)",used);
-			for(int i=0;i<used;i++)
+			for(i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->libs,i));
 		}
 #if defined(UNIX)
@@ -328,7 +328,7 @@ bool cjit_status(CJITState *cjit) {
 		used = XArray_Used(cjit->reallibs);
 		if(used) {
 			_err("Lib files (%u)",used);
-			for(int i=0;i<used;i++)
+			for(i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->reallibs,i));
 		}
 #endif
@@ -696,7 +696,8 @@ void _out(const char *fmt, ...) {
   va_end(args);
   msg[len] = '\n';
   msg[len+1] = 0x0; //safety
-  write(fileno(stdout), msg, len+1);
+  if(write(fileno(stdout), msg, len+1) <0)
+	  fail("_out()");
 }
 
 // error message free from context
@@ -709,5 +710,6 @@ void _err(const char *fmt, ...) {
   va_end(args);
   msg[len] = '\n';
   msg[len+1] = 0x0;
-  write(fileno(stderr),msg,len+1);
+  if(write(fileno(stderr),msg,len+1) <0)
+	fail("_err()");
 }

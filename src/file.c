@@ -46,8 +46,8 @@ static long file_size(const char *filename) {
 }
 
 char* file_load(const char *filename, unsigned int *len) {
-    long length = file_size(filename);
-    if (length == -1) {
+    size_t length = file_size(filename);
+    if (length < 1) {
         return NULL;
     }
 
@@ -66,7 +66,11 @@ char* file_load(const char *filename, unsigned int *len) {
 
     // _err("Loading source file %s",filename);
 
-    fread(contents, 1, length, file);
+    if(fread(contents, 1, length, file)<length) {
+		fail(file);
+		return NULL;
+	}
+
     contents[length] = '\0'; // Null-terminate the string
     *len = length;
     fclose(file);

@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
 		  _err("Error reading from standard input");
 		  goto endgame;
 	  }
-	  if( cjit_add_buffer(CJIT,stdin_code) < 0) {
+	  if(!cjit_add_buffer(CJIT,stdin_code)) {
 		  _err("Code runtime error in stdin");
 		  free(stdin_code);
 		  goto endgame;
@@ -280,7 +280,7 @@ int main(int argc, char **argv) {
 				  _err("Error reading from standard input");
 				  goto endgame;
 			  }
-			  if( cjit_add_buffer(CJIT,stdin_code) < 0) {
+			  if(!cjit_add_buffer(CJIT,stdin_code)) {
 				  _err("Code runtime error in stdin");
 				  free(stdin_code);
 				  goto endgame;

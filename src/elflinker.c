@@ -107,7 +107,7 @@ int resolve_libs(CJITState *cjit) {
 	int i,ii;
 	int libpaths_num, libnames_num;
 	char *lpath, *lname;
-	int found;
+	int found = 0;
 	// search in all paths if lib%s.so exists
 	// TODO: support --static here
 	libpaths_num = XArray_Used(cjit->libpaths);
@@ -348,7 +348,6 @@ static int ld_add_file(LDState *s1, const char filename[]) {
 	char tryfile[PATH_MAX];
 	int libpaths_num;
 	char *lpath;
-	bool found;
     struct stat statbuf;
 	if(cwk_path_is_absolute(filename)) {
 		if (lstat(filename, &statbuf) == -1) {
