@@ -535,6 +535,16 @@ int cjit_link(CJITState *cjit) {
 		_err("%s: no output file configured (-o)",__func__);
 		return 1;
 	}
+	// resolve library files on UNIX systems
+#if defined(UNIX)
+	int found = resolve_libs(cjit);
+	for(int i=0;i<found;i++) {
+		char *f = XArray_GetData(cjit->reallibs,i);
+		if(f) {
+			tcc_add_file(tcc(cjit), f);
+		}
+	}
+#endif
 	return( tcc_output_file(tcc(cjit),cjit->output_filename));
 }
 
