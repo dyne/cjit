@@ -182,11 +182,13 @@ static bool cjit_setup(CJITState *cjit) {
 		_err("Warning: cjit_setup called twice or more times");
 		return(true);
 	}
+#if !defined(SHAREDTCC)
 	// extract all runtime assets to tmpdir
 	if(!extract_assets(cjit,NULL)) {
 		fail("error extracting assets in temp dir");
 		return(NULL);
 	}
+#endif
 	tcc_set_output_type(tcc(cjit), cjit->tcc_output);
 #if defined(LIBC_MUSL)
 	tcc_add_libc_symbols(tcc(cjit));
@@ -209,7 +211,12 @@ static bool cjit_setup(CJITState *cjit) {
 	// where is libtcc1.a found
 	// add(libpaths,cjit->tmpdir);
 	// tinyCC needs libtcc1.a in library path (not added as file)
+#if !defined(SHAREDTCC)
 	tcc_add_library_path(tcc(cjit),cjit->tmpdir);
+	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
+	tcc_add_sysinclude_path(tcc(cjit), ".");
+	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
+#endif
 	{ // search libs also in current dir
 		char pwd[MAX_PATH];
 		// Get the current working directory
@@ -217,9 +224,6 @@ static bool cjit_setup(CJITState *cjit) {
 			add(libpaths,pwd);
 		}
 	}
-	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
-	tcc_add_sysinclude_path(tcc(cjit), ".");
-	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
 
 #if defined(WINDOWS)
 	{
@@ -290,7 +294,9 @@ bool cjit_status(CJITState *cjit) {
 #if !(defined TCC_TARGET_PE || defined TCC_TARGET_MACHO)
 	_err("ELF interpreter: %s",CONFIG_TCC_ELFINTERP);
 #endif
-
+#if defined(SHAREDTCC)
+	_err("System libtcc: %s",SHAREDTCC);
+#endif
 	////////////////////////
 	// call cjit_setup here
 	setup;
@@ -554,7 +560,11 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 	int res = 1;
 	int (*_ep)(int, char**);
 	// relocate the code (link symbols)
+#if defined(SHAREDTCC)
+	if (tcc_relocate(tcc(cjit), TCC_RELOCATE_AUTO) < 0) {
+#else
 	if (tcc_relocate(tcc(cjit)) < 0) {
+#endif
 		_err("%s: TCC linker error",__func__);
 		_err("Library functions missing.");
 		return -1;
@@ -655,7 +665,7 @@ void cjit_add_library_path(CJITState *cjit, const char *path) {
 	}
 #if defined(UNIX)
 	add(libpaths,toadd);
-#else
+#elif !defined(SHAREDTCC)
 	tcc_add_library_path(tcc(cjit), toadd);
 #endif
 	debug("+L %s",toadd);

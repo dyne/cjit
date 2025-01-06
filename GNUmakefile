@@ -60,6 +60,13 @@ apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
 	@rm -f .build_done*
 	date | tee .build_done_osx
 
+meson-release:
+	rm -rf meson
+	meson setup meson build \
+		--buildtype release --backend ninja
+	ninja -C meson
+	cp meson/cjit .
+
 _: ##
 ------: ## __ Debugging targets
 
@@ -106,3 +113,4 @@ install: ## 🔌 Install the built binaries in PREFIX
 clean: ## 🧹 Clean the source from all built objects
 	$(MAKE) -f build/deps.mk clean
 	@rm -f cjit cjit.exe cjit.command
+	@rm -rf meson

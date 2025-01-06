@@ -14,7 +14,10 @@ setup() {
 	  >&2 echo "CJIT is not built, cannot run test suite"
 	  exit 1
 	}
-	rm -rf `${CJIT} --xass`
+	${CJIT} -v 2>&1| grep 'System libtcc' >/dev/null && SYSTCC=1
+	if [ -z $SYSTCC ]; then
+		rm -rf `${CJIT} --xass`
+	fi
 	TCC="${R}/lib/tinycc/tcc"
 	[ -r "$TCC" ]    || TCC="${R}/lib/tinycc/tcc.exe"
 }

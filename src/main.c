@@ -29,7 +29,6 @@
 
 #include <ketopt.h>
 #include <muntar.h>
-#include <assets.h>
 
 extern char *load_stdin();
 
@@ -80,7 +79,9 @@ const char cli_help[] =
 	" -e fun\t run starting from entry function (-) main\n"
 	" -p pid\t write execution process ID to (+) pid\n"
 	" --verb\t don't go quiet, verbose logs\n"
+#if defined(SHAREDTCC)
 	" --xass\t just extract runtime assets (=) to path\n"
+#endif
 #if defined(SELFHOST)
 	" --src\t  extract source code to cjit_source\n"
 #endif
@@ -101,7 +102,9 @@ int main(int argc, char **argv) {
 #if defined(SELFHOST)
 	  { "src",  ko_no_argument, 311 },
 #endif
+#if !defined(SHAREDTCC)
 	  { "xass", ko_optional_argument, 401 },
+#endif
 	  { "xtgz", ko_required_argument, 501 },
 	  { NULL, 0, 0 }
   };
@@ -172,6 +175,7 @@ int main(int argc, char **argv) {
 		  cjit_free(CJIT);
 		  exit(0);
 #endif
+#if !defined(SHAREDTCC)
 	  } else if (c == 401) { // --xass
 		  if(opt.arg) {
 			  _err("Extracting runtime assets to:",opt.arg);
@@ -182,6 +186,7 @@ int main(int argc, char **argv) {
 		  _out(CJIT->tmpdir);
 		  cjit_free(CJIT);
 		  exit(0);
+#endif
 	  } else if (c == 501) { // --xtgz
 		  cjit_free(CJIT);
 		  unsigned int len = 0;
