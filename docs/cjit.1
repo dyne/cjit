@@ -8,14 +8,14 @@ CJIT \- a Just-In-Time compiler and interpreter for C projects
 .I <files>
 .RB [--\ app\ arguments]
 .br
-.BI [options]
+.IP [options]
 are prefixed by single or double dash and may require an argument
 .br
-.BI <files>
+.IP <files>
 can be one or more paths to any source (.c), object (.o) or libs (dll, dylib, .so)
 .br
-.BI [--\ app\ args]
-all arguments following -- are passed as-is to the running application
+.IP [--\ app\ args]
+all arguments following a double dash are passed as-is to the running application
 .SH DESCRIPTION
 .B CJIT
 is a lightweight C interpreter that lets you run C code
@@ -92,12 +92,32 @@ This manual is Copyright (c) 2025 by the Dyne.org foundation
 
 Written by Denis Roio <\fIjaromil@dyne.org\fR>
 
-Permission is  granted to copy,  distribute and/or modify  this manual
-under the terms of the  GNU Free Documentation License, Version 1.1 or
-any  later   version  published  by  the   Free  Software  Foundation.
-Permission is granted  to make and distribute verbatim  copies of this
-manual page  provided the above  copyright notice and  this permission
-notice are preserved on all copies.
+.SH LICENSING
+
+.B CJIT
+is licensed under the GNU General Public License version 3 (GPLv3) or any later version published by the Free Software Foundation.
+
+You are free to:
+.br
+.B - Use:
+.br
+Just like anyone else, you may use this software for any purpose.
+.br
+.B - Study and Modify:
+.br
+You may study how CJIT works, and modify it to make it do what you wish.
+.br
+.B - Distribute:
+.br
+You may redistribute copies of CJIT so that others can benefit from it.
+.br
+.B - Distribute Modified Versions:
+.br
+You may distribute your modifications if you grant others the same freedom.
+
+This is a human-readable summary of (and not a substitute for) the license. For the full text of the GPLv3 visit https://www.gnu.org/licenses/gpl-3.0.html. Components included in CJIT are copyright and licensed by their respective vendors, and all are compatible with the GPLv3: a list of component licenses is provided in CJIT's sourcecode inside the LICENSES/ folder and detailed by the REUSE.toml file.
+
+This manpage is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0) or any later version. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
 
 .SH AVAILABILITY
 
