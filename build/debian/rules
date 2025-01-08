@@ -3,8 +3,8 @@
 # This file is sourced by debhelper to determine how to build the package.
 # See https://www.debian.org/doc/manuals/maint-guide/dother.en.html#rules for more details.
 
-# Uncomment this to turn on verbose mode.
 # export DH_VERBOSE=1
+# export DEB_BUILD_OPTIONS = noparallel
 
 %:
 	dh $@

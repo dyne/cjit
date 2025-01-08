@@ -9,9 +9,9 @@ cc := ${CC}
 
 cflags_includes := -Isrc -Ilib/tinycc
 cflags_gnu := -DLIBC_GNU -D_GNU_SOURCE
-cflags_stack_protect := -fstack-protector-all -D_FORTIFY_SOURCE=2 -fno-strict-overflow
+cflags_stack_protect := -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -flto=auto -ffat-lto-objects -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -D_FORTIFY_SOURCE=2
 
-CFLAGS ?= -O2 -fomit-frame-pointer ${cflags_stack_protect}
+CFLAGS ?= -O2 ${cflags_stack_protect}
 
 cflags := ${CFLAGS} ${cflags_includes}
 

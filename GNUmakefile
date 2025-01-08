@@ -116,7 +116,8 @@ debian:
 	@rm -rf debian
 	@cp -ra build/debian .
 	@cp docs/cjit.1 debian/manpage.1
-	@dpkg-buildpackage -us -uc
+	@uscan --force-download
+	@dpkg-buildpackage --build=binary --no-sign
 
 clean: ## 🧹 Clean the source from all built objects
 	${MAKE} -C lib/tinycc clean distclean
