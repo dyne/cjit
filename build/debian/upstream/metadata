@@ -1,0 +1,8 @@
+# See https://wiki.debian.org/UpstreamMetadata for more info/fields.
+
+Bug-Database: https://github.com/dyne/cjit/issues
+Bug-Submit: https://github.com/dyne/cjit/issues/new
+Changelog: https://github.com/dyne/cjit/releases
+Documentation: https://dyne.org/docs/cjit
+Repository-Browse: https://github.com/dyne/cjit
+Repository: https://github.com/dyne/cjit.git

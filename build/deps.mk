@@ -12,10 +12,6 @@ lib/tinycc/libtcc.a lib/tinycc/libtcc1.a:
 	${MAKE} -C lib/tinycc libtcc.a
 	${MAKE} -C lib/tinycc libtcc1.a
 
-clean:
-	${MAKE} -C lib/tinycc clean distclean
-	${MAKE} -C src clean
-
 # UNUSED EXPERIMENTS:
 lib/glfw/src/libglfw3.a:
 	cd lib/glfw \

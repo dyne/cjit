@@ -1,0 +1,49 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: CJIT
+Upstream-Contact: Denis Roio <jaromil@dyne.org>
+Source: https://github.com/dyne/cjit
+
+Files: src/** build/** test/** examples/** REUSE.toml
+Copyright: 2024 Dyne.org foundation
+License: GPL-3.0-or-later
+
+Files: src/cwalk.*
+Copyright: 2024 Leonard Iklé
+License: MIT
+
+Files: src/array.*
+Copyright: 2015-2020 Sun Dro (s.kalatoz@gmail.com)
+License: MIT
+
+Files: .* .github/**
+Copyright: 2024 Dyne.org foundation
+License: GPL-3.0-or-later
+
+Files: lib/tinycc/**
+Copyright: 2001-2004 Fabrice Bellard
+License: LGPL-2.1-or-later
+
+Files: examples/tinyc.games/** examples/tetris/**
+Copyright: 2016 Jer Wilson
+License: MIT
+
+Files: examples/opengl.c
+Copyright: 2020 Andrew Dailey
+License: MIT
+
+Files: examples/tinyc.games/res/PixelatedEleganceRegular.ttf
+Copyright: 2024 GGBotNet
+License: MIT-0
+
+Files: test/dmon.h
+Copyright: 2019-2023 Sepehr Taghdisian
+License: BSD-2-Clause
+
+Files: assets/win32ports/**
+Copyright: 2019 win32ports
+License: MIT-0
+
+Files: docs/** **.md
+Copyright: 2024 Dyne.org foundation
+License: CC-BY-SA-4.0
+

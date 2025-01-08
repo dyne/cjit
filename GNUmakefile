@@ -110,7 +110,16 @@ install: ## 🔌 Install the built binaries in PREFIX
 	cp -ra examples ${DESTDIR}${DATADIR}/
 	${PROG} --xass="${DESTDIR}${INCDIR}"
 
+.PHONY: debian
+debian:
+	$(info Creating the Debian package)
+	@rm -rf debian
+	@cp -ra build/debian .
+	@cp docs/cjit.1 debian/manpage.1
+	@dpkg-buildpackage -us -uc
+
 clean: ## 🧹 Clean the source from all built objects
-	$(MAKE) -f build/deps.mk clean
+	${MAKE} -C lib/tinycc clean distclean
+	${MAKE} -C src clean
 	@rm -f cjit cjit.exe cjit.command
 	@rm -rf meson

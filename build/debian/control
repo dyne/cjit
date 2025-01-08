@@ -1,0 +1,20 @@
+Source: cjit
+Section: unknown
+Priority: optional
+Maintainer: Denis Roio <jaromil@dyne.org>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13), libtcc-dev, gcc, meson, ninja-build
+Standards-Version: 4.6.2
+Homepage: https://dyne.org/cjit
+#Vcs-Browser: https://salsa.debian.org/debian/cjit
+#Vcs-Git: https://salsa.debian.org/debian/cjit.git
+
+Package: cjit
+Architecture: any
+Multi-Arch: foreign
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: Just-in-time C interpreter and compiler
+ CJIT is a C interpreter that can run C code instantly, without building it first. It is just one small file and can do everything a C compiler does, including call functions from any installed library and compile and link executables.

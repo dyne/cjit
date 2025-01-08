@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+
+# This file is sourced by debhelper to determine how to build the package.
+# See https://www.debian.org/doc/manuals/maint-guide/dother.en.html#rules for more details.
+
+# Uncomment this to turn on verbose mode.
+# export DH_VERBOSE=1
+
+%:
+	dh $@
+
+# Override the build target to call make.
+override_dh_auto_build:
+	dh_auto_build -- meson-release
+
+# Override the install target to call make install.
+override_dh_auto_install:
+	dh_auto_install -- make install DESTDIR=$(CURDIR)/debian/$(DEBPKGNAME)

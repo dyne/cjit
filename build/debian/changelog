@@ -1,0 +1,5 @@
+cjit (0.15.4-1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Denis Roio <jaromil@dyne.org>  Mon, 06 Jan 2025 16:55:48 +0100
