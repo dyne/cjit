@@ -26,7 +26,6 @@
 # this source code; if not, , see <https://www.gnu.org/licenses/>.
 
 # POSIX system installation paths
-PROG = cjit
 PREFIX ?= /usr/local
 DATADIR ?= ${PREFIX}/share/cjit
 INCDIR ?= ${PREFIX}/include/cjit
@@ -104,11 +103,10 @@ _: ##
 
 install: ## 🔌 Install the built binaries in PREFIX
 	$(info Installing CJIT in ${BUILDDIR}${PREFIX})
-	install -Dm755 cjit ${DESTDIR}${PREFIX}/bin/${PROG}
-	install -d ${DESTDIR}${DATADIR}
-	cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
-	cp -ra examples ${DESTDIR}${DATADIR}/
-	${PROG} --xass="${DESTDIR}${INCDIR}"
+	@install -Dm755 cjit ${DESTDIR}${PREFIX}/bin/cjit
+	@install -d ${DESTDIR}${DATADIR}
+	@cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
+	@cp -ra examples ${DESTDIR}${DATADIR}/
 
 .PHONY: debian
 debian:
@@ -116,8 +114,8 @@ debian:
 	@rm -rf debian
 	@cp -ra build/debian .
 	@cp docs/cjit.1 debian/manpage.1
-	@uscan --force-download
-	@dpkg-buildpackage --build=binary --no-sign
+	@dpkg-buildpackage --no-sign --build=binary
+
 
 clean: ## 🧹 Clean the source from all built objects
 	${MAKE} -C lib/tinycc clean distclean

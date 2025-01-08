@@ -79,7 +79,7 @@ const char cli_help[] =
 	" -e fun\t run starting from entry function (-) main\n"
 	" -p pid\t write execution process ID to (+) pid\n"
 	" --verb\t don't go quiet, verbose logs\n"
-#if defined(SHAREDTCC)
+#if !defined(SHAREDTCC)
 	" --xass\t just extract runtime assets (=) to path\n"
 #endif
 #if defined(SELFHOST)

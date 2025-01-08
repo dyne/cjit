@@ -20,4 +20,5 @@ setup() {
 	fi
 	TCC="${R}/lib/tinycc/tcc"
 	[ -r "$TCC" ]    || TCC="${R}/lib/tinycc/tcc.exe"
+	unset CFLAGS
 }

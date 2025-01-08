@@ -6,13 +6,20 @@
 # export DH_VERBOSE=1
 # export DEB_BUILD_OPTIONS = noparallel
 
+include /usr/share/dpkg/buildflags.mk
+
+export PREFIX=/usr
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# VERSION := $(shell dpkg-parsechangelog --show-field Version)
+# NAME := $(shell dpkg-parsechangelog --show-field Source)
+# DEBPKGNAME := ${NAME}-${VERSION}
+
 %:
 	dh $@
 
-# Override the build target to call make.
 override_dh_auto_build:
 	dh_auto_build -- meson-release
 
-# Override the install target to call make install.
 override_dh_auto_install:
-	dh_auto_install -- make install DESTDIR=$(CURDIR)/debian/$(DEBPKGNAME)
+	dh_auto_install --destdir=debian/tmp
