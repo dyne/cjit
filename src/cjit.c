@@ -464,20 +464,20 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 	int is_source = has_source_extension(path);
 	if(is_source == 0) { // no extension, we still add
 		if(tcc_add_file(tcc(cjit), path)<0) {
-			fail(path);
+			_err("%s: error: %s",__func__, path);
 			return false;
 		}
 		return true;
 	}
 	if(is_source>0) {
 		if(!cjit_add_source(cjit, path)) {
-			fail(path);
+			_err("%s: error: %s",__func__, path);
 			return false;
 		}
 		return true;
 	} else {
 		if(tcc_add_file(tcc(cjit), path)<0) {
-			fail(path);
+			_err("%s: error: %s",__func__, path);
 			return false;
 		}
 	}
