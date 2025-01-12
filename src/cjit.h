@@ -51,10 +51,10 @@ struct CJITState {
 	bool done_exec;
 	// INTERNAL
 	// sources and libs used and paths to libs
-	void *sources;
-	void *libs;
-	void *libpaths;
-	void *reallibs;
+	void *sources; // xarray of source files loaded
+	void *libs;    // xarray of library names to be resolved
+	void *libpaths; // xarray of library paths to be searched
+	void *reallibs; // xarray of paths made by resolve_libs()
 };
 typedef struct CJITState CJITState;
 

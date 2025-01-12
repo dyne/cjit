@@ -107,13 +107,14 @@ int resolve_libs(CJITState *cjit) {
 	int i,ii;
 	int libpaths_num, libnames_num;
 	char *lpath, *lname;
-	int found = 0;
+	int found = -1;
 	// search in all paths if lib%s.so exists
 	// TODO: support --static here
 	libpaths_num = XArray_Used(cjit->libpaths);
 	libnames_num = XArray_Used(cjit->libs);
 	for(i=0;i<libnames_num;i++) {
 		lname = XArray_GetData(cjit->libs,i);
+		found = -1;
 		for(ii=0;ii<libpaths_num;ii++) {
 			lpath = XArray_GetData(cjit->libpaths,ii);
 			snprintf(tryfile,PATH_MAX-2,"%s/lib%s.so",lpath,lname);
