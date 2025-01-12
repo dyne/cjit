@@ -59,7 +59,7 @@ apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
 	@rm -f .build_done*
 	date | tee .build_done_osx
 
-meson-release:
+meson:
 	rm -rf meson
 	meson setup meson build \
 		--buildtype release --backend ninja

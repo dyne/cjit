@@ -71,6 +71,23 @@ jobs:
         run: |
           make check-ci
 
+  debian-test:
+    name: 🐧 Debian (tcc shlib) test
+    needs: [reuse, c-lint]
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get -qy update
+          sudo apt-get -qy install tcc libtcc-dev meson ninja-build
+      - name: Build with tcc as shared libsLinux
+        run: |
+          make meson
+      - name: Run tests
+        run: |
+          make check-ci
+
   win-native-test:
     name: 🪟 Windows native test
     needs: [reuse, c-lint]
