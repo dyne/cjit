@@ -197,6 +197,7 @@ static bool cjit_setup(CJITState *cjit) {
 		char *extra_cflags = NULL;
 		extra_cflags = getenv("CFLAGS");
 		_err("CFLAGS: %s",extra_cflags);
+		debug(" -C %s",extra_cflags);
 		tcc_set_options(tcc(cjit), extra_cflags);
 	}
 #if defined(WINDOWS)
@@ -212,10 +213,10 @@ static bool cjit_setup(CJITState *cjit) {
 	// add(libpaths,cjit->tmpdir);
 	// tinyCC needs libtcc1.a in library path (not added as file)
 #if !defined(SHAREDTCC)
+	debug(" -L %s",cjit->tmpdir);
 	tcc_add_library_path(tcc(cjit),cjit->tmpdir);
+	tcc_add_library_path(tcc(cjit), "."); debug(" -L %s",".");
 	tcc_add_sysinclude_path(tcc(cjit), cjit->tmpdir);
-	tcc_add_sysinclude_path(tcc(cjit), ".");
-	tcc_add_sysinclude_path(tcc(cjit), "include"); // TODO: check if exists
 #endif
 	{ // search libs also in current dir
 		char pwd[MAX_PATH];
@@ -231,11 +232,13 @@ static bool cjit_setup(CJITState *cjit) {
 		char *tpath;
 		// TODO: support WIN32 here: "C:\\Windows\\System32"
 		add(libpaths,"C:\\Windows\\SysWOW64");
+		debug(" -L %s","C:\\Windows\\SysWOW64");
 		tcc_add_library_path(tcc(cjit), "C:\\Windows\\SysWOW64");
 		// tinycc win32 headers
 		plen = strlen(cjit->tmpdir)+strlen("/tinycc_win32/winapi")+8;
 		tpath = malloc(plen);
 		cwk_path_join(cjit->tmpdir,"/tinycc_win32/winapi",tpath,plen);
+		debug(" -I %s",tpath);
 		tcc_add_sysinclude_path(tcc(cjit), tpath);
 		free(tpath);
 		// windows SDK headers
@@ -244,8 +247,10 @@ static bool cjit_setup(CJITState *cjit) {
 			plen = strlen(sdkpath)+16;
 			tpath = malloc(plen);
 			cwk_path_join(sdkpath,"/um",tpath,plen); // um/GL
+			debug(" -I %s",tpath);
 			tcc_add_sysinclude_path(tcc(cjit), tpath);
 			cwk_path_join(sdkpath,"/shared",tpath,plen); // winapifamili.h etc.
+			debug(" -I %s",tpath);
 			tcc_add_sysinclude_path(tcc(cjit), tpath);
 			free(tpath);
 		}
@@ -323,7 +328,6 @@ bool cjit_status(CJITState *cjit) {
 			for(i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->libs,i));
 		}
-#if defined(UNIX)
 		resolve_libs(cjit);
 		used = XArray_Used(cjit->reallibs);
 		if(used) {
@@ -331,8 +335,6 @@ bool cjit_status(CJITState *cjit) {
 			for(i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->reallibs,i));
 		}
-#endif
-
 	}
 	return true;
 }
@@ -536,7 +538,6 @@ int cjit_link(CJITState *cjit) {
 		return 1;
 	}
 	// resolve library files on UNIX systems
-#if defined(UNIX)
 	int found = resolve_libs(cjit);
 	for(int i=0;i<found;i++) {
 		char *f = XArray_GetData(cjit->reallibs,i);
@@ -544,7 +545,7 @@ int cjit_link(CJITState *cjit) {
 			tcc_add_file(tcc(cjit), f);
 		}
 	}
-#endif
+	debug(" -o %s",cjit->output_filename);
 	return( tcc_output_file(tcc(cjit),cjit->output_filename));
 }
 
@@ -557,16 +558,16 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 		_err("%s: CJIT already executed once",__func__);
 		return 1;
 	}
-	// resolve library files on UNIX systems
-#if defined(UNIX)
+	debug("resolve paths to library files (%i)",
+		  XArray_Used(cjit->libs));
 	int found = resolve_libs(cjit);
 	for(int i=0;i<found;i++) {
 		char *f = XArray_GetData(cjit->reallibs,i);
 		if(f) {
+			debug(" +file: %s",f);
 			tcc_add_file(tcc(cjit), f);
 		}
 	}
-#endif
 	int res = 1;
 	int (*_ep)(int, char**);
 	// relocate the code (link symbols)
@@ -664,7 +665,7 @@ void cjit_add_include_path(CJITState *cjit, const char *path) {
 	}
 	tcc_add_include_path(tcc(cjit), toadd);
 	free(toadd);
-	debug("+I %s",path);
+	debug(" -I %s",path);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library_path(CJITState *cjit, const char *path) {
@@ -678,21 +679,17 @@ void cjit_add_library_path(CJITState *cjit, const char *path) {
 #elif !defined(SHAREDTCC)
 	tcc_add_library_path(tcc(cjit), toadd);
 #endif
-	debug("+L %s",toadd);
+	debug(" -L %s",toadd);
 	free(toadd);
 }
 // TODO: temporary, to be reimplemented in linker.c
 void cjit_add_library(CJITState *cjit, const char *path) {
-#if defined(UNIX)
 	add(libs,path);
-#else
-	tcc_add_library(tcc(cjit), path);
-#endif
-	debug("+l %s",path);
+	debug(" +l %s",path);
 }
 void cjit_set_tcc_options(CJITState *cjit, const char *opts) {
 	tcc_set_options(tcc(cjit),opts);
-	debug("+O %s",opts);
+	debug(" +O %s",opts);
 }
 
 #define MAX_STRING 2040

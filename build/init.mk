@@ -15,7 +15,8 @@ CFLAGS ?= -O2 ${cflags_stack_protect}
 
 cflags := ${CFLAGS} ${cflags_includes}
 
-SOURCES := src/file.o src/cjit.o src/elflinker.o \
+SOURCES := src/file.o src/cjit.o \
+		   src/elflinker.o src/winlinker.o \
            src/main.o src/assets.o \
            src/cwalk.o src/array.o \
            src/muntar.o src/tinflate.o src/tinfgzip.o \
