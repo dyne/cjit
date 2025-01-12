@@ -31,7 +31,7 @@
 // tetris
 #include "graphics.c"
 #include "input.c"
-#include "timer.c"
+#include "timer.h"
 
 int get_interval()
 {
