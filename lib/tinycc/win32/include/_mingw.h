@@ -157,9 +157,9 @@ typedef struct localeinfo_struct _locale_tstruct,*_locale_t;
 
 #define __C89_NAMELESS
 #define __MINGW_EXTENSION
-#ifndef WINAPI_FAMILY_PARTITION
-#define WINAPI_FAMILY_PARTITION(X) 1
-#endif
+// #ifndef WINAPI_FAMILY_PARTITION
+// #define WINAPI_FAMILY_PARTITION(X) 1
+// #endif
 #define MINGW_HAS_SECURE_API
 #define WIN32 1
 
