@@ -54,10 +54,12 @@ mkdir -p cjit-demo/include/SDL2
 
 # SDL2
 org=libsdl-org
+
+
 proj=SDL
 ver=2.30.10
 file=SDL2-${ver}-win32-x64.zip
-url="https://github.com/libsdl-org/SDL/releases/download/release-${ver}"
+url="https://github.com/${org}/${proj}/releases/download/release-${ver}"
 fetch ${file} ${url}/${file} ${org} ${proj} release-${ver}
 [ -r cjit-demo/SDL2.dll ] || unzip -q -d cjit-demo ${odir}/${file} SDL2.dll
 file=SDL2-${ver}
@@ -72,7 +74,7 @@ fetch ${file}.zip ${url}/${file}.zip ${org} ${proj} release-${ver}
 proj=SDL_image
 ver=2.8.3
 file=SDL2_image-${ver}-win32-x64.zip
-url="https://github.com/libsdl-org/SDL_image/releases/download/release-${ver}"
+url="https://github.com/${org}/${proj}/releases/download/release-${ver}"
 fetch ${file} ${url}/${file} ${org} ${proj} release-${ver}
 [ -r cjit-demo/SDL2_image.dll ] ||
 	unzip -q -d cjit-demo ${odir}/${file} SDL2_image.dll
@@ -87,7 +89,7 @@ fetch ${file}.zip ${url}/${file}.zip ${org} ${proj} release-${ver}
 # SDL2_ttf
 proj=SDL_ttf
 ver=2.22.0
-url="https://github.com/libsdl-org/SDL_ttf/releases/download/release-${ver}"
+url="https://github.com/${org}/${proj}/releases/download/release-${ver}"
 file=SDL2_ttf-${ver}-win32-x64.zip
 fetch ${file} ${url}/${file} ${org} ${proj} release-${ver}
 [ -r cjit-demo/SDL2_ttf.dll ] ||
@@ -100,10 +102,35 @@ fetch ${file}.zip ${url}/${file}.zip ${org} ${proj} release-${ver}
 	rm -rf /tmp/${file}
 }
 
-org=nigels-com
+# raylib
+proj=raylib
+ver=5.5
+org=raysan5
+file=${proj}-${ver}_win64_msvc16
+url="https://github.com/${org}/${proj}/releases/download/${ver}"
+fetch ${file}.zip ${url}/${file}.zip ${org} ${proj} ${ver}
+[ -r cjit-demo/raylib.dll ] || {
+	unzip -q -d /tmp ${odir}/${file} ${file}/lib/raylib.dll
+	mv /tmp/${file}/lib/raylib.dll cjit-demo/raylib.dll
+	rm -rf /tmp/${file}
+}
+[ -r cjit-demo/include/raylib.h ] || {
+	unzip -q -d /tmp ${odir}/${file} ${file}/include/*
+	mv /tmp/${file}/include/* cjit-demo/include/
+	rm -rf /tmp/${file}
+}
+[ -r cjit-demo/libraylib.so ] || {
+	file=${proj}-${ver}_linux_amd64
+	fetch ${file}.tar.gz ${url}/${file}.tar.gz ${org} ${proj} ${ver}
+	tar -C /tmp -xvf ${odir}/${file}.tar.gz
+	mv /tmp/${file}/lib/libraylib.so.${ver}.0 cjit-demo/libraylib.so
+	rm -rf /tmp/${file}
+}
+
 proj=glew
 ver=2.2.0
-url="https://github.com/nigels-com/glew/releases/download/glew-${ver}"
+org=nigels-com
+url="https://github.com/${org}/${proj}/releases/download/glew-${ver}"
 file="glew-${ver}-win32.zip"
 fetch ${file} ${url}/${file} ${org} ${proj} glew-${ver}
 [ -r cjit-demo/glew32.dll ] || {
