@@ -104,6 +104,7 @@ _: ##
 install: ## 🔌 Install the built binaries in PREFIX
 	$(info Installing CJIT in ${BUILDDIR}${PREFIX})
 	@install -Dm755 cjit ${DESTDIR}${PREFIX}/bin/cjit
+	@install -Dm644 docs/cjit.1 ${DESTDIR}${PREFIX}/share/man/man1/cjit.1
 	@install -d ${DESTDIR}${DATADIR}
 	@cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
 	@cp -ra examples ${DESTDIR}${DATADIR}/
