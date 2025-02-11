@@ -55,6 +55,9 @@ struct CJITState {
 	void *libs;    // xarray of library names to be resolved
 	void *libpaths; // xarray of library paths to be searched
 	void *reallibs; // xarray of paths made by resolve_libs()
+	// switch gcc subcall emulation
+	bool call_ar; // execute ar
+	bool output_obj; // don't link just compile obj
 };
 typedef struct CJITState CJITState;
 

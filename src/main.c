@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
   };
   ketopt_t opt = KETOPT_INIT;
   // tolerated and ignored: -f -W -O -g -U -E -S -M
-  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:co:f:W:O:gU:ESM:m:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:co:f:W:O:gU:ESM:m:a:", longopts)) >= 0) {
 	  if(c == 'q') {
 		  if(!CJIT->verbose)
 			  CJIT->quiet = true;
@@ -139,11 +139,14 @@ int main(int argc, char **argv) {
 		  }
 	  } else if (c == 'c') { // don't link or execute, just compile to .o
 		  cjit_set_output(CJIT, OBJ);
+		  CJIT->quiet = true;
+		  CJIT->output_obj = true;
 	  } else if (c == 'o') { // override output filename
 		  if(CJIT->output_filename) free(CJIT->output_filename);
 		  CJIT->output_filename = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->output_filename,opt.arg);
-		  cjit_set_output(CJIT, EXE);
+		  if(!CJIT->output_obj) // don't overwrite output_obj mode
+			  cjit_set_output(CJIT, EXE);
 	  } else if (c == 'L') { // library path
 		  if(CJIT->verbose)_err("arg lib path: %s",opt.arg);
 		  cjit_add_library_path(CJIT, opt.arg);
@@ -162,10 +165,17 @@ int main(int argc, char **argv) {
 		  CJIT->entry = malloc(strlen(opt.arg)+1);
 		  strcpy(CJIT->entry,opt.arg);
 	  } else if (c == 'p') { // write pid to file
-		  if(!CJIT->quiet)_err("pid file: %s",opt.arg);
-		  if(CJIT->write_pid) free(CJIT->write_pid);
-		  CJIT->write_pid = malloc(strlen(opt.arg)+1);
-		  strcpy(CJIT->write_pid,opt.arg);
+		  if(strcmp(opt.arg,"edantic")!=0) { // ignore -pedantic
+			  if(!CJIT->quiet)_err("pid file: %s",opt.arg);
+			  if(CJIT->write_pid) free(CJIT->write_pid);
+			  CJIT->write_pid = malloc(strlen(opt.arg)+1);
+			  strcpy(CJIT->write_pid,opt.arg);
+		  }
+	  } else if (c =='a') { // emulate -ar
+		  if(*opt.arg=='r') {
+			  CJIT->call_ar = true;
+			  _err("gcc emulation: call ar");
+		  }
 #if defined(SELFHOST)
 	  } else if (c == 311) { // --src
 		  char cwd[PATH_MAX];
@@ -260,9 +270,23 @@ int main(int argc, char **argv) {
 	  }
 	  //if(!CJIT->quiet)_err("Compile: %s",argv[opt.ind]);
 	  res = cjit_compile_file(CJIT, argv[opt.ind]) ?0:1; // 0 on success
+	  // if(CJIT->output_filename) {
+		  // TODO: output to explicitly configured filename
+
 	  goto endgame;
 	  ////////////////////////////
 
+  } else if(CJIT->call_ar) {
+	  if(opt.ind >= argc) {
+		  _err("No files specified on commandline");
+		  goto endgame;
+	  }
+	  // TODO: opt.ind-1 here should be "/bin/ar" or whatever being called
+	  // also note that there is no path resolution
+	  // and also need to support env AR for manual configuration
+	  res = execve("/bin/ar", &argv[opt.ind-1], NULL);
+	  if(res<0)_err("Error in ar subcall: %s",strerror(errno));
+	  goto endgame;
   } else if(opt.ind < left_args) {
 	  // process files on commandline before separator
 	  if(CJIT->verbose)_err("Source code:");
