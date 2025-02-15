@@ -70,6 +70,14 @@ jobs:
       - name: Run tests
         run: |
           make check-ci
+      - name: Use cjit to compile cjit
+        run: |
+          sudo make install
+          make clean
+          make linux CC=cjit
+      - name: Run tests with self-hosted cjit
+        run: |
+          make check-ci
 
   debian-test:
     name: 🐧 Debian (tcc shlib) test
