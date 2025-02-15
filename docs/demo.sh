@@ -9,10 +9,10 @@ distro="${NAME,,}-${VERSION_ID}"
 arch=`uname -m`
 echo "Host system detected: ${distro}"
 echo "Architecture detected: ${arch}"
-[ -r ./cjit ] && {
-	echo "Cannot overwrite 'cjit' in this directory"; exit 1; }
-curl -sLo cjit https://github.com/dyne/cjit/releases/latest/download/cjit-${arch}-${distro}
-chmod +x cjit
+[ -x ./cjit ] || {
+	curl -sLo cjit https://github.com/dyne/cjit/releases/latest/download/cjit-${arch}-${distro}
+	chmod +x cjit
+}
 curl -sLo cjit-demo.tar.gz https://github.com/dyne/cjit/releases/latest/download/cjit-demo.tar.gz
 ./cjit --xtgz cjit-demo.tar.gz
 cp ./cjit cjit-demo/
