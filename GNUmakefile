@@ -39,7 +39,7 @@ help:
 _: ##
 ------: ## __ Production targets
 
-linux-x86: ## 🐧 Build a dynamically linked cjit using libs found on Linux x86
+linux: ## 🐧 Build cjit linking shared libs found on Linux (target host arch)
 	$(MAKE) -f build/linux.mk embed-posix cjit
 	@rm -f .build_done*
 	date | tee .build_done_linux
