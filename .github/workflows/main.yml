@@ -204,16 +204,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Get architecture
+        run: |
+          echo "ARCH=$(uname -m)" >> $GITHUB_ENV
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx RELEASE=1
-          mv cjit.command cjit-Darwin-`uname -m`
+          mv cjit.command cjit-Darwin-${{ env.ARCH }}
       - name: Upload artifact apple-osx
         uses: actions/upload-artifact@v4
         with:
-          name: release-osx-native
+          name: release-osx-${{ env.ARCH }}
           path: |
-            cjit-Darwin-`uname -m`
+            cjit-Darwin-${{ env.ARCH }}
 
   binary-release:
     name: 📢 Public release
