@@ -30,6 +30,11 @@
 #include <ketopt.h>
 #include <muntar.h>
 
+#ifdef SELFHOST
+extern const char *cjit_source;
+extern const unsigned int cjit_source_len;
+#endif
+
 extern char *load_stdin();
 
 #define MAX_ARG_STRING 1024
@@ -183,6 +188,18 @@ int main(int argc, char **argv) {
 		  _err("Extracting CJIT's own source to %s/cjit_source",cwd);
 		  muntargz_to_path(cwd,(char*)&cjit_source,cjit_source_len);
 		  cjit_free(CJIT);
+#if defined(POSIX)
+		  // restore executable bit on test suite, fixes make check
+		  chmod("cjit_source/test/bats/bin/bats", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-suite", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats-format-pretty", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-suite", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats-gather-tests", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats-preprocess", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-file", 0755);
+		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-test", 0755);
+#endif
 		  exit(0);
 #endif
 #if !defined(SHAREDTCC)
