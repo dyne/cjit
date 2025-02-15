@@ -1,6 +1,6 @@
 include build/init.mk
 
-cflags += -DLIBC_GNU -D_GNU_SOURCE
+cflags += -DLIBC_GNU
 cflags += -DKILO_SUPPORTED
 cflags += -DCJIT_BUILD_LINUX
 
