@@ -141,12 +141,12 @@ jobs:
 
   linux-release:
     name: 🐧 Linux shared binary release build
+    needs: [semantic-release]
     strategy:
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
         python-version: ["3.12"]
     runs-on: ${{ matrix.os }}
-    needs: [semantic-release]
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
       - name: Checkout repository
@@ -189,20 +189,23 @@ jobs:
   osx-native-release:
     name: 🍎 OSX native binary release build
     needs: [semantic-release]
+    strategy:
+      matrix:
+        os: [macos-14, macos-13]
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
-    runs-on: "macos-latest"
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx RELEASE=1
-          mv cjit.command cjit-Darwin-arm64
+          mv cjit.command cjit-Darwin-`uname -m`
       - name: Upload artifact apple-osx
         uses: actions/upload-artifact@v4
         with:
           name: release-osx-native
           path: |
-            cjit-Darwin-arm64
+            cjit-Darwin-`uname -m`
 
   binary-release:
     name: 📢 Public release
