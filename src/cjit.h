@@ -49,6 +49,7 @@ struct CJITState {
 	char *output_filename; // output in case of compilation mode
 	bool done_setup;
 	bool done_exec;
+	bool print_status;
 	// INTERNAL
 	// sources and libs used and paths to libs
 	void *sources; // xarray of source files loaded

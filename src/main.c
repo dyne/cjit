@@ -120,9 +120,7 @@ int main(int argc, char **argv) {
 		  if(!CJIT->verbose)
 			  CJIT->quiet = true;
 	  } else if (c == 'v') {
-		  cjit_status(CJIT);
-		  cjit_free(CJIT);
-		  exit(0); // print and exit
+		  CJIT->print_status = true;
 	  } else if (c=='h' || c==100) { // help
 		  _err(cli_help,VERSION);
 		  cjit_free(CJIT);
@@ -231,7 +229,8 @@ int main(int argc, char **argv) {
 		  arg_separator = opt.ind+1; break;
 	  }
   }
-  if(!CJIT->quiet) _err("CJIT %s by Dyne.org",VERSION);
+  if(!CJIT->quiet)
+	_err("CJIT %s (c) 2024-2025 Dyne.org foundation",VERSION);
 
 #if 0
   // If no arguments then start the REPL
@@ -257,6 +256,13 @@ int main(int argc, char **argv) {
 
   char *stdin_code = NULL;
   if(opt.ind >= argc) {
+	  // no files on commandline
+	  if(CJIT->print_status) {
+		  cjit_status(CJIT);
+		  res = 0;
+		  goto endgame;
+	  }
+
 #if defined(_WIN32)
 	  _err("No files specified on commandline");
 	  goto endgame;
@@ -279,6 +285,7 @@ int main(int argc, char **argv) {
 	  ////////////////
 
   } else if(CJIT->tcc_output==OBJ) {
+	  if(CJIT->print_status) cjit_status(CJIT);
 	  /////////////////////////////
 	  // Compile one .c file to .o
 	  if(left_args - opt.ind != 1) {
@@ -334,6 +341,7 @@ int main(int argc, char **argv) {
 
   /////////////////////////
   // compile to executable
+  if(CJIT->print_status) cjit_status(CJIT);
   if(CJIT->output_filename) {
 	  _err("Create executable: %s", CJIT->output_filename);
 	  if(cjit_link(CJIT)<0) {

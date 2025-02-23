@@ -268,7 +268,6 @@ static bool cjit_setup(CJITState *cjit) {
 }
 
 bool cjit_status(CJITState *cjit) {
-	_err("CJIT %s (c) 2024-2025 Dyne.org foundation",VERSION);
 	_err("Build system: %s",PLATFORM);
 #if defined(TCC_TARGET_I386)
         _err("Target platform: i386 code generator");
