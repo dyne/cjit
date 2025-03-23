@@ -58,7 +58,7 @@ ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream) {
 
 bool get_winsdkpath(char *dst, size_t destlen) {
     HKEY hKey;
-    LPDWORD len = (LPDWORD)destlen; // unused
+    LPDWORD len = (LPDWORD)destlen;
     LONG lRes = RegOpenKeyEx
 	    (HKEY_LOCAL_MACHINE,
 	     "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
@@ -68,7 +68,7 @@ bool get_winsdkpath(char *dst, size_t destlen) {
         return false;
     }
     lRes = RegQueryValueEx(hKey, "KitsRoot10",
-			   NULL, NULL, dst, len);
+			   NULL, NULL, dst, &len);
     RegCloseKey(hKey);
     if (lRes != ERROR_SUCCESS) {
         fprintf(stderr,"Failed to query registry value. Error: %ld\n",lRes);
