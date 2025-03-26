@@ -6,7 +6,8 @@
 #define MyAppAssocName "C Source Code"
 #define MyAppAssocExt ".c"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
-; #define MyBuildHome "C:\Users\runneradmin"
+#define MyBuildHome ".."
+; "C:\Users\runneradmin"
 [Setup]
 AppId={{424647AA-C490-4CE6-85E9-A988CB6D3089}
 AppName={#MyAppName}
