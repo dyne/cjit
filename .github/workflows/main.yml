@@ -108,6 +108,12 @@ jobs:
       - name: Run tests
         run: |
           make check-ci
+      - name: Install Inno Setup
+        run: |
+          winget install jrsoftware.innosetup
+      - name: Compile the Installer
+        run: |
+          "$HOME\AppData\Local\Programs\Inno Setup 6\ISCC.exe" build\innosetup.iss
 
   osx-native-test:
     name: 🍎 OSX native test
