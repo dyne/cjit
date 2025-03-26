@@ -1,5 +1,5 @@
 #define MyAppName "CJIT"
-#define MyAppVersion "1.0"
+; #define MyAppVersion "1.0"
 #define MyAppPublisher "Dyne.org foundation"
 #define MyAppURL "https://dyne.org/docs/cjit"
 #define MyAppExeName "cjit.exe"
@@ -7,8 +7,9 @@
 #define MyAppAssocExt ".c"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
 #define MyBuildHome ".."
-; "C:\Users\runneradmin"
+;  "C:\Users\runneradmin"
 [Setup]
+DisableStartupPrompt=yes
 AppId={{424647AA-C490-4CE6-85E9-A988CB6D3089}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -30,9 +31,9 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-LicenseFile={#MyBuildHome}\LICENSES\GPL-3.0-or-later.txt
-InfoBeforeFile={#MyBuildHome}\README.md
-InfoAfterFile={#MyBuildHome}\docs\cjit.1
+; LicenseFile={#MyBuildHome}\LICENSES\GPL-3.0-or-later.txt
+; InfoBeforeFile={#MyBuildHome}\README.md
+; InfoAfterFile={#MyBuildHome}\docs\cjit.1
 ; Remove the following line to run in administrative install mode (install for all users).
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog

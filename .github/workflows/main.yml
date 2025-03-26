@@ -105,9 +105,6 @@ jobs:
       - name: Build native windows exe for x86_64
         run: |
           make win-native
-      - name: Compile the installer
-        run: |
-          ISCC.exe build\innosetup.iss
       - name: Run tests
         run: |
           make check-ci
@@ -196,12 +193,17 @@ jobs:
       - name: Build native windows exe for x86_64
         run: |
           make win-native RELEASE=1
+      - name: Compile the installer
+        run: |
+          ISCC.exe /DMyAppVersion=${{ needs.semantic-release.outputs.new_release_version }} build\innosetup.iss
+          mv build\Output\cjit_innosetup.exe CJIT_install.exe
       - name: Upload artifact windows-amd64
         uses: actions/upload-artifact@v4
         with:
           name: release-win-native-x86_64
           path: |
             cjit.exe
+            CJIT_install.exe
 
   osx-native-release:
     name: 🍎 OSX native binary release build
