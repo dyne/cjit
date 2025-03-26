@@ -105,15 +105,18 @@ jobs:
       - name: Build native windows exe for x86_64
         run: |
           make win-native
+      - name: Compile the installer
+        run: |
+          ISCC.exe build\innosetup.iss
       - name: Run tests
         run: |
           make check-ci
-      - name: Install Inno Setup
-        run: |
-          choco install innosetup
-      - name: Compile the Installer
-        run: |
-          C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "build\innosetup.iss"
+      # - name: Install Inno Setup
+      #   run: |
+      #     choco install innosetup
+      # - name: Compile the Installer
+      #   run: |
+      #     C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "build\innosetup.iss"
 
   osx-native-test:
     name: 🍎 OSX native test
