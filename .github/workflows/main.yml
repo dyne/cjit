@@ -191,6 +191,9 @@ jobs:
         run: |
           ISCC.exe /DMyAppVersion=${{ needs.semantic-release.outputs.new_release_version }} build\innosetup.iss
           mv build\Output\cjit_innosetup.exe CJIT_install.exe
+      - name: Build winget package manifest
+        run: |
+          bash.exe ./build/winpkg-update.sh CJIT_install.exe ${{ needs.semantic-release.outputs.new_release_version }}
       - name: Upload artifact windows-amd64
         uses: actions/upload-artifact@v4
         with:
