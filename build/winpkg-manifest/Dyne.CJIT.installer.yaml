@@ -1,0 +1,12 @@
+# Created using wingetcreate 1.9.4.0
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+
+PackageIdentifier: Dyne.CJIT
+PackageVersion: %%VERSION%%
+InstallerType: inno
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/dyne/cjit/releases/download/v%%VERSION%%/CJIT_install.exe
+  InstallerSha256: %%INSTALLER_HASH_SHA256%%
+ManifestType: installer
+ManifestVersion: 1.9.0
