@@ -35,11 +35,12 @@ DisableProgramGroupPage=yes
 ; InfoBeforeFile={#MyBuildHome}\README.md
 ; InfoAfterFile={#MyBuildHome}\docs\cjit.1
 ; Remove the following line to run in administrative install mode (install for all users).
+
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputBaseFilename=cjit_innosetup
 SolidCompression=yes
-WizardStyle=modern
+; WizardStyle=modern
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -63,3 +64,31 @@ Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\shell\open\command"; Value
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 
+[Code]
+function InitializeSetup(): Boolean;
+begin
+  Result := True;
+  // If /ALLUSERS is passed, force admin mode
+  if ExpandConstant('{param:ALLUSERS|false}') = 'true' then
+  begin
+	if not IsAdminLoggedOn() then
+	begin
+	  MsgBox('Administrator privileges are required for machine-wide installation.', mbError, MB_OK);
+	  Result := False;
+	end;
+  end;
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+  // If uninstalling an ALLUSERS installation, require admin
+  if IsAdminInstallMode() then
+  begin
+	if not IsAdminLoggedOn() then
+	begin
+	  MsgBox('Administrator privileges are required to uninstall a machine-wide installation.', mbError, MB_OK);
+	  Result := False;
+	end;
+  end;
+end;
