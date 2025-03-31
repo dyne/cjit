@@ -9,6 +9,11 @@
 #define MyBuildHome ".."
 ;  "C:\Users\runneradmin"
 [Setup]
+DisableWelcomePage=yes
+DisableDirPage=auto
+DisableProgramGroupPage=yes
+DisableReadyPage=yes
+DisableFinishedPage=yes
 DisableStartupPrompt=yes
 AppId={{424647AA-C490-4CE6-85E9-A988CB6D3089}
 AppName={#MyAppName}
@@ -30,12 +35,10 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
 DefaultGroupName={#MyAppName}
-DisableProgramGroupPage=yes
 ; LicenseFile={#MyBuildHome}\LICENSES\GPL-3.0-or-later.txt
 ; InfoBeforeFile={#MyBuildHome}\README.md
 ; InfoAfterFile={#MyBuildHome}\docs\cjit.1
 ; Remove the following line to run in administrative install mode (install for all users).
-
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputBaseFilename=cjit_innosetup
@@ -71,11 +74,14 @@ begin
   // If /ALLUSERS is passed, force admin mode
   if ExpandConstant('{param:ALLUSERS|false}') = 'true' then
   begin
-	if not IsAdminLoggedOn() then
-	begin
-	  MsgBox('Administrator privileges are required for machine-wide installation.', mbError, MB_OK);
-	  Result := False;
-	end;
+    if not IsAdmin() then
+    begin
+      if WizardSilent() then
+        Result := False // Just fail silently in silent mode
+      else
+        MsgBox('Administrator privileges are required for machine-wide installation.', mbError, MB_OK);
+      Result := False;
+    end;
   end;
 end;
 
@@ -85,10 +91,25 @@ begin
   // If uninstalling an ALLUSERS installation, require admin
   if IsAdminInstallMode() then
   begin
-	if not IsAdminLoggedOn() then
-	begin
-	  MsgBox('Administrator privileges are required to uninstall a machine-wide installation.', mbError, MB_OK);
-	  Result := False;
-	end;
+    if not IsAdmin() then
+    begin
+      if UninstallSilent() then
+        Result := False // Just fail silently in silent mode
+      else
+        MsgBox('Administrator privileges are required to uninstall a machine-wide installation.', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  // Handle silent mode specific behaviors
+  if CurStep = ssPostInstall then
+  begin
+    if WizardSilent() then
+    begin
+      // Additional silent mode actions can go here
+    end;
   end;
 end;
