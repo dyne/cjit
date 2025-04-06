@@ -35,7 +35,10 @@ extern const unsigned int cjit_source_len;
 #endif
 
 extern char *load_stdin();
+
+#ifndef CJIT_WITHOUT_AR
 extern int cjit_ar(CJITState *CJIT, int argc, char **argv);
+#endif
 
 // defined below
 static char** remove_args(int* argc,  char** argv,
@@ -116,12 +119,14 @@ int main(int argc, char **argv) {
   int res = 1;
   int i, c;
 
+#ifndef CJIT_WITHOUT_AR
   // cjit-ar
   if(strlen(argv[1])==3 && strcmp(argv[1],"-ar")==0) {
 	  int res = cjit_ar(CJIT,argc-1,argv+1);
 	  cjit_free(CJIT);
 	  exit(res);
   }
+#endif
 
   // autoconf conftest
   if(strlen(argv[1])==10 && strcmp(argv[1],"conftest.c")==0) {
