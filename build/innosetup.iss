@@ -53,6 +53,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "{#MyBuildHome}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyBuildHome}\make.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyBuildHome}\ar.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyBuildHome}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyBuildHome}\REUSE.toml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyBuildHome}\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
