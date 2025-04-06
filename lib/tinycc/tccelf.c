@@ -331,6 +331,7 @@ static Section *have_section(TCCState *s1, const char *name)
     int i;
     for(i = 1; i < s1->nb_sections; i++) {
         sec = s1->sections[i];
+		if(!sec) continue;
         if (!strcmp(name, sec->name))
             return sec;
     }
@@ -1822,6 +1823,7 @@ static void tcc_add_linker_symbols(TCCState *s1)
        expressed in C */
     for(i = 1; i < s1->nb_sections; i++) {
         s = s1->sections[i];
+		if(!s) continue;
         if ((s->sh_flags & SHF_ALLOC)
             && (s->sh_type == SHT_PROGBITS
                 || s->sh_type == SHT_STRTAB)) {

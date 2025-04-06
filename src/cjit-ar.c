@@ -16,7 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+
+#include <cjit.h>
 #include <tcc.h>
+#undef free
+#undef malloc
+#undef realloc
+#undef strdup
 #include <libtcc.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -336,8 +342,13 @@ the_end:
 }
 
 extern int tcc_tool_ar(TCCState *s1, int argc, char **argv);
+int cjit_ar(CJITState *CJIT, int argc, char **argv) {
+	return tcc_tool_ar((TCCState *)CJIT->TCC, argc, argv);
+}
 
+#ifdef CJIT_AR_MAIN
 int main(int argc, char **argv) {
 	TCCState *s = tcc_new();
 	return tcc_tool_ar(s,argc,argv);
 }
+#endif

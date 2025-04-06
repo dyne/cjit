@@ -20,7 +20,9 @@ SOURCES := src/file.o src/cjit.o \
            src/main.o src/assets.o \
            src/cwalk.o src/array.o \
            src/muntar.o src/tinflate.o src/tinfgzip.o \
-           src/embed_libtcc1.a.o src/embed_include.o
+           src/embed_libtcc1.a.o src/embed_include.o \
+           src/cjit-ar.o
+
 #src/embed_source.o
 
 

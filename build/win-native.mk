@@ -32,7 +32,7 @@ cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
 
 cjit-ar.exe: src/cjit-ar.o
-	$(cc) $(cflags) -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
+	$(cc) $(cflags) -DCJIT_AR_MAIN -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
 
 # libtcc is built by CI
 

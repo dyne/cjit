@@ -18,7 +18,6 @@
  */
 
 #include <cjit.h>
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,6 +35,7 @@ extern const unsigned int cjit_source_len;
 #endif
 
 extern char *load_stdin();
+extern int cjit_ar(CJITState *CJIT, int argc, char **argv);
 
 // defined below
 static char** remove_args(int* argc,  char** argv,
@@ -104,7 +104,8 @@ const char *ignored_args[] = {
 	"-O:",
 	"-f:",
 	"-W:",
-	"-M:"
+	"-M:",
+	"-g:"
 };
 
 int main(int argc, char **argv) {
@@ -114,6 +115,13 @@ int main(int argc, char **argv) {
   int arg_separator = 0;
   int res = 1;
   int i, c;
+
+  // cjit-ar
+  if(strlen(argv[1])==3 && strcmp(argv[1],"-ar")==0) {
+	  int res = tcc_tool_ar(CJIT->TCC,argc-1,argv+1);
+	  cjit_free(CJIT);
+	  exit(res);
+  }
 
   // clean up argv from ignored args and update argc
   int ignored_count = sizeof(ignored_args) / sizeof(ignored_args[0]);
@@ -135,7 +143,7 @@ int main(int argc, char **argv) {
   };
   ketopt_t opt = KETOPT_INIT;
   // tolerated and ignored: -f -W -O -g -U -E -S -M
-  while ((c = ketopt(&opt, argc, clean_argv, 1, "qhvD:L:l:C:I:e:p:co:g", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, clean_argv, 1, "qhvD:L:l:C:I:e:p:co:ga:", longopts)) >= 0) {
 	  if(c == 'q') {
 		  if(!CJIT->verbose)
 			  CJIT->quiet = true;
@@ -193,11 +201,6 @@ int main(int argc, char **argv) {
 			  if(CJIT->write_pid) free(CJIT->write_pid);
 			  CJIT->write_pid = malloc(strlen(opt.arg)+1);
 			  strcpy(CJIT->write_pid,opt.arg);
-		  }
-	  } else if (c =='a') { // emulate -ar
-		  if(*opt.arg=='r') {
-			  CJIT->call_ar = true;
-			  _err("gcc emulation: call ar");
 		  }
 #if defined(SELFHOST)
 	  } else if (c == 311) { // --src
@@ -320,17 +323,6 @@ int main(int argc, char **argv) {
 	  goto endgame;
 	  ////////////////////////////
 
-  } else if(CJIT->call_ar) {
-	  if(opt.ind >= argc) {
-		  _err("No files specified on commandline");
-		  goto endgame;
-	  }
-	  // TODO: opt.ind-1 here should be "/bin/ar" or whatever being called
-	  // also note that there is no path resolution
-	  // and also need to support env AR for manual configuration
-	  res = execve("/bin/ar", &argv[opt.ind-1], NULL);
-	  if(res<0)_err("Error in ar subcall: %s",strerror(errno));
-	  goto endgame;
   } else if(opt.ind < left_args) {
 	  // process files on commandline before separator
 	  if(CJIT->verbose)_err("Source code:");
@@ -415,7 +407,7 @@ char** remove_args(int* argc, char** argv,
                 // Check if current argument starts with the pattern (without colon)
                 if (strncmp(arg, pattern, pattern_len - 1) == 0) {
                     // Check if it's in the form "option:value"
-                    if (isalnum(arg[pattern_len - 1])) {
+                    if (isalnum(arg[pattern_len-1])) {
                         keep[i] = false;  // Remove the whole "option:value"
                         new_argc--;
                         break;
