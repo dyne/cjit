@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
 
   // cjit-ar
   if(strlen(argv[1])==3 && strcmp(argv[1],"-ar")==0) {
-	  int res = tcc_tool_ar(CJIT->TCC,argc-1,argv+1);
+	  int res = cjit_ar(CJIT,argc-1,argv+1);
 	  cjit_free(CJIT);
 	  exit(res);
   }
