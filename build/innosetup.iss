@@ -44,6 +44,8 @@ PrivilegesRequiredOverridesAllowed=dialog
 OutputBaseFilename=cjit_innosetup
 SolidCompression=yes
 ; WizardStyle=modern
+ChangesEnvironment=yes
+; Warns user about PATH changes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -63,11 +65,32 @@ Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueTyp
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}"; ValueType: string; ValueName: ""; ValueData: "{#MyAppAssocName}"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+; Add to System PATH (machine-wide)
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; \
+    ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; \
+    Check: IsAdminInstallMode and NeedsAddPath('{app}')
+
+; Add to User PATH (current user)
+Root: HKCU; Subkey: "Environment"; \
+    ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; \
+    Check: (not IsAdminInstallMode) and NeedsAddPath('{app}')
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 
 [Code]
+function NeedsAddPath(Param: string): boolean;
+var
+  OrigPath: string;
+begin
+  if IsAdminInstallMode then
+    RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', OrigPath)
+  else
+    RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OrigPath);
+    
+  Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
+end;
+
 function InitializeSetup(): Boolean;
 begin
   Result := True;
@@ -104,12 +127,14 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  // Handle silent mode specific behaviors
   if CurStep = ssPostInstall then
   begin
+    // Broadcast environment change
     if WizardSilent() then
-    begin
-      // Additional silent mode actions can go here
-    end;
+      Log('Modified PATH silently')
+    else
+      MsgBox('Added CJIT to your system PATH. Restart terminals to use it.', mbInformation, MB_OK);    
+
+//    RefreshEnvironment;
   end;
 end;
