@@ -123,6 +123,23 @@ int main(int argc, char **argv) {
 	  exit(res);
   }
 
+  // autoconf conftest
+  if(strlen(argv[1])==10 && strcmp(argv[1],"conftest.c")==0) {
+	  _err("Detected conftest");
+	  int res = 0;
+	  CJIT->output_filename = "a.out";
+	  cjit_set_output(CJIT, EXE);
+	  cjit_add_file(CJIT, argv[1]);
+	  if(cjit_link(CJIT)<0) {
+		  _err("Error in linker compiling to file: %s",
+		       CJIT->output_filename);
+		  res = 1;
+	  }
+	  CJIT->output_filename = NULL;
+	  cjit_free(CJIT);
+	  exit(res);
+  }
+
   // clean up argv from ignored args and update argc
   int ignored_count = sizeof(ignored_args) / sizeof(ignored_args[0]);
   char** clean_argv = remove_args(&argc, argv, ignored_args, ignored_count);
@@ -253,7 +270,7 @@ int main(int argc, char **argv) {
 	  }
   }
   if(!CJIT->quiet)
-	_err("CJIT %s (c) 2024-2025 Dyne.org foundation",VERSION);
+	_err("cjit version %s (c) 2024-2025 Dyne.org foundation",&VERSION[1]);
 
 #if 0
   // If no arguments then start the REPL
