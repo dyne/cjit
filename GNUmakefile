@@ -50,7 +50,7 @@ win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w6
 	date | tee .build_done_win
 
 win-native: ## 🪟 Build cjit.exe for WIN64 on Windows Server
-	$(MAKE) -f build/win-native.mk embed-win cjit.exe
+	$(MAKE) -f build/win-native.mk embed-win cjit.exe cjit-ar.exe
 	@rm -f .build_done*
 	date | tee .build_done_win
 

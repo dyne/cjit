@@ -4,7 +4,7 @@ cc := clang
 cflags += -DCJIT_BUILD_OSX
 extra_tinycc_config += --config-codesign=no
 
-all: embed-posix cjit.command
+all: embed-posix cjit.command cjit-ar.command
 
 
 cjit.command: ${SOURCES}

@@ -26,7 +26,7 @@ SOURCES += src/win-compat.o  \
 	src/embed_tinycc_win32.o \
 	src/embed_win32ports.o
 
-all: embed-win cjit.exe
+all: embed-win cjit.exe cjit-ar.exe
 
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
