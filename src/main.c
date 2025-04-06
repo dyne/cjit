@@ -37,6 +37,10 @@ extern const unsigned int cjit_source_len;
 
 extern char *load_stdin();
 
+// defined below
+static char** remove_args(int* argc,  char** argv,
+						  const char** to_remove, int remove_count);
+
 #define MAX_ARG_STRING 1024
 static int parse_value(char *str) {
   int i = 0;
@@ -92,6 +96,17 @@ const char cli_help[] =
 #endif
 	" --xtgz\t extract all files in a USTAR (+) tar.gz\n";
 
+const char *ignored_args[] = {
+	"-s",
+	"-static-libgcc",
+	"-shared",
+	"-O",
+	"-O:",
+	"-f:",
+	"-W:",
+	"-M:"
+};
+
 int main(int argc, char **argv) {
   CJITState *CJIT = cjit_new();
   if(!CJIT) exit(1);
@@ -99,6 +114,11 @@ int main(int argc, char **argv) {
   int arg_separator = 0;
   int res = 1;
   int i, c;
+
+  // clean up argv from ignored args and update argc
+  int ignored_count = sizeof(ignored_args) / sizeof(ignored_args[0]);
+  char** clean_argv = remove_args(&argc, argv, ignored_args, ignored_count);
+
   // get the extra cflags from the CFLAGS env variable
   // they are overridden by explicit command-line options
   static ko_longopt_t longopts[] = {
@@ -115,7 +135,7 @@ int main(int argc, char **argv) {
   };
   ketopt_t opt = KETOPT_INIT;
   // tolerated and ignored: -f -W -O -g -U -E -S -M
-  while ((c = ketopt(&opt, argc, argv, 1, "qhvD:L:l:C:I:e:p:co:f:W:O:gU:ESM:m:a:", longopts)) >= 0) {
+  while ((c = ketopt(&opt, argc, clean_argv, 1, "qhvD:L:l:C:I:e:p:co:g", longopts)) >= 0) {
 	  if(c == 'q') {
 		  if(!CJIT->verbose)
 			  CJIT->quiet = true;
@@ -293,7 +313,7 @@ int main(int argc, char **argv) {
 		  goto endgame;
 	  }
 	  //if(!CJIT->quiet)_err("Compile: %s",argv[opt.ind]);
-	  res = cjit_compile_file(CJIT, argv[opt.ind]) ?0:1; // 0 on success
+	  res = cjit_compile_file(CJIT, clean_argv[opt.ind]) ?0:1; // 0 on success
 	  // if(CJIT->output_filename) {
 		  // TODO: output to explicitly configured filename
 
@@ -315,7 +335,7 @@ int main(int argc, char **argv) {
 	  // process files on commandline before separator
 	  if(CJIT->verbose)_err("Source code:");
 	  for (i = opt.ind; i < left_args; ++i) {
-		  const char *code_path = argv[i];
+		  const char *code_path = clean_argv[i];
 		  if(CJIT->verbose)_err("%c %s",(*code_path=='-'?'|':'+'),
 				       (*code_path=='-'?"standard input":code_path));
 		  if(*code_path=='-') { // stdin explicit
@@ -353,11 +373,78 @@ int main(int argc, char **argv) {
 	  // number of args at the left hand of arg separator, or all
 	  // of them
 	  int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
-	  char **right_argv = &argv[left_args-1];//arg_separator?&argv[arg_separator]:0
+	  char **right_argv = &clean_argv[left_args-1];//arg_separator?&argv[arg_separator]:0
 	  res = cjit_exec(CJIT, right_args, right_argv);
   }
   endgame:
+  // release buffer instantiated by remove_args
+  free(clean_argv);
   // free TCC
   cjit_free(CJIT);
   exit(res);
+}
+
+char** remove_args(int* argc, char** argv,
+				   const char** to_remove, int remove_count) {
+    if (*argc == 0 || argv == NULL
+		|| to_remove == NULL || remove_count == 0) {
+        return argv;
+    }
+    bool* keep = calloc(*argc, sizeof(bool));
+    if (!keep) return NULL;
+    // First pass: mark all arguments to keep (initially all true)
+    for (int i = 0; i < *argc; i++) {
+        keep[i] = true;
+    }
+    int new_argc = *argc;
+    // Second pass: process removal patterns
+    for (int i = 0; i < *argc; i++) {
+        if (!keep[i]) continue;  // Already marked for removal
+        for (int j = 0; j < remove_count; j++) {
+            const char* arg = argv[i];
+            const char* pattern = to_remove[j];
+            size_t pattern_len = strlen(pattern);
+            // Case 1: Exact match
+            if (strcmp(arg, pattern) == 0) {
+                keep[i] = false;
+                new_argc--;
+                break;
+            }
+            // Case 2: Colon-terminated pattern (e.g., "option:")
+            if (pattern[pattern_len - 1] == ':') {
+                // Check if current argument starts with the pattern (without colon)
+                if (strncmp(arg, pattern, pattern_len - 1) == 0) {
+                    // Check if it's in the form "option:value"
+                    if (isalnum(arg[pattern_len - 1])) {
+                        keep[i] = false;  // Remove the whole "option:value"
+                        new_argc--;
+                        break;
+                    }
+                    // OR if it's in the form "option value" (next argument)
+                    else if (i + 1 < *argc && arg[pattern_len - 1] == '\0') {
+                        keep[i] = false;    // Remove the option
+                        keep[i + 1] = false; // Remove the value
+                        new_argc -= 2;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    // Allocate new argv array
+    char** new_argv = malloc((new_argc + 1) * sizeof(char*));
+    if (!new_argv) {
+        free(keep);
+        return NULL;
+    }
+    // Copy kept arguments to new argv
+    for (int i = 0, j = 0; i < *argc; i++) {
+        if (keep[i]) {
+            new_argv[j++] = argv[i];
+        }
+    }
+    new_argv[new_argc] = NULL;  // NULL-terminate
+    free(keep);
+    *argc = new_argc;
+    return new_argv;
 }
