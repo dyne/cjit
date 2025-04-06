@@ -4,7 +4,7 @@ cflags += -DLIBC_GNU
 cflags += -DKILO_SUPPORTED
 cflags += -DCJIT_BUILD_LINUX
 
-all: embed-posix cjit
+all: embed-posix cjit cjit-ar
 
 tinycc_config += --with-libgcc
 $(info Ignore any error about sestatus below)
@@ -36,5 +36,8 @@ endif
 
 cjit: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
+
+cjit-ar: src/cjit-ar.o
+	$(cc) $(cflags) -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
 
 include build/deps.mk

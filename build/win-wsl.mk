@@ -22,11 +22,14 @@ SOURCES += src/win-compat.o  \
 	src/embed_tinycc_win32.o \
 	src/embed_win32ports.o
 
-all: cross-win embed-win cjit.exe
+all: cross-win embed-win cjit.exe cjit-ar.exe
 
 cjit.exe: ${SOURCES}
 	bash build/stamp-exe.sh
 	$(cc) $(cflags) -o $@ $(SOURCES) cjit.res ${ldflags} ${ldadd}
+
+cjit-ar.exe: src/cjit-ar.o
+	$(cc) $(cflags) -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
 
 cross-win:
 	@cd lib/tinycc && ./configure ${tinycc_config}
