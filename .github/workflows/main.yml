@@ -187,6 +187,14 @@ jobs:
       - name: Build native windows exe for x86_64
         run: |
           make win-native RELEASE=1
+      - name: Build GNU make native windows exe
+        run: |
+          Invoke-WebRequest -OutFile "make.tar.lz" -Uri "https://ftp.gnu.org/gnu/make/make-4.4.1.tar.lz"
+          choco install lzip
+          tar xf make.tar.lz
+          cd make-4.4.1
+          ./build_w32
+          mv WinRel/gnumake.exe ../make.exe
       - name: Compile the installer
         run: |
           ISCC.exe /DMyAppVersion=${{ needs.semantic-release.outputs.new_release_version }} build\innosetup.iss
