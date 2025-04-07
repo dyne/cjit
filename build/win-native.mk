@@ -33,7 +33,7 @@ cjit.exe: ${SOURCES}
 
 cjit-ar.exe: cflags += -DCJIT_AR_MAIN
 cjit-ar.exe: rebuild_cjit-ar
-	$(cc) $(cflags) -o $@ src/cjit-ar.o cjit.res ${ldflags} lib/tinycc/libtcc.a
+	$(cc) $(cflags) -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
 	@rm src/src/cjit-ar.o
 
 
