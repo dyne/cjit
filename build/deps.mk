@@ -6,6 +6,10 @@
 	-DVERSION=\"${VERSION}\" \
 	-DCURRENT_YEAR=\"${CURRENT_YEAR}\"
 
+.PHONY: rebuild_cjit-ar
+rebuild_cjit-ar:
+	$(cc) $(cflags) -c src/cjit-ar.c -o src/cjit-ar.o
+
 lib/tinycc/libtcc.a lib/tinycc/libtcc1.a:
 	cd lib/tinycc \
 		&& bash ./configure ${tinycc_config} ${extra_tinycc_config}

@@ -8,7 +8,7 @@ include build/init.mk
 cc := x86_64-w64-mingw32-gcc
 ar := x86_64-w64-mingw32-ar
 
-cflags := -Og -ggdb ${cflags_includes}
+cflags := -O2 -mconsole ${cflags_includes}
 cflags += -DCJIT_BUILD_WIN
 
 ldadd += -lrpcrt4 -lshlwapi
@@ -28,8 +28,10 @@ cjit.exe: ${SOURCES}
 	bash build/stamp-exe.sh
 	$(cc) $(cflags) -o $@ $(SOURCES) cjit.res ${ldflags} ${ldadd}
 
-cjit-ar.exe: src/cjit-ar.o
-	$(cc) $(cflags) -DCJIT_AR_MAIN -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
+cjit-ar.exe: cflags += -DCJIT_AR_MAIN
+cjit-ar.exe: rebuild_cjit-ar
+	$(cc) $(cflags) -o $@ src/cjit-ar.o cjit.res ${ldflags} lib/tinycc/libtcc.a
+	@rm src/src/cjit-ar.o
 
 cross-win:
 	@cd lib/tinycc && ./configure ${tinycc_config}

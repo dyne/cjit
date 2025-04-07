@@ -31,8 +31,11 @@ all: embed-win cjit.exe cjit-ar.exe
 cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
 
-cjit-ar.exe: src/cjit-ar.o
-	$(cc) $(cflags) -DCJIT_AR_MAIN -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
+cjit-ar.exe: cflags += -DCJIT_AR_MAIN
+cjit-ar.exe: rebuild_cjit-ar
+	$(cc) $(cflags) -o $@ src/cjit-ar.o cjit.res ${ldflags} lib/tinycc/libtcc.a
+	@rm src/src/cjit-ar.o
+
 
 # libtcc is built by CI
 

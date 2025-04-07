@@ -85,6 +85,7 @@ version = meson.project_version()
 
 # Compiler arguments
 c_args = [ '-I../src',
+		   '-DCJIT_WITHOUT_AR',
 		   '-DSHAREDTCC="@0@libtcc1.a"'.format(libtcc_found),
 		   '-DPREFIX="@0@"'.format(prefix),
 		   '-DVERSION="@0@"'.format(version), ]

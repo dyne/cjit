@@ -45,7 +45,7 @@ linux: ## 🐧 Build cjit linking shared libs found on Linux (target host arch)
 	date | tee .build_done_linux
 
 win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
-	$(MAKE) -f build/win-wsl.mk cross-win embed-win cjit.exe
+	$(MAKE) -f build/win-wsl.mk cross-win embed-win cjit.exe cjit-ar.exe
 	@rm -f .build_done*
 	date | tee .build_done_win
 

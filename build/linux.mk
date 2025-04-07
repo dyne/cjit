@@ -37,7 +37,9 @@ endif
 cjit: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
 
-cjit-ar: src/cjit-ar.o
-	$(cc) $(cflags) -DCJIT_AR_MAIN -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
+cjit-ar: cflags += -DCJIT_AR_MAIN
+cjit-ar: rebuild_cjit-ar
+	$(cc) $(cflags) -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
+	@rm src/src/cjit-ar.o
 
 include build/deps.mk
