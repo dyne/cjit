@@ -29,9 +29,8 @@ cjit.exe: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) cjit.res ${ldflags} ${ldadd}
 
 cjit-ar.exe: cflags += -DCJIT_AR_MAIN
-cjit-ar.exe: rebuild_cjit-ar
-	$(cc) $(cflags) -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
-	@rm src/src/cjit-ar.o
+cjit-ar.exe:
+	$(cc) $(cflags) -o $@ src/cjit-ar.c ${ldflags} lib/tinycc/libtcc.a
 
 cross-win:
 	@cd lib/tinycc && ./configure ${tinycc_config}

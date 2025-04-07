@@ -11,9 +11,7 @@ cjit.command: ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
 
 cjit-ar.command: cflags += -DCJIT_AR_MAIN
-cjit-ar.command: rebuild_cjit-ar
-	$(cc) $(cflags) -o $@ src/cjit-ar.o ${ldflags} lib/tinycc/libtcc.a
-	@rm src/src/cjit-ar.o
-
+cjit-ar.command:
+	$(cc) $(cflags) -o $@ src/cjit-ar.c ${ldflags} lib/tinycc/libtcc.a
 
 include build/deps.mk

@@ -121,5 +121,5 @@ debian:
 clean: ## 🧹 Clean the source from all built objects
 	${MAKE} -C lib/tinycc clean distclean
 	${MAKE} -C src clean
-	@rm -f cjit cjit.exe cjit.command
+	@rm -f cjit cjit.exe cjit-ar.exe cjit.command
 	@rm -rf meson
