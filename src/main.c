@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
 
 #ifndef CJIT_WITHOUT_AR
   // cjit-ar
-  if(strlen(argv[1])==3 && strcmp(argv[1],"-ar")==0) {
+  if(argv[1] && strlen(argv[1])==3 && strcmp(argv[1],"-ar")==0) {
 	  int res = cjit_ar(CJIT,argc-1,argv+1);
 	  cjit_free(CJIT);
 	  exit(res);
@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
 #endif
 
   // autoconf conftest
-  if(strlen(argv[1])==10 && strcmp(argv[1],"conftest.c")==0) {
+  if(argv[1] && strlen(argv[1])==10 && strcmp(argv[1],"conftest.c")==0) {
 	  _err("Detected conftest");
 	  int res = 0;
 	  CJIT->output_filename = "a.out";
