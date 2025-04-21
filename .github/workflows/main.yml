@@ -117,7 +117,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build native windows exe for ARM64
         run: |
-          make win-native
+          make win-arm
       - name: Run tests
         run: |
           make check-ci
