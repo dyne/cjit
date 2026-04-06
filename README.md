@@ -41,7 +41,7 @@ There are various build targets, just type `make` to have a list:
 👇 List of targets:
  _
  ------           __ Production targets
- linux-x86        🐧 Build a dynamically linked cjit using libs found on Linux x86
+ linux            🐧 Build a dynamically linked cjit using libs found on Linux x86
  win-wsl          🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w64
  win-native       🪟 Build cjit.exe for WIN64 on Windows Server
  apple-osx        🍎 Build cjit.command for Apple/OSX using clang static
