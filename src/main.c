@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 #include <ketopt.h>
-#include <muntar.h>
+#include <muntarfs.h>
 #include <app/execute_source.h>
 #include <app/compile_object.h>
 #include <app/build_executable.h>
@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
 		  char cwd[PATH_MAX];
 		  getcwd(cwd, sizeof(cwd));
 		  _err("Extracting CJIT's own source to %s/cjit_source",cwd);
-		  muntargz_to_path(cwd,(char*)&cjit_source,cjit_source_len);
+		  muntarfs_extract_targz_to_path(cwd, (const uint8_t *)&cjit_source, cjit_source_len);
 		  cjit_free(CJIT);
 #if defined(POSIX)
 		  // restore executable bit on test suite, fixes make check

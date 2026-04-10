@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #include "cjit.h"
-#include "muntar.h"
+#include "muntarfs.h"
 
 static CJITResult make_result(CJITResultCode code, int exit_status, bool ok, const char *message)
 {
@@ -42,7 +42,7 @@ static CJITResult extract_archive_to_path_impl(void *context, const char *archiv
     if (!targz || !len) {
         return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to load archive");
     }
-    if (muntargz_to_path(destination_path, targz, len) != 0) {
+    if (muntarfs_extract_targz_to_path(destination_path, targz, len) != 0) {
         return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to extract archive");
     }
     return make_result(CJIT_RESULT_OK, 0, true, NULL);

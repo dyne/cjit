@@ -7,7 +7,7 @@ CURRENT_YEAR := $(shell date +%Y)
 CC ?= gcc
 cc := ${CC}
 
-cflags_includes := -Isrc -Ilib/tinycc
+cflags_includes := -Isrc -Ilib/tinycc -Ilib/muntarfs
 cflags_gnu := -DLIBC_GNU -D_GNU_SOURCE
 cflags_stack_protect := -fno-omit-frame-pointer -fstack-protector-strong -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 
@@ -28,9 +28,10 @@ SOURCES := src/file.o src/cjit.o \
 		   src/adapters/fs/local_filesystem.o \
 		   src/adapters/fs/local_asset.o \
 		   src/adapters/platform/library_resolver_posix.o \
-		   src/adapters/platform/library_resolver_windows.o \
-		   src/elflinker.o src/winlinker.o \
+           src/adapters/platform/library_resolver_windows.o \
+           src/elflinker.o src/winlinker.o \
            src/main.o src/assets.o \
+           lib/muntarfs/muntarfs_runtime.o \
            src/cwalk.o src/array.o \
            src/muntar.o src/tinflate.o src/tinfgzip.o \
            src/embed_libtcc1.a.o src/embed_include.o \
