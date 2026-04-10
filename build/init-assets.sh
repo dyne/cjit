@@ -19,11 +19,9 @@ cat <<EOF > ${code}
 #include <stdio.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <muntarfs.h>
 #include <assets.h>
 #include <cjit.h>
-
-// from muntar.c
-extern int muntargz_to_path(const char *path, const uint8_t *buf, const unsigned int len);
 
 // main function
 bool extract_assets(CJITState *CJIT,const char *optional_path) {
