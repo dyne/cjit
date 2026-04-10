@@ -15,7 +15,8 @@ message('Building project version: @0@'.format(meson.project_version()))
 
 src = files( '../src/cjit.c', '../src/file.c', '../src/elflinker.c',
 '../src/main.c', '../src/cwalk.c', '../src/array.c',
-'../src/muntar.c', '../src/tinflate.c', '../src/tinfgzip.c')
+'../lib/muntarfs/muntar.c', '../lib/muntarfs/tinflate.c', '../lib/muntarfs/tinfgzip.c',
+'../lib/muntarfs/muntarfs_runtime.c')
 
 # Check for tcc command
 tcc_exe = find_program('tcc', required: true)
@@ -84,7 +85,7 @@ prefix = get_option('prefix')
 version = meson.project_version()
 
 # Compiler arguments
-c_args = [ '-I../src',
+c_args = [ '-I../src', '-I../lib/muntarfs',
 		   '-DCJIT_WITHOUT_AR',
 		   '-DSHAREDTCC="@0@libtcc1.a"'.format(libtcc_found),
 		   '-DPREFIX="@0@"'.format(prefix),
