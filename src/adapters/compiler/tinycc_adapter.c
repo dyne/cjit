@@ -1,5 +1,6 @@
 #include "adapters/compiler/tinycc_adapter.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "cjit.h"

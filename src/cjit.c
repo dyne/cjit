@@ -22,6 +22,8 @@
 #include <cwalk.h>
 #include <array.h>
 #include <elflinker.h>
+#include <adapters/platform/library_resolver_posix.h>
+#include <adapters/platform/library_resolver_windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h> // _err/_out
@@ -134,6 +136,26 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path) {
 static void cjit_tcc_handle_error(void *n, const char *m) {
   (void)n;
   _err("%s",m);
+}
+
+static int resolve_libraries(CJITState *cjit) {
+	LibraryResolverPort resolver;
+	LibraryResolverRequest request;
+	LibraryResolverResponse response;
+	request.library_count = XArray_Used(cjit->libs);
+	request.libraries = NULL;
+	request.search_path_count = XArray_Used(cjit->libpaths);
+	request.search_paths = NULL;
+#if defined(WINDOWS)
+	resolver = windows_library_resolver_port;
+#else
+	resolver = posix_library_resolver_port;
+#endif
+	resolver.context = cjit;
+	if (!resolver.resolve(resolver.context, &request, &response).ok) {
+		return 0;
+	}
+	return response.resolved_count;
 }
 
 CJITState* cjit_new() {
@@ -327,7 +349,7 @@ bool cjit_status(CJITState *cjit) {
 			for(i=0;i<used;i++)
 				_err("+ %s",XArray_GetData(cjit->libs,i));
 		}
-		resolve_libs(cjit);
+		resolve_libraries(cjit);
 		used = XArray_Used(cjit->reallibs);
 		if(used) {
 			_err("Lib files (%u)",used);
@@ -537,7 +559,7 @@ int cjit_link(CJITState *cjit) {
 		return 1;
 	}
 	// resolve library files on UNIX systems
-	int found = resolve_libs(cjit);
+	int found = resolve_libraries(cjit);
 	for(int i=0;i<found;i++) {
 		char *f = XArray_GetData(cjit->reallibs,i);
 		if(f) {
@@ -559,7 +581,7 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 	}
 	debug("resolve paths to library files (%i)",
 		  XArray_Used(cjit->libs));
-	int found = resolve_libs(cjit);
+	int found = resolve_libraries(cjit);
 	for(int i=0;i<found;i++) {
 		char *f = XArray_GetData(cjit->reallibs,i);
 		if(f) {

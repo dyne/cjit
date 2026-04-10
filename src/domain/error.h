@@ -2,6 +2,7 @@
 #define CJIT_DOMAIN_ERROR_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /**
  * Result codes shared by application slices and adapters.
