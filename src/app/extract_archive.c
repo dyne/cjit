@@ -2,24 +2,15 @@
 
 #include <stdint.h>
 
+#include "adapters/fs/local_asset.h"
 #include "cjit.h"
-#include "muntar.h"
 
 ExtractArchiveResponse extract_archive_route(const ExtractArchiveRequest *request)
 {
     ExtractArchiveResponse response;
-    unsigned int len = 0;
-    const uint8_t *targz;
-
-    targz = (const uint8_t *)file_load(request->archive_path, &len);
-    if (!targz || !len) {
-        response.result.code = CJIT_RESULT_IO_ERROR;
-        response.result.exit_status = 1;
-        response.result.ok = false;
-        response.result.message = "Failed to load archive";
-        return response;
-    }
-    if (muntargz_to_path(".", targz, len) != 0) {
+    AssetPort assets = local_asset_port;
+    assets.context = NULL;
+    if (!assets.extract_archive_to_path(assets.context, request->archive_path, ".").ok) {
         response.result.code = CJIT_RESULT_IO_ERROR;
         response.result.exit_status = 1;
         response.result.ok = false;

@@ -4,8 +4,7 @@
 #include <string.h>
 
 #include "adapters/compiler/tinycc_adapter.h"
-
-extern char *load_stdin();
+#include "adapters/fs/local_filesystem.h"
 
 static ExecuteResponse make_error(CJITResultCode code, int exit_status, const char *message)
 {
@@ -34,7 +33,9 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
     int exit_status = 0;
     RuntimeSession session;
     CompilerPort compiler = tinycc_compiler_port;
+    FilesystemPort filesystem = local_filesystem_port;
     compiler.context = cjit;
+    filesystem.context = cjit;
     compiler.begin_session(compiler.context, &session);
 
     if (request->source_count == 0) {
@@ -45,10 +46,8 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
         if (!cjit->quiet) {
             _err("No files specified on commandline, reading code from stdin");
         }
-        stdin_code = load_stdin();
-        if (!stdin_code) {
-            return make_error(CJIT_RESULT_IO_ERROR, 1,
-                              "Error reading from standard input");
+        if (!filesystem.read_stdin(filesystem.context, &stdin_code, NULL).ok) {
+            return make_error(CJIT_RESULT_IO_ERROR, 1, "Error reading from standard input");
         }
         if (!compiler.add_source_buffer(compiler.context, &session, stdin_code).ok) {
             free(stdin_code);
@@ -72,8 +71,7 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
                 return make_error(CJIT_RESULT_INVALID_REQUEST, 1,
                                   "Code from standard input not supported on Windows");
 #else
-                stdin_code = load_stdin();
-                if (!stdin_code) {
+                if (!filesystem.read_stdin(filesystem.context, &stdin_code, NULL).ok) {
                     return make_error(CJIT_RESULT_IO_ERROR, 1,
                                       "Error reading from standard input");
                 }
