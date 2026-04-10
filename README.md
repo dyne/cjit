@@ -16,6 +16,50 @@ Launch CJIT from a terminal console command prompt: one can mix c source files a
 
 Take a tour with the [CJIT tutorial](https://dyne.org/docs/cjit).
 
+### Basic usage
+
+Run one source file:
+
+```bash
+./cjit hello.c
+```
+
+Compile one source file to an object:
+
+```bash
+./cjit -c hello.c
+```
+
+Build an executable without running it:
+
+```bash
+./cjit -o hello hello.c
+```
+
+Pass arguments to the compiled program:
+
+```bash
+./cjit app.c -- --name cjit --verbose
+```
+
+Inspect the runtime configuration:
+
+```bash
+./cjit --status
+```
+
+Extract embedded runtime assets:
+
+```bash
+./cjit --xass /tmp/cjit-assets
+```
+
+Extract a `tar.gz` archive to the current directory:
+
+```bash
+./cjit --xtgz bundle.tar.gz
+```
+
 
 ### 📦 Download the demo
 
@@ -60,6 +104,29 @@ There are various build targets, just type `make` to have a list:
  clean            🧹 Clean the source from all built objects
 ```
 
+### Development workflow
+
+Recommended Linux maintainer loop:
+
+```bash
+make linux CC=clang
+make check
+```
+
+Smaller iteration loop while refactoring:
+
+```bash
+./test/bats/bin/bats test/cli.bats
+./test/bats/bin/bats test/linux.bats
+./test/bats/bin/bats test/muntar.bats
+```
+
+Notes:
+
+- `make linux CC=clang` is the safest baseline build on Linux
+- `make check` expects a working local `./cjit`
+- embedded asset files under `src/` are generated during the build
+
 ## Manpage
 
 When installed on UNIX systems, CJIT(1) has a manpage! try `man cjit` after installing.
@@ -70,13 +137,29 @@ This manual gives you insights about the CJIT command-line options.
 
 ## 🔬 Internals
 
-CJIT is a bit complex inside.
+CJIT is being refactored toward a simpler maintenance shape:
 
-1. It relies on [tinycc](https://bellard.org/tcc/) to compile C code in-memory and run it immediately.
-2. It detects automatically the system on which its running and auto-configures to support most features.
-3. It embeds all C code and headers in [cjit/assets](https://github.com/dyne/cjit/tree/main/assets) making them available to all running code.
-4. To embed them creates a `tar.gz` of assets at build-time and decompresses them at run-time in a temporary dir.
-5. It ships a non-exclusive, opinionated selection of libraries useful to quickly script advanced applications in C.
+- VSA: one slice per use-case
+- REPR: one request/endpoint/response per CLI route
+- Hex: ports/adapters for filesystem, compiler, process, and platform IO
+
+Important directories:
+
+- `src/app/`: use-case slices such as execute, compile-object, build-executable
+- `src/domain/`: shared request, response, error, and session contracts
+- `src/adapters/cli/`: CLI route parsing and response rendering
+- `src/adapters/compiler/`: TinyCC integration
+- `src/adapters/fs/`: filesystem and archive adapters
+- `src/adapters/platform/`: platform-specific library resolution
+- `lib/muntarfs/`: bundle library for packing a directory tree at build time and extracting an embedded tar or tar.gz at runtime
+
+Current runtime model:
+
+1. TinyCC is vendored in `lib/tinycc` and remains the compiler backend.
+2. `CJITState` still owns most mutable runtime state, but new work should narrow changes through requests, responses, sessions, ports, and adapters.
+3. Runtime assets are embedded at build time and extracted on demand into a temporary directory.
+4. `lib/muntarfs` is now the public extraction surface used by CJIT for those embedded bundles.
+5. Platform-specific library resolution remains split between POSIX and Windows adapters.
 
 The [CJIT's Frequently Asked Questions](https://dyne.org/docs/cjit/faq/) page may provide more information.
 

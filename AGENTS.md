@@ -23,6 +23,7 @@ Main files:
 - [src/cjit.c](/home/jrml/devel/cjit/src/cjit.c): runtime lifecycle, TinyCC setup, source ingestion, linking, execution
 - [src/cjit.h](/home/jrml/devel/cjit/src/cjit.h): `CJITState` and public runtime functions
 - [src/file.c](/home/jrml/devel/cjit/src/file.c): file/stdin/path helpers
+- [lib/muntarfs/muntarfs.h](/home/jrml/devel/cjit/lib/muntarfs/muntarfs.h): bundle extraction surface used by CJIT
 - [src/elflinker.c](/home/jrml/devel/cjit/src/elflinker.c): POSIX library resolution
 - [src/winlinker.c](/home/jrml/devel/cjit/src/winlinker.c): Windows library resolution
 - [src/win-compat.c](/home/jrml/devel/cjit/src/win-compat.c): Windows compatibility helpers
@@ -81,6 +82,7 @@ Use this direction for refactors:
 - `src/adapters/fs/`: file/path/tempdir/asset/archive IO
 - `src/adapters/platform/`: process and platform-specific library resolution
 - `src/support/`: small low-level reusable support only
+- `lib/muntarfs/`: standalone bundle pack/extract component for embedded tar/tar.gz assets
 
 Current code is not fully there yet. New changes should avoid making `src/main.c` and `src/cjit.c` even broader.
 
@@ -148,13 +150,14 @@ Current start point:
 
 - [src/file.c](/home/jrml/devel/cjit/src/file.c)
 - [src/cjit.c](/home/jrml/devel/cjit/src/cjit.c)
-- [src/muntar.c](/home/jrml/devel/cjit/src/muntar.c)
 - [src/tinflate.c](/home/jrml/devel/cjit/src/tinflate.c)
 - [src/tinfgzip.c](/home/jrml/devel/cjit/src/tinfgzip.c)
+- [lib/muntarfs/muntarfs_runtime.c](/home/jrml/devel/cjit/lib/muntarfs/muntarfs_runtime.c)
 
 Target destination:
 
 - `src/adapters/fs/`
+- `lib/muntarfs/` for reusable tar/tar.gz bundle operations
 
 ### Platform library resolution
 
@@ -186,6 +189,8 @@ Do not hand-edit generated embed outputs unless the task explicitly requires it:
 - `src/embed_*`
 
 If behavior depends on them, change the generator scripts or the source assets instead.
+
+`lib/muntarfs` is not generated. Its public header and runtime wrapper are ordinary maintained source files.
 
 ## Build
 
