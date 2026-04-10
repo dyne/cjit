@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "adapters/compiler/tinycc_adapter.h"
+
 extern char *load_stdin();
 
 static ExecuteResponse make_error(CJITResultCode code, int exit_status, const char *message)
@@ -29,6 +31,11 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
 {
     char *stdin_code = NULL;
     int i;
+    int exit_status = 0;
+    RuntimeSession session;
+    CompilerPort compiler = tinycc_compiler_port;
+    compiler.context = cjit;
+    compiler.begin_session(compiler.context, &session);
 
     if (request->source_count == 0) {
 #if defined(_WIN32)
@@ -43,7 +50,7 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
             return make_error(CJIT_RESULT_IO_ERROR, 1,
                               "Error reading from standard input");
         }
-        if (!cjit_add_buffer(cjit, stdin_code)) {
+        if (!compiler.add_source_buffer(compiler.context, &session, stdin_code).ok) {
             free(stdin_code);
             return make_error(CJIT_RESULT_COMPILER_ERROR, 1,
                               "Code runtime error in stdin");
@@ -70,7 +77,7 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
                     return make_error(CJIT_RESULT_IO_ERROR, 1,
                                       "Error reading from standard input");
                 }
-                if (!cjit_add_buffer(cjit, stdin_code)) {
+                if (!compiler.add_source_buffer(compiler.context, &session, stdin_code).ok) {
                     free(stdin_code);
                     return make_error(CJIT_RESULT_COMPILER_ERROR, 1,
                                       "Code runtime error in stdin");
@@ -79,7 +86,7 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
                 stdin_code = NULL;
 #endif
             } else {
-                if (!cjit_add_file(cjit, code_path)) {
+                if (!compiler.add_source_file(compiler.context, &session, code_path).ok) {
                     return make_error(CJIT_RESULT_COMPILER_ERROR, 1,
                                       "Error loading source input");
                 }
@@ -87,5 +94,8 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
         }
     }
 
-    return make_success(cjit_exec(cjit, request->app_argc, request->app_argv));
+    compiler.execute_program(compiler.context, &session,
+                             request->app_argc, request->app_argv, &exit_status);
+    compiler.end_session(compiler.context, &session);
+    return make_success(exit_status);
 }
