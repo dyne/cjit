@@ -34,6 +34,7 @@
 #include <app/print_status.h>
 #include <app/extract_assets.h>
 #include <app/extract_archive.h>
+#include <adapters/cli/route_parser.h>
 
 #ifdef SELFHOST
 extern const char *cjit_source;
@@ -307,27 +308,23 @@ int main(int argc, char **argv) {
   /////////////////////////////////////
 #endif
 
-  // number of args at the left hand of arg separator, or all of them
-  int left_args = arg_separator? arg_separator: argc;
+  {
+	  ParsedRoute parsed = parse_cli_route(CJIT, argc, clean_argv, opt.ind, arg_separator);
 
-  if(opt.ind >= argc) {
-	  // no files on commandline
-	  if(CJIT->print_status) {
+	  if(parsed.route == CLI_ROUTE_PRINT_STATUS) {
 		  StatusRequest request;
 		  StatusResponse response;
 		  request.verbose = CJIT->verbose;
 		  response = print_status(CJIT, &request);
 		  res = response.result.exit_status;
 		  goto endgame;
-	  }
-
-  } else if(CJIT->tcc_output==OBJ) {
+	  } else if(parsed.route == CLI_ROUTE_COMPILE_OBJECT) {
 	  CompileObjectRequest request;
 	  CompileObjectResponse response;
 	  if(CJIT->print_status) cjit_status(CJIT);
 	  /////////////////////////////
 	  // Compile one .c file to .o
-	  if(left_args - opt.ind != 1) {
+	  if(parsed.source_count != 1) {
 		  _err("Compiling to object files supports only one file argument");
 		  goto endgame;
 	  }
@@ -346,13 +343,10 @@ int main(int argc, char **argv) {
 	  goto endgame;
 	  ////////////////////////////
 
-  } else if(opt.ind < left_args) {
-  }
-
   /////////////////////////
   // compile to executable
   if(CJIT->print_status) cjit_status(CJIT);
-  if(CJIT->output_filename) {
+  if(parsed.route == CLI_ROUTE_BUILD_EXECUTABLE) {
 	  BuildExecutableRequest request;
 	  BuildExecutableResponse response;
 	  _err("Create executable: %s", CJIT->output_filename);
@@ -362,8 +356,8 @@ int main(int argc, char **argv) {
 	  request.options.entry = CJIT->entry;
 	  request.options.pid_file = CJIT->write_pid;
 	  request.options.output_path = CJIT->output_filename;
-	  request.source_count = left_args - opt.ind;
-	  request.sources = request.source_count > 0 ? (const char **)&clean_argv[opt.ind] : NULL;
+	  request.source_count = parsed.source_count;
+	  request.sources = parsed.sources;
 	  response = build_executable(CJIT, &request);
 	  if (!response.result.ok) {
 		  _err("%s: %s", response.result.message, CJIT->output_filename);
@@ -372,24 +366,22 @@ int main(int argc, char **argv) {
   } else {
 	  ExecuteRequest request;
 	  ExecuteResponse response;
-	  int source_count = left_args - opt.ind;
-	  int right_args = argc-left_args+1;
-	  char **right_argv = &clean_argv[left_args-1];
 	  request.options.quiet = CJIT->quiet;
 	  request.options.verbose = CJIT->verbose;
 	  request.options.print_status = CJIT->print_status;
 	  request.options.entry = CJIT->entry;
 	  request.options.pid_file = CJIT->write_pid;
 	  request.options.output_path = CJIT->output_filename;
-	  request.source_count = source_count > 0 ? source_count : 0;
-	  request.sources = request.source_count > 0 ? (const char **)&clean_argv[opt.ind] : NULL;
-	  request.app_argc = right_args;
-	  request.app_argv = right_argv;
+	  request.source_count = parsed.source_count;
+	  request.sources = parsed.sources;
+	  request.app_argc = parsed.app_argc;
+	  request.app_argv = parsed.app_argv;
 	  response = execute_source(CJIT, &request);
 	  if (!response.result.ok && response.result.message) {
 		  _err("%s", response.result.message);
 	  }
 	  res = response.result.exit_status;
+  }
   }
   endgame:
   // release buffer instantiated by remove_args
