@@ -1,5 +1,7 @@
 #include "app/compile_object.h"
 
+#include <stddef.h>
+
 #include "adapters/compiler/tinycc_adapter.h"
 
 static CompileObjectResponse make_compile_object_response(CJITResultCode code, int exit_status,
