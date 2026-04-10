@@ -1,7 +1,16 @@
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
 #define DMON_IMPL
 #include <dmon.h>
 
+static volatile sig_atomic_t keep_running = 1;
+
+static void stop_monitor(int signum)
+{
+    (void)signum;
+    keep_running = 0;
+}
 
 static void watch_callback(dmon_watch_id watch_id, dmon_action action, const char* rootdir,
                            const char* filepath, const char* oldfilepath, void* user)
@@ -28,10 +37,15 @@ static void watch_callback(dmon_watch_id watch_id, dmon_action action, const cha
 int main(int argc, char* argv[])
 {
     if (argc > 1) {
+        signal(SIGHUP, stop_monitor);
+        signal(SIGINT, stop_monitor);
+        signal(SIGTERM, stop_monitor);
         dmon_init();
         puts("waiting for changes ..");
         dmon_watch(argv[1], watch_callback, DMON_WATCHFLAGS_RECURSIVE, NULL);
-        getchar();
+        while (keep_running) {
+            pause();
+        }
         dmon_deinit();
     } else {
         puts("usage: test dirname");
