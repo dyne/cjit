@@ -69,3 +69,29 @@ load bats_setup
     assert_line --partial '2: b'
     assert_line --partial '3: c'
 }
+
+@test "Execute code from explicit stdin" {
+    run bash -lc "printf '%s\n' '#include <stdio.h>' 'int main(void) { puts(\"stdin ok\"); return 0; }' | '${CJIT}' -q -"
+    assert_success
+    assert_output 'stdin ok'
+}
+
+@test "Status mode works without source input" {
+    run ${CJIT} -v
+    assert_success
+    assert_line --partial 'Build system:'
+    assert_line --partial 'Target platform:'
+}
+
+@test "Compile to object rejects multiple source files" {
+    run ${CJIT} -c test/hello.c test/cflags.c
+    assert_failure
+    assert_line --partial 'Compiling to object files supports only one file argument'
+}
+
+@test "Argument separator preserves app flags" {
+    run ${CJIT} -q test/cargs.c -- --verb -q
+    assert_success
+    assert_line --partial '1: --verb'
+    assert_line --partial '2: -q'
+}
