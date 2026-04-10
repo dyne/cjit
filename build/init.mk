@@ -23,6 +23,7 @@ SOURCES := src/file.o src/cjit.o \
 		   src/app/extract_assets.o \
 		   src/app/extract_archive.o \
 		   src/adapters/cli/route_parser.o \
+		   src/adapters/cli/render_response.o \
 		   src/elflinker.o src/winlinker.o \
            src/main.o src/assets.o \
            src/cwalk.o src/array.o \

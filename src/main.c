@@ -35,6 +35,7 @@
 #include <app/extract_assets.h>
 #include <app/extract_archive.h>
 #include <adapters/cli/route_parser.h>
+#include <adapters/cli/render_response.h>
 
 #ifdef SELFHOST
 extern const char *cjit_source;
@@ -261,14 +262,9 @@ int main(int argc, char **argv) {
 			  _err("Extracting runtime assets to: %s",opt.arg);
 		  }
 		  response = extract_assets_route(CJIT, &request);
-		  if (!response.result.ok && response.result.message) {
-			  _err("%s", response.result.message);
-			  cjit_free(CJIT);
-			  exit(response.result.exit_status);
-		  }
-		  _out(response.destination_path);
+		  render_extract_assets_response(CJIT, &response);
 		  cjit_free(CJIT);
-		  exit(0);
+		  exit(response.result.exit_status);
 #endif
 	  } else if (c == 501) { // --xtgz
 		  ExtractArchiveRequest request;
@@ -277,8 +273,8 @@ int main(int argc, char **argv) {
 		  cjit_free(CJIT);
 		  _err("Extract contents of: %s",opt.arg);
 		  response = extract_archive_route(&request);
-		  if (!response.result.ok) exit(response.result.exit_status);
-		  exit(0);
+		  render_extract_archive_response(NULL, &response);
+		  exit(response.result.exit_status);
 	  }
 	  else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
 	  else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
@@ -316,6 +312,7 @@ int main(int argc, char **argv) {
 		  StatusResponse response;
 		  request.verbose = CJIT->verbose;
 		  response = print_status(CJIT, &request);
+		  render_status_response(CJIT, &response);
 		  res = response.result.exit_status;
 		  goto endgame;
 	  } else if(parsed.route == CLI_ROUTE_COMPILE_OBJECT) {
@@ -336,9 +333,7 @@ int main(int argc, char **argv) {
 	  request.options.output_path = CJIT->output_filename;
 	  request.source_path = clean_argv[opt.ind];
 	  response = compile_object(CJIT, &request);
-	  if (!response.result.ok && response.result.message) {
-		  _err("%s", response.result.message);
-	  }
+	  render_compile_object_response(CJIT, &response);
 	  res = response.result.exit_status;
 	  goto endgame;
 	  ////////////////////////////
@@ -359,9 +354,7 @@ int main(int argc, char **argv) {
 	  request.source_count = parsed.source_count;
 	  request.sources = parsed.sources;
 	  response = build_executable(CJIT, &request);
-	  if (!response.result.ok) {
-		  _err("%s: %s", response.result.message, CJIT->output_filename);
-	  }
+	  render_build_executable_response(CJIT, &response);
 	  res = response.result.exit_status;
   } else {
 	  ExecuteRequest request;
@@ -377,9 +370,7 @@ int main(int argc, char **argv) {
 	  request.app_argc = parsed.app_argc;
 	  request.app_argv = parsed.app_argv;
 	  response = execute_source(CJIT, &request);
-	  if (!response.result.ok && response.result.message) {
-		  _err("%s", response.result.message);
-	  }
+	  render_execute_response(CJIT, &response);
 	  res = response.result.exit_status;
   }
   }
