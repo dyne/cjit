@@ -95,3 +95,10 @@ load bats_setup
     assert_line --partial '1: --verb'
     assert_line --partial '2: -q'
 }
+
+@test "Extract runtime assets route" {
+    run ${CJIT} --xass ${TMP}/assets
+    assert_success
+    assert_output --regexp '^/tmp/cjit-'
+    [ -d "${output}" ]
+}

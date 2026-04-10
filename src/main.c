@@ -29,6 +29,11 @@
 #include <ketopt.h>
 #include <muntar.h>
 #include <app/execute_source.h>
+#include <app/compile_object.h>
+#include <app/build_executable.h>
+#include <app/print_status.h>
+#include <app/extract_assets.h>
+#include <app/extract_archive.h>
 
 #ifdef SELFHOST
 extern const char *cjit_source;
@@ -248,25 +253,30 @@ int main(int argc, char **argv) {
 #endif
 #if !defined(SHAREDTCC)
 	  } else if (c == 401) { // --xass
+		  ExtractAssetsRequest request;
+		  ExtractAssetsResponse response;
+		  request.destination_path = opt.arg;
 		  if(opt.arg) {
-			  _err("Extracting runtime assets to:",opt.arg);
-			  extract_assets(CJIT,opt.arg);
-		  } else {
-			  extract_assets(CJIT,NULL);
+			  _err("Extracting runtime assets to: %s",opt.arg);
 		  }
-		  _out(CJIT->tmpdir);
+		  response = extract_assets_route(CJIT, &request);
+		  if (!response.result.ok && response.result.message) {
+			  _err("%s", response.result.message);
+			  cjit_free(CJIT);
+			  exit(response.result.exit_status);
+		  }
+		  _out(response.destination_path);
 		  cjit_free(CJIT);
 		  exit(0);
 #endif
 	  } else if (c == 501) { // --xtgz
+		  ExtractArchiveRequest request;
+		  ExtractArchiveResponse response;
+		  request.archive_path = opt.arg;
 		  cjit_free(CJIT);
-		  unsigned int len = 0;
 		  _err("Extract contents of: %s",opt.arg);
-		  const uint8_t *targz = (const uint8_t*)
-			  file_load(opt.arg, &len);
-		  if(!targz) exit(1);
-		  if(!len) exit(1);
-		  muntargz_to_path(".",targz,len);
+		  response = extract_archive_route(&request);
+		  if (!response.result.ok) exit(response.result.exit_status);
 		  exit(0);
 	  }
 	  else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
@@ -303,12 +313,17 @@ int main(int argc, char **argv) {
   if(opt.ind >= argc) {
 	  // no files on commandline
 	  if(CJIT->print_status) {
-		  cjit_status(CJIT);
-		  res = 0;
+		  StatusRequest request;
+		  StatusResponse response;
+		  request.verbose = CJIT->verbose;
+		  response = print_status(CJIT, &request);
+		  res = response.result.exit_status;
 		  goto endgame;
 	  }
 
   } else if(CJIT->tcc_output==OBJ) {
+	  CompileObjectRequest request;
+	  CompileObjectResponse response;
 	  if(CJIT->print_status) cjit_status(CJIT);
 	  /////////////////////////////
 	  // Compile one .c file to .o
@@ -316,11 +331,18 @@ int main(int argc, char **argv) {
 		  _err("Compiling to object files supports only one file argument");
 		  goto endgame;
 	  }
-	  //if(!CJIT->quiet)_err("Compile: %s",argv[opt.ind]);
-	  res = cjit_compile_file(CJIT, clean_argv[opt.ind]) ?0:1; // 0 on success
-	  // if(CJIT->output_filename) {
-		  // TODO: output to explicitly configured filename
-
+	  request.options.quiet = CJIT->quiet;
+	  request.options.verbose = CJIT->verbose;
+	  request.options.print_status = CJIT->print_status;
+	  request.options.entry = CJIT->entry;
+	  request.options.pid_file = CJIT->write_pid;
+	  request.options.output_path = CJIT->output_filename;
+	  request.source_path = clean_argv[opt.ind];
+	  response = compile_object(CJIT, &request);
+	  if (!response.result.ok && response.result.message) {
+		  _err("%s", response.result.message);
+	  }
+	  res = response.result.exit_status;
 	  goto endgame;
 	  ////////////////////////////
 
@@ -331,12 +353,22 @@ int main(int argc, char **argv) {
   // compile to executable
   if(CJIT->print_status) cjit_status(CJIT);
   if(CJIT->output_filename) {
+	  BuildExecutableRequest request;
+	  BuildExecutableResponse response;
 	  _err("Create executable: %s", CJIT->output_filename);
-	  if(cjit_link(CJIT)<0) {
-		  _err("Error in linker compiling to file: %s",
-		       CJIT->output_filename);
-		  res = 1;
-	  } else res = 0;
+	  request.options.quiet = CJIT->quiet;
+	  request.options.verbose = CJIT->verbose;
+	  request.options.print_status = CJIT->print_status;
+	  request.options.entry = CJIT->entry;
+	  request.options.pid_file = CJIT->write_pid;
+	  request.options.output_path = CJIT->output_filename;
+	  request.source_count = left_args - opt.ind;
+	  request.sources = request.source_count > 0 ? (const char **)&clean_argv[opt.ind] : NULL;
+	  response = build_executable(CJIT, &request);
+	  if (!response.result.ok) {
+		  _err("%s: %s", response.result.message, CJIT->output_filename);
+	  }
+	  res = response.result.exit_status;
   } else {
 	  ExecuteRequest request;
 	  ExecuteResponse response;
