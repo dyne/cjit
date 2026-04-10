@@ -34,5 +34,5 @@ Non-goals:
 
 ## Current Implementation Notes
 
-This first extraction step keeps using the existing handwritten tar and gzip extraction primitives from CJIT.
-The goal is to establish a reusable `lib/` surface first, then migrate ownership more deeply in later steps.
+The tar reader, gzip inflater, and runtime extraction implementation now live in `lib/muntarfs/`.
+CJIT should consume this library surface instead of reaching into archive helpers under `src/`.

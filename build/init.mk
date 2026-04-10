@@ -32,8 +32,8 @@ SOURCES := src/file.o src/cjit.o \
            src/elflinker.o src/winlinker.o \
            src/main.o src/assets.o \
            lib/muntarfs/muntarfs_runtime.o \
+           lib/muntarfs/muntar.o lib/muntarfs/tinflate.o lib/muntarfs/tinfgzip.o \
            src/cwalk.o src/array.o \
-           src/muntar.o src/tinflate.o src/tinfgzip.o \
            src/embed_libtcc1.a.o src/embed_include.o \
            src/cjit-ar.o
 

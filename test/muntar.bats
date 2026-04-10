@@ -40,8 +40,8 @@ int main(int argc, char **argv) {
     exit(0);
 }
 EOF
-    gcc -o muntar_list -DNOGUNZIP -I ${R}/src \
-        ${R}/src/muntar.c ${R}/src/io.c examples.c muntar_list.c
+    gcc -o muntar_list -DNOGUNZIP -I ${R}/src -I ${R}/lib/muntarfs \
+        ${R}/lib/muntarfs/muntar.c ${R}/src/io.c examples.c muntar_list.c
     run ./muntar_list
     assert_success
     assert_line --partial "examples/"
@@ -62,8 +62,8 @@ int main(int argc, char **argv) {
     exit(res);
 }
 EOF
-    gcc -o muntar_extract -DNOGUNZIP -I ${R}/src \
-        ${R}/src/muntar.c examples.c muntar_extract.c
+    gcc -o muntar_extract -DNOGUNZIP -I ${R}/src -I ${R}/lib/muntarfs \
+        ${R}/lib/muntarfs/muntar.c examples.c muntar_extract.c
     run ./muntar_extract ${TMP}/extracted
     >&3 cat ${TMP}/extracted/examples/donut.c
     assert_success
@@ -110,8 +110,8 @@ int main(int argc, char **argv) {
     exit(0);
 }
 EOF
-    gcc -o tinf_gunzip -I ${R}/src \
-        ${R}/src/tinflate.c ${R}/src/tinfgzip.c \
+    gcc -o tinf_gunzip -I ${R}/src -I ${R}/lib/muntarfs \
+        ${R}/lib/muntarfs/tinflate.c ${R}/lib/muntarfs/tinfgzip.c \
         examples.c examples_gzip.c tinf_gunzip.c
     run ./tinf_gunzip
     assert_success
@@ -138,8 +138,8 @@ int main(int argc, char **argv) {
     exit(res);
 }
 EOF
-    gcc -o muntargz_extract -I ${R}/src \
-    ${R}/src/tinfgzip.c ${R}/src/tinflate.c ${R}/src/muntar.c \
+    gcc -o muntargz_extract -I ${R}/src -I ${R}/lib/muntarfs \
+    ${R}/lib/muntarfs/tinfgzip.c ${R}/lib/muntarfs/tinflate.c ${R}/lib/muntarfs/muntar.c \
     examples_gzip.c muntargz_extract.c
     run ./muntargz_extract ${TMP}/extractgz
     >&3 cat ${TMP}/extractgz/examples/donut.c
@@ -176,7 +176,7 @@ int main(int argc, char **argv) {
 EOF
     gcc -o muntarfs_extract -I ${R}/lib/muntarfs -I ${R}/src \
     ${R}/lib/muntarfs/muntarfs_runtime.c \
-    ${R}/src/tinfgzip.c ${R}/src/tinflate.c ${R}/src/muntar.c \
+    ${R}/lib/muntarfs/tinfgzip.c ${R}/lib/muntarfs/tinflate.c ${R}/lib/muntarfs/muntar.c \
     examples_gzip.c muntarfs_extract.c
     run ./muntarfs_extract ${TMP}/muntarfs-output
     assert_success
