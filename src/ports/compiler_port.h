@@ -26,6 +26,10 @@ typedef struct CompilerPort {
     CJITResult (*add_library_path)(void *context, RuntimeSession *session, const char *path);
     CJITResult (*set_options)(void *context, RuntimeSession *session, const char *options);
     CJITResult (*output_file)(void *context, RuntimeSession *session, const char *path);
+    CJITResult (*compile_object)(void *context, RuntimeSession *session, const char *path);
+    CJITResult (*link_executable)(void *context, RuntimeSession *session);
+    CJITResult (*execute_program)(void *context, RuntimeSession *session,
+                                  int argc, char **argv, int *exit_status);
     CJITResult (*relocate)(void *context, RuntimeSession *session);
     CJITResult (*resolve_symbol)(void *context, RuntimeSession *session,
                                  const char *symbol_name, void **symbol);
