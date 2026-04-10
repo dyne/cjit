@@ -27,6 +27,8 @@ SOURCES := src/file.o src/cjit.o \
 		   src/adapters/compiler/tinycc_adapter.o \
 		   src/adapters/fs/local_filesystem.o \
 		   src/adapters/fs/local_asset.o \
+		   src/adapters/platform/library_resolver_posix.o \
+		   src/adapters/platform/library_resolver_windows.o \
 		   src/elflinker.o src/winlinker.o \
            src/main.o src/assets.o \
            src/cwalk.o src/array.o \

@@ -337,9 +337,10 @@ int main(int argc, char **argv) {
 	  res = response.result.exit_status;
 	  goto endgame;
 	  ////////////////////////////
+	  }
 
-  /////////////////////////
-  // compile to executable
+	  /////////////////////////
+	  // compile to executable
   if(CJIT->print_status) cjit_status(CJIT);
   if(parsed.route == CLI_ROUTE_BUILD_EXECUTABLE) {
 	  BuildExecutableRequest request;

@@ -102,7 +102,7 @@ bool read_ldsoconf_dir(xarray_t *dest, const char *directory) {
     return true;
 }
 
-int resolve_libs(CJITState *cjit) {
+int posix_resolve_libs(CJITState *cjit) {
 	char tryfile[PATH_MAX];
 	int i,ii;
 	int libpaths_num, libnames_num;

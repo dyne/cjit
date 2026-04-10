@@ -1,5 +1,7 @@
 #include "adapters/cli/route_parser.h"
 
+#include <stddef.h>
+
 ParsedRoute parse_cli_route(CJITState *cjit, int argc, char **argv,
                             int opt_ind, int arg_separator)
 {

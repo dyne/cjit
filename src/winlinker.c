@@ -32,7 +32,7 @@
 
 // takes the list of cjit->libpaths and cjit->libs
 // then resolves them all looking for ${lib}.dll in paths
-int resolve_libs(CJITState *cjit) {
+int windows_resolve_libs(CJITState *cjit) {
 	char tryfile[PATH_MAX];
 	int i,ii;
 	int libpaths_num, libnames_num;

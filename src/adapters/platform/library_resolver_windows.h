@@ -1,0 +1,8 @@
+#ifndef CJIT_ADAPTERS_PLATFORM_LIBRARY_RESOLVER_WINDOWS_H
+#define CJIT_ADAPTERS_PLATFORM_LIBRARY_RESOLVER_WINDOWS_H
+
+#include "ports/library_resolver_port.h"
+
+extern const LibraryResolverPort windows_library_resolver_port;
+
+#endif

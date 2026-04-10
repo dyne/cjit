@@ -15,6 +15,6 @@ typedef struct LDState LDState;
 
 bool read_ldsoconf(xarray_t *dest, char *path);
 bool read_ldsoconf_dir(xarray_t *dest, const char *directory);
-int resolve_libs(CJITState *cjit);
+int posix_resolve_libs(CJITState *cjit);
 
 #endif
