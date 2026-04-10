@@ -28,6 +28,7 @@
 
 #include <ketopt.h>
 #include <muntar.h>
+#include <app/execute_source.h>
 
 #ifdef SELFHOST
 extern const char *cjit_source;
@@ -299,7 +300,6 @@ int main(int argc, char **argv) {
   // number of args at the left hand of arg separator, or all of them
   int left_args = arg_separator? arg_separator: argc;
 
-  char *stdin_code = NULL;
   if(opt.ind >= argc) {
 	  // no files on commandline
 	  if(CJIT->print_status) {
@@ -307,27 +307,6 @@ int main(int argc, char **argv) {
 		  res = 0;
 		  goto endgame;
 	  }
-
-#if defined(_WIN32)
-	  _err("No files specified on commandline");
-	  goto endgame;
-#endif
-	  ////////////////////////////
-	  // Processs code from STDIN
-	  if(!CJIT->quiet)_err("No files specified on commandline, reading code from stdin");
-	  stdin_code = load_stdin(); // allocated returned buffer, needs free
-	  if(!stdin_code) {
-		  _err("Error reading from standard input");
-		  goto endgame;
-	  }
-	  if(!cjit_add_buffer(CJIT,stdin_code)) {
-		  _err("Code runtime error in stdin");
-		  free(stdin_code);
-		  goto endgame;
-	  }
-	  free(stdin_code);
-	  // end of STDIN
-	  ////////////////
 
   } else if(CJIT->tcc_output==OBJ) {
 	  if(CJIT->print_status) cjit_status(CJIT);
@@ -346,31 +325,6 @@ int main(int argc, char **argv) {
 	  ////////////////////////////
 
   } else if(opt.ind < left_args) {
-	  // process files on commandline before separator
-	  if(CJIT->verbose)_err("Source code:");
-	  for (i = opt.ind; i < left_args; ++i) {
-		  const char *code_path = clean_argv[i];
-		  if(CJIT->verbose)_err("%c %s",(*code_path=='-'?'|':'+'),
-				       (*code_path=='-'?"standard input":code_path));
-		  if(*code_path=='-') { // stdin explicit
-#if defined(_WIN32)
-			  _err("Code from standard input not supported on Windows");
-			  goto endgame;
-#endif
-			  stdin_code = load_stdin(); // allocated returned buffer, needs free
-			  if(!stdin_code) {
-				  _err("Error reading from standard input");
-				  goto endgame;
-			  }
-			  if(!cjit_add_buffer(CJIT,stdin_code)) {
-				  _err("Code runtime error in stdin");
-				  free(stdin_code);
-				  goto endgame;
-			  } else free(stdin_code);
-		  } else { // load any file path
-			  cjit_add_file(CJIT, code_path);
-		  }
-	  }
   }
 
   /////////////////////////
@@ -384,11 +338,26 @@ int main(int argc, char **argv) {
 		  res = 1;
 	  } else res = 0;
   } else {
-	  // number of args at the left hand of arg separator, or all
-	  // of them
-	  int right_args = argc-left_args+1;//arg_separator? argc-arg_separator : 0;
-	  char **right_argv = &clean_argv[left_args-1];//arg_separator?&argv[arg_separator]:0
-	  res = cjit_exec(CJIT, right_args, right_argv);
+	  ExecuteRequest request;
+	  ExecuteResponse response;
+	  int source_count = left_args - opt.ind;
+	  int right_args = argc-left_args+1;
+	  char **right_argv = &clean_argv[left_args-1];
+	  request.options.quiet = CJIT->quiet;
+	  request.options.verbose = CJIT->verbose;
+	  request.options.print_status = CJIT->print_status;
+	  request.options.entry = CJIT->entry;
+	  request.options.pid_file = CJIT->write_pid;
+	  request.options.output_path = CJIT->output_filename;
+	  request.source_count = source_count > 0 ? source_count : 0;
+	  request.sources = request.source_count > 0 ? (const char **)&clean_argv[opt.ind] : NULL;
+	  request.app_argc = right_args;
+	  request.app_argv = right_argv;
+	  response = execute_source(CJIT, &request);
+	  if (!response.result.ok && response.result.message) {
+		  _err("%s", response.result.message);
+	  }
+	  res = response.result.exit_status;
   }
   endgame:
   // release buffer instantiated by remove_args
