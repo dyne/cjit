@@ -148,3 +148,39 @@ EOF
     r=`sha256sum ${R}/examples/donut.c | cut -d' ' -f1`
     assert_equal $l $r
 }
+
+@test "muntarfs pack script emits bundle artifacts" {
+    run ${R}/lib/muntarfs/muntarfs-pack.sh ${R}/examples ${TMP}/muntarfs-bundle examples
+    assert_success
+    assert_line "${TMP}/muntarfs-bundle.tar"
+    assert_line "${TMP}/muntarfs-bundle.tar.gz"
+    assert_line "${TMP}/muntarfs-bundle.c"
+    assert_file_exist ${TMP}/muntarfs-bundle.tar
+    assert_file_exist ${TMP}/muntarfs-bundle.tar.gz
+    assert_file_exist ${TMP}/muntarfs-bundle.c
+}
+
+@test "muntarfs runtime extracts targz bundle" {
+      cat << EOF > muntarfs_extract.c
+#include <stdio.h>
+#include <stdlib.h>
+#include "muntarfs.h"
+extern unsigned char examples_tar_gz[];
+extern unsigned int examples_tar_gz_len;
+int main(int argc, char **argv) {
+    int res;
+    fprintf(stderr, "extract to %s\n", argv[1]);
+    res = muntarfs_extract_targz_to_path(argv[1], examples_tar_gz, examples_tar_gz_len);
+    return res;
+}
+EOF
+    gcc -o muntarfs_extract -I ${R}/lib/muntarfs -I ${R}/src \
+    ${R}/lib/muntarfs/muntarfs_runtime.c \
+    ${R}/src/tinfgzip.c ${R}/src/tinflate.c ${R}/src/muntar.c \
+    examples_gzip.c muntarfs_extract.c
+    run ./muntarfs_extract ${TMP}/muntarfs-output
+    assert_success
+    l=`sha256sum ${TMP}/muntarfs-output/examples/donut.c | cut -d' ' -f1`
+    r=`sha256sum ${R}/examples/donut.c | cut -d' ' -f1`
+    assert_equal $l $r
+}

@@ -1,5 +1,7 @@
 #include "muntarfs.h"
 
+#include <stddef.h>
+
 #include "../../src/muntar.h"
 
 int muntarfs_extract_tar_to_path(const char *destination_path,

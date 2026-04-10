@@ -1,5 +1,7 @@
 #include "app/build_executable.h"
 
+#include <stddef.h>
+
 #include "adapters/compiler/tinycc_adapter.h"
 
 static BuildExecutableResponse make_build_response(CJITResultCode code, int exit_status,
