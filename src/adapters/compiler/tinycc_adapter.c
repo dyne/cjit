@@ -100,22 +100,14 @@ static CJITResult set_output_mode(void *context, RuntimeSession *session, int ou
 
 static CJITResult add_source_file(void *context, RuntimeSession *session, const char *path)
 {
-    CJITState *cjit = state_from_context(context);
     (void)session;
-    if (!cjit_add_file(cjit, path)) {
-        return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Error loading source input");
-    }
-    return cjit_result_ok();
+    return cjit_add_file_result(state_from_context(context), path);
 }
 
 static CJITResult add_source_buffer(void *context, RuntimeSession *session, const char *buffer)
 {
-    CJITState *cjit = state_from_context(context);
     (void)session;
-    if (!cjit_add_buffer(cjit, buffer)) {
-        return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Code runtime error in stdin");
-    }
-    return cjit_result_ok();
+    return cjit_add_buffer_result(state_from_context(context), buffer);
 }
 
 static CJITResult add_binary_input(void *context, RuntimeSession *session, const char *path)
@@ -180,7 +172,7 @@ static CJITResult compile_object(void *context, RuntimeSession *session, const c
     if (is_source == 0 || is_source < 0) {
         return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1, "Compile to object failed");
     }
-    if (!cjit_add_file(cjit, path)) {
+    if (!cjit_add_file_result(cjit, path).ok) {
         return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
     }
     if (cjit->output_filename) {

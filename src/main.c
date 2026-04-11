@@ -418,15 +418,25 @@ static int handle_archive_mode(CJITState *cjit, int argc, char **argv) {
  * Builds the autoconf `conftest.c` probe into `a.out`.
  */
 static int handle_conftest_mode(CJITState *cjit, const char *source_path) {
+	CJITResult result;
 	int res = 0;
 	_err("Detected conftest");
 	cjit->output_filename = "a.out";
 	cjit_set_output(cjit, EXE);
-	cjit_add_file(cjit, source_path);
-	if(cjit_link(cjit)<0) {
-		_err("Error in linker compiling to file: %s",
-		     cjit->output_filename);
+	result = cjit_add_file_result(cjit, source_path);
+	if (!result.ok) {
+		if (result.message) {
+			_err("%s", result.message);
+		}
 		res = 1;
+	} else {
+		result = cjit_link_result(cjit);
+		if (!result.ok) {
+			if (result.message) {
+				_err("%s", result.message);
+			}
+			res = result.exit_status ? result.exit_status : 1;
+		}
 	}
 	cjit->output_filename = NULL;
 	return res;

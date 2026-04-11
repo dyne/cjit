@@ -38,7 +38,6 @@
 #include <sys/stat.h> // fstat(2)
 
 #define tcc(cjit) (TCCState*)cjit->TCC
-#define setup if(!cjit->done_setup)cjit_setup(cjit)
 #define debug(fmt,par) if(cjit->verbose)_err(fmt,par)
 #define add(buf,s) if ((s) != NULL) string_list_add(cjit->buf, s); else _err("!!! NULL var added to list: %s", #buf)
 
@@ -114,20 +113,23 @@ void cjit_free(CJITState *cjit) {
 	free(cjit);
 }
 
-static bool cjit_setup(CJITState *cjit) {
+CJITResult cjit_prepare(CJITState *cjit) {
 	// set output in memory for just in time execution
 	if(cjit->done_setup) {
-		_err("Warning: cjit_setup called twice or more times");
-		return(true);
+		return cjit_result_ok();
 	}
 #if !defined(SHAREDTCC)
 	// extract all runtime assets to tmpdir
 	if(!extract_assets(cjit,NULL)) {
 		fail("error extracting assets in temp dir");
-		return(NULL);
+		return cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+					 "Failed to extract runtime assets");
 	}
 #endif
-	tcc_set_output_type(tcc(cjit), cjit->tcc_output);
+	if (tcc_set_output_type(tcc(cjit), cjit->tcc_output) < 0) {
+		return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1,
+					 "Failed to set compiler output mode");
+	}
 #if defined(LIBC_MUSL)
 	tcc_add_libc_symbols(tcc(cjit));
 #endif
@@ -136,7 +138,10 @@ static bool cjit_setup(CJITState *cjit) {
 		extra_cflags = getenv("CFLAGS");
 		_err("CFLAGS: %s",extra_cflags);
 		debug(" -C %s",extra_cflags);
-		tcc_set_options(tcc(cjit), extra_cflags);
+		if (tcc_set_options(tcc(cjit), extra_cflags) < 0) {
+			return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1,
+						 "Failed to apply compiler options");
+		}
 	}
 	// When using SDL2 these defines are needed
 	tcc_define_symbol(tcc(cjit),"SDL_DISABLE_IMMINTRIN_H",NULL);
@@ -162,10 +167,11 @@ static bool cjit_setup(CJITState *cjit) {
 	cjit_platform_setup_runtime(cjit);
 
 	cjit->done_setup = true;
-	return(true);
+	return cjit_result_ok();
 }
 
 bool cjit_status(CJITState *cjit) {
+	CJITResult result;
 	_err("Build system: %s",PLATFORM);
 #if defined(TCC_TARGET_I386)
         _err("Target platform: i386 code generator");
@@ -201,7 +207,15 @@ bool cjit_status(CJITState *cjit) {
 #endif
 	////////////////////////
 	// call cjit_setup here
-	setup;
+	if (!cjit->done_setup) {
+		result = cjit_prepare(cjit);
+		if (!result.ok) {
+			if (result.message) {
+				_err("%s: %s", __func__, result.message);
+			}
+			return false;
+		}
+	}
 	{
 		size_t i;
 		size_t used;
@@ -289,36 +303,56 @@ static int detect_bom(const char *filename,size_t *filesize) {
 	}
 }
 
-bool cjit_add_buffer(CJITState *cjit, const char *buffer) {
+CJITResult cjit_add_buffer_result(CJITState *cjit, const char *buffer) {
 	int res;
-	setup;
+	CJITResult result;
+	result = cjit_prepare(cjit);
+	if (!result.ok) {
+		return result;
+	}
 	res = tcc_compile_string(tcc(cjit),buffer);
 	debug("+B %p",buffer);
-	return((res<0)?false:true);
+	if (res < 0) {
+		return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1,
+					 "Code runtime error in stdin");
+	}
+	return cjit_result_ok();
 }
 
-bool cjit_add_source(CJITState *cjit, const char *path) {
-	setup;
+bool cjit_add_buffer(CJITState *cjit, const char *buffer) {
+	return cjit_add_buffer_result(cjit, buffer).ok;
+}
+
+CJITResult cjit_add_source_result(CJITState *cjit, const char *path) {
+	CJITResult result;
 	size_t length;
 	int res = detect_bom(path,&length);
+	result = cjit_prepare(cjit);
+	if (!result.ok) {
+		return result;
+	}
 	if(res<0) {
 		fail(path);
-		return false;
+		return cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+					 "Error loading source input");
 	} else if(res>0) {
 		_err("UTF BOM detected in file: %s",path);
 		_err("Encoding is not yet supported, execution aborted.");
-		return false;
+		return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1,
+					 "Encoding is not yet supported, execution aborted.");
 	}
 	FILE *file = fopen(path, "rb");
 	if (!file) {
 		fail(path);
-		return false;
+		return cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+					 "Error loading source input");
 	}
 	char *spath = (char*)malloc((strlen(path)+16)*sizeof(char));
 	if (!spath) {
 		fail(path);
 		fclose(file);
-		return false;
+		return cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+					 "Error loading source input");
 	}
 	sprintf(spath,"#line 1 \"%s\"\n",path);
 	size_t spath_len = strlen(spath);
@@ -330,14 +364,17 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 		fail(path);
 		free(spath);
 		fclose(file);
-		return false;
+		return cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+					 "Error loading source input");
 	}
 	strcpy(contents,spath);
 	free(spath);
 	if(0== fread(contents+spath_len, 1, length, file)) {
 		fail(file);
 		fclose(file);
-		return false;
+		free(contents);
+		return cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+					 "Error loading source input");
 	}
 	contents[length+spath_len] = 0x0;
 	fclose(file);
@@ -352,46 +389,73 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 			free(tmp);
 		}
 	}
-	tcc_compile_string(tcc(cjit),contents);
+	res = tcc_compile_string(tcc(cjit),contents);
 	free(contents);
 	debug("+S %s",path);
-	return true;
+	if (res < 0) {
+		return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1,
+					 "Error loading source input");
+	}
+	return cjit_result_ok();
 }
 
-bool cjit_add_file(CJITState *cjit, const char *path) {
-	setup;
+bool cjit_add_source(CJITState *cjit, const char *path) {
+	return cjit_add_source_result(cjit, path).ok;
+}
+
+CJITResult cjit_add_file_result(CJITState *cjit, const char *path) {
+	CJITResult result;
 	int is_source = has_source_extension(path);
+	result = cjit_prepare(cjit);
+	if (!result.ok) {
+		return result;
+	}
 	if(is_source == 0) { // no extension, we still add
 		if(tcc_add_file(tcc(cjit), path)<0) {
 			_err("%s: error: %s",__func__, path);
-			return false;
+			return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1,
+						 "Error loading source input");
 		}
-		return true;
+		return cjit_result_ok();
 	}
 	if(is_source>0) {
-		if(!cjit_add_source(cjit, path)) {
+		result = cjit_add_source_result(cjit, path);
+		if(!result.ok) {
 			_err("%s: error: %s",__func__, path);
-			return false;
+			return result;
 		}
-		return true;
+		return cjit_result_ok();
 	} else {
 		if(tcc_add_file(tcc(cjit), path)<0) {
 			_err("%s: error: %s",__func__, path);
-			return false;
+			return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1,
+						 "Error loading source input");
 		}
 	}
 	debug("+F %s",path);
-	return true;
+	return cjit_result_ok();
+}
+
+bool cjit_add_file(CJITState *cjit, const char *path) {
+	return cjit_add_file_result(cjit, path).ok;
+}
+
+CJITResult cjit_compile_file_result(CJITState *cjit, const char *path) {
+	RuntimeSession session;
+	CompilerPort compiler = tinycc_compiler_port;
+	CJITResult result = cjit_result_ok();
+	compiler.context = cjit;
+	result = compiler.begin_session(compiler.context, &session);
+	if (!result.ok) {
+		return result;
+	}
+	result = compiler.compile_object(compiler.context, &session, path);
+	compiler.end_session(compiler.context, &session);
+	return result;
 }
 
 bool cjit_compile_file(CJITState *cjit, const char *path) {
-	RuntimeSession session;
-	CompilerPort compiler = tinycc_compiler_port;
-	CJITResult result;
-	compiler.context = cjit;
-	compiler.begin_session(compiler.context, &session);
-	result = compiler.compile_object(compiler.context, &session, path);
-	compiler.end_session(compiler.context, &session);
+	CJITResult result = cjit_compile_file_result(cjit, path);
 	if (!result.ok && result.message) {
 		_err("%s: %s", __func__, result.message);
 	}
@@ -399,31 +463,51 @@ bool cjit_compile_file(CJITState *cjit, const char *path) {
 }
 
 // link all setup and create an executable file
-int cjit_link(CJITState *cjit) {
+CJITResult cjit_link_result(CJITState *cjit) {
 	RuntimeSession session;
 	CompilerPort compiler = tinycc_compiler_port;
-	CJITResult result;
-	int res = 0;
+	CJITResult result = cjit_result_ok();
 	compiler.context = cjit;
-	compiler.begin_session(compiler.context, &session);
+	result = compiler.begin_session(compiler.context, &session);
+	if (!result.ok) {
+		return result;
+	}
 	result = compiler.link_executable(compiler.context, &session);
 	compiler.end_session(compiler.context, &session);
+	return result;
+}
+
+int cjit_link(CJITState *cjit) {
+	CJITResult result = cjit_link_result(cjit);
 	if (!result.ok && result.message) {
 		_err("%s: %s", __func__, result.message);
-		res = result.exit_status ? result.exit_status : 1;
+		return result.exit_status ? result.exit_status : 1;
 	}
-	return res;
+	return 0;
+}
+
+CJITResult cjit_exec_result(CJITState *cjit, int argc, char **argv, int *exit_status) {
+	RuntimeSession session;
+	CompilerPort compiler = tinycc_compiler_port;
+	CJITResult result = cjit_result_ok();
+	int local_exit_status = 1;
+	compiler.context = cjit;
+	result = compiler.begin_session(compiler.context, &session);
+	if (!result.ok) {
+		return result;
+	}
+	result = compiler.execute_program(compiler.context, &session, argc, argv, &local_exit_status);
+	compiler.end_session(compiler.context, &session);
+	if (exit_status) {
+		*exit_status = local_exit_status;
+	}
+	return result;
 }
 
 int cjit_exec(CJITState *cjit, int argc, char **argv) {
-	RuntimeSession session;
-	CompilerPort compiler = tinycc_compiler_port;
 	CJITResult result;
 	int res = 1;
-	compiler.context = cjit;
-	compiler.begin_session(compiler.context, &session);
-	result = compiler.execute_program(compiler.context, &session, argc, argv, &res);
-	compiler.end_session(compiler.context, &session);
+	result = cjit_exec_result(cjit, argc, argv, &res);
 	if (!result.ok) {
 		if (result.message && strcmp(result.message, "Entrypoint symbol not found") == 0) {
 			_err("Symbol not found in source: %s", cjit->entry ? cjit->entry : "main");
