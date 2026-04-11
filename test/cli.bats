@@ -79,6 +79,11 @@ load bats_setup
     assert_output 'stdin ok'
 }
 
+@test "Execute source preserves non-zero exit status" {
+    run bash -lc "printf '%s\n' 'int main(void) { return 7; }' | '${CJIT}' -q -"
+    [ "$status" -eq 7 ]
+}
+
 @test "Status mode works without source input" {
     run ${CJIT} -v
     assert_success
