@@ -12,6 +12,13 @@ static CJITResult extract_runtime_assets_impl(void *context, RuntimeSession *ses
 {
     CJITState *cjit = (CJITState *)context;
     (void)session;
+#if defined(SHAREDTCC)
+    (void)cjit;
+    (void)destination_path;
+    (void)resolved_path;
+    return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1,
+                             "Runtime assets are unavailable with shared libtcc builds");
+#else
     if (!extract_assets(cjit, destination_path)) {
         return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to extract runtime assets");
     }
@@ -19,6 +26,7 @@ static CJITResult extract_runtime_assets_impl(void *context, RuntimeSession *ses
         *resolved_path = cjit->tmpdir;
     }
     return cjit_result_ok();
+#endif
 }
 
 static CJITResult extract_archive_to_path_impl(void *context, const char *archive_path,
