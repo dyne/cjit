@@ -87,7 +87,7 @@ const char cli_help[] =
 	"  (*) can be any source (.c) or built object (dll, dylib, .so)\n"
 	"Options and values (+) mandatory (-) default (=) optional:\n"
 	" -h \t print this help\n"
-	" -v \t print version information\n"
+	" -v \t print runtime and compiler status information\n"
 	" -q \t stay quiet and only print errors and output\n"
 	" -C \t set interpreter/compiler flags (-) env var CFLAGS\n"
 	" -c \t compile a single source file, do not execute\n"

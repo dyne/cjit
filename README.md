@@ -45,7 +45,7 @@ Pass arguments to the compiled program:
 Inspect the runtime configuration:
 
 ```bash
-./cjit --status
+./cjit -v
 ```
 
 Extract embedded runtime assets:
