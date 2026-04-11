@@ -1,5 +1,6 @@
 cjit
 *.o
+*.d
 src/assets.*
 src/embed_*
 .build_done*
