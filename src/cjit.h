@@ -22,6 +22,7 @@
 
 #include <platforms.h>
 #include <stdbool.h>
+#include "domain/error.h"
 
 typedef struct StringList StringList;
 
@@ -64,8 +65,19 @@ struct CJITState {
 typedef struct CJITState CJITState;
 
 extern CJITState* cjit_new();
-// extern bool cjit_setup(CJITState *cjit);
 extern bool cjit_status(CJITState *cjit);
+
+/**
+ * Prepares the runtime/compiler session before source ingestion or execution.
+ */
+extern CJITResult cjit_prepare(CJITState *cjit);
+
+/**
+ * Structured source-ingestion helpers used by adapters and legacy wrappers.
+ */
+extern CJITResult cjit_add_file_result(CJITState *cjit, const char *path);
+extern CJITResult cjit_add_source_result(CJITState *cjit, const char *path);
+extern CJITResult cjit_add_buffer_result(CJITState *cjit, const char *buffer);
 
 // setup functions to add source and libs
 extern bool cjit_add_file(CJITState *cjit, const char *path);
@@ -76,6 +88,9 @@ extern bool cjit_add_buffer(CJITState *cjit, const char *buffer);
 extern int cjit_link(CJITState *cjit); // link and create an executable file
 extern int cjit_exec(CJITState *cjit, int argc, char **argv); // exec in mem
 extern bool cjit_compile_file(CJITState *cjit, const char *_path); // compile a single file to a bytecode object
+extern CJITResult cjit_link_result(CJITState *cjit);
+extern CJITResult cjit_exec_result(CJITState *cjit, int argc, char **argv, int *exit_status);
+extern CJITResult cjit_compile_file_result(CJITState *cjit, const char *path);
 
 extern void cjit_free(CJITState *CJIT);
 
