@@ -5,7 +5,7 @@ GENERATED_POSIX_FILES := src/assets.c src/assets.h \
 
 cc := clang
 cflags += -DCJIT_BUILD_OSX
-extra_tinycc_config += --config-codesign=no
+extra_tinycc_config += --config-codesign=no --config-backtrace=no
 
 all: embed-posix cjit.command cjit-ar.command
 
