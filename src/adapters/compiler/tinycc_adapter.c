@@ -7,12 +7,40 @@
 #include "adapters/platform/library_resolver_windows.h"
 #include "adapters/platform/runtime_platform.h"
 #include "cjit.h"
+#include "cwalk.h"
 #include "libtcc.h"
 #include "support/string_list.h"
 
 static CJITState *state_from_context(void *context)
 {
     return (CJITState *)context;
+}
+
+static int has_source_extension(const char *path)
+{
+    char *ext;
+    size_t extlen;
+    bool is_source;
+
+    is_source = cwk_path_get_extension(path, (const char **)&ext, &extlen);
+    if (!is_source) {
+        return 0;
+    }
+    if (extlen == 2 && (ext[1] == 'c' || ext[1] == 'C')) {
+        is_source = true;
+    } else if (extlen == 3
+               && (ext[1] == 'c' || ext[1] == 'C')
+               && (ext[2] == 'c' || ext[2] == 'C')) {
+        is_source = true;
+    } else if (extlen == 4
+               && (ext[1] == 'c' || ext[1] == 'C')
+               && (ext[2] == 'x' || ext[2] == 'X')
+               && (ext[3] == 'x' || ext[3] == 'X')) {
+        is_source = true;
+    } else {
+        is_source = false;
+    }
+    return is_source ? 1 : -1;
 }
 
 static CJITResult relocate(void *context, RuntimeSession *session);
@@ -146,9 +174,36 @@ static CJITResult output_file(void *context, RuntimeSession *session, const char
 static CJITResult compile_object(void *context, RuntimeSession *session, const char *path)
 {
     CJITState *cjit = state_from_context(context);
-    (void)session;
-    if (!cjit_compile_file(cjit, path)) {
+    int is_source = has_source_extension(path);
+    TCCState *compiler_handle = (TCCState *)session->compiler_handle;
+
+    if (is_source == 0 || is_source < 0) {
+        return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1, "Compile to object failed");
+    }
+    if (!cjit_add_file(cjit, path)) {
         return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
+    }
+    if (cjit->output_filename) {
+        if (tcc_output_file(compiler_handle, cjit->output_filename) < 0) {
+            return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
+        }
+    } else {
+        char *ext;
+        char *tmp;
+        const char *basename;
+        size_t extlen;
+        size_t len;
+
+        cwk_path_get_basename((char *)path, &basename, &len);
+        tmp = malloc(len + 2);
+        strncpy(tmp, basename, len + 1);
+        cwk_path_get_extension(tmp, (const char **)&ext, &extlen);
+        strcpy(ext, ".o");
+        if (tcc_output_file(compiler_handle, tmp) < 0) {
+            free(tmp);
+            return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
+        }
+        free(tmp);
     }
     return cjit_result_ok();
 }
@@ -156,8 +211,23 @@ static CJITResult compile_object(void *context, RuntimeSession *session, const c
 static CJITResult link_executable(void *context, RuntimeSession *session)
 {
     CJITState *cjit = state_from_context(context);
-    (void)session;
-    if (cjit_link(cjit) < 0) {
+    int found;
+    TCCState *compiler_handle = (TCCState *)session->compiler_handle;
+
+    if (!cjit->done_setup) {
+        return cjit_result_error(CJIT_RESULT_LINK_ERROR, 1, "No source code found");
+    }
+    if (!cjit->output_filename) {
+        return cjit_result_error(CJIT_RESULT_LINK_ERROR, 1, "No output file configured");
+    }
+    found = resolve_libraries(cjit);
+    for (int i = 0; i < found; ++i) {
+        char *resolved_path = string_list_get(cjit->reallibs, i);
+        if (resolved_path) {
+            tcc_add_file(compiler_handle, resolved_path);
+        }
+    }
+    if (tcc_output_file(compiler_handle, cjit->output_filename) < 0) {
         return cjit_result_error(CJIT_RESULT_LINK_ERROR, 1, "Error in linker compiling to file");
     }
     return cjit_result_ok();
