@@ -117,6 +117,9 @@ load bats_setup
 }
 
 @test "Extract runtime assets route" {
+    if [ -n "${SYSTCC:-}" ]; then
+        skip "embedded runtime assets are unavailable with shared libtcc builds"
+    fi
     run ${CJIT} --xass ${TMP}/assets
     assert_success
     assert_output --regexp '^/tmp/cjit-'
