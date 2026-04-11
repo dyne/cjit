@@ -181,8 +181,8 @@ int main(int argc, char **argv) {
 		  CJIT->print_status = true;
 	  } else if (c=='h' || c==100) { // help
 		  _err(cli_help,VERSION);
-		  cjit_free(CJIT);
-		  exit(0); // print and exit
+		  res = 0;
+		  goto endgame;
 	  } else if (c==101 ) { // verb
 		  CJIT->quiet = false;
 		  CJIT->verbose = true;
@@ -195,8 +195,8 @@ int main(int argc, char **argv) {
 			  cjit_define_symbol(CJIT, opt.arg, &opt.arg[_res]);
 		  } else { // invalid char
 			  _err("Invalid char used in -D define symbol: %s", opt.arg);
-			  cjit_free(CJIT);
-			  exit(1);
+			  res = 1;
+			  goto endgame;
 		  }
 	  } else if (c == 'c') { // don't link or execute, just compile to .o
 		  cjit_set_output(CJIT, OBJ);
@@ -238,7 +238,6 @@ int main(int argc, char **argv) {
 		  getcwd(cwd, sizeof(cwd));
 		  _err("Extracting CJIT's own source to %s/cjit_source",cwd);
 		  muntarfs_extract_targz_to_path(cwd, (const uint8_t *)&cjit_source, cjit_source_len);
-		  cjit_free(CJIT);
 #if defined(POSIX)
 		  // restore executable bit on test suite, fixes make check
 		  chmod("cjit_source/test/bats/bin/bats", 0755);
@@ -251,7 +250,8 @@ int main(int argc, char **argv) {
 		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-file", 0755);
 		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-test", 0755);
 #endif
-		  exit(0);
+		  res = 0;
+		  goto endgame;
 #endif
 #if !defined(SHAREDTCC)
 	  } else if (c == 401) { // --xass
@@ -263,18 +263,18 @@ int main(int argc, char **argv) {
 		  }
 		  response = extract_assets_route(CJIT, &request);
 		  render_extract_assets_response(CJIT, &response);
-		  cjit_free(CJIT);
-		  exit(response.result.exit_status);
+		  res = response.result.exit_status;
+		  goto endgame;
 #endif
 	  } else if (c == 501) { // --xtgz
 		  ExtractArchiveRequest request;
 		  ExtractArchiveResponse response;
 		  request.archive_path = opt.arg;
-		  cjit_free(CJIT);
 		  _err("Extract contents of: %s",opt.arg);
 		  response = extract_archive_route(&request);
 		  render_extract_archive_response(NULL, &response);
-		  exit(response.result.exit_status);
+		  res = response.result.exit_status;
+		  goto endgame;
 	  }
 	  else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
 	  else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
