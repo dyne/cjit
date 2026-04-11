@@ -7,28 +7,18 @@
 #include "cjit.h"
 #include "muntarfs.h"
 
-static CJITResult make_result(CJITResultCode code, int exit_status, bool ok, const char *message)
-{
-    CJITResult result;
-    result.code = code;
-    result.exit_status = exit_status;
-    result.ok = ok;
-    result.message = message;
-    return result;
-}
-
 static CJITResult extract_runtime_assets_impl(void *context, RuntimeSession *session,
                                               const char *destination_path, char **resolved_path)
 {
     CJITState *cjit = (CJITState *)context;
     (void)session;
     if (!extract_assets(cjit, destination_path)) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to extract runtime assets");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to extract runtime assets");
     }
     if (resolved_path) {
         *resolved_path = cjit->tmpdir;
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult extract_archive_to_path_impl(void *context, const char *archive_path,
@@ -40,12 +30,12 @@ static CJITResult extract_archive_to_path_impl(void *context, const char *archiv
 
     targz = (const uint8_t *)file_load(archive_path, &len);
     if (!targz || !len) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to load archive");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to load archive");
     }
     if (muntarfs_extract_targz_to_path(destination_path, targz, len) != 0) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to extract archive");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to extract archive");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 const AssetPort local_asset_port = {

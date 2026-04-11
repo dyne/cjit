@@ -9,10 +9,7 @@ static BuildExecutableResponse make_build_response(CJITResultCode code, int exit
                                                    const char *output_path)
 {
     BuildExecutableResponse response;
-    response.result.code = code;
-    response.result.exit_status = exit_status;
-    response.result.ok = ok;
-    response.result.message = message;
+    response.result = cjit_result_make(code, exit_status, ok, message);
     response.output_path = output_path;
     return response;
 }

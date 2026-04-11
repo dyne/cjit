@@ -11,15 +11,10 @@ ExtractArchiveResponse extract_archive_route(const ExtractArchiveRequest *reques
     AssetPort assets = local_asset_port;
     assets.context = NULL;
     if (!assets.extract_archive_to_path(assets.context, request->archive_path, ".").ok) {
-        response.result.code = CJIT_RESULT_IO_ERROR;
-        response.result.exit_status = 1;
-        response.result.ok = false;
-        response.result.message = "Failed to extract archive";
+        response.result = cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+                                            "Failed to extract archive");
         return response;
     }
-    response.result.code = CJIT_RESULT_OK;
-    response.result.exit_status = 0;
-    response.result.ok = true;
-    response.result.message = NULL;
+    response.result = cjit_result_ok();
     return response;
 }

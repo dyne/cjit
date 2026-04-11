@@ -5,16 +5,6 @@
 
 #include "cjit.h"
 
-static CJITResult make_result(CJITResultCode code, int exit_status, bool ok, const char *message)
-{
-    CJITResult result;
-    result.code = code;
-    result.exit_status = exit_status;
-    result.ok = ok;
-    result.message = message;
-    return result;
-}
-
 static CJITState *state_from_context(void *context)
 {
     return (CJITState *)context;
@@ -28,7 +18,7 @@ static CJITResult begin_session(void *context, RuntimeSession *session)
     session->tempdir_is_fresh = cjit->fresh;
     session->setup_complete = cjit->done_setup;
     session->execution_complete = cjit->done_exec;
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult configure_session(void *context, RuntimeSession *session)
@@ -36,9 +26,9 @@ static CJITResult configure_session(void *context, RuntimeSession *session)
     CJITState *cjit = state_from_context(context);
     (void)session;
     if (!cjit) {
-        return make_result(CJIT_RESULT_COMPILER_ERROR, 1, false, "Missing CJIT state");
+        return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Missing CJIT state");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult set_output_mode(void *context, RuntimeSession *session, int output_mode)
@@ -46,7 +36,7 @@ static CJITResult set_output_mode(void *context, RuntimeSession *session, int ou
     CJITState *cjit = state_from_context(context);
     (void)session;
     cjit_set_output(cjit, output_mode);
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult add_source_file(void *context, RuntimeSession *session, const char *path)
@@ -54,9 +44,9 @@ static CJITResult add_source_file(void *context, RuntimeSession *session, const 
     CJITState *cjit = state_from_context(context);
     (void)session;
     if (!cjit_add_file(cjit, path)) {
-        return make_result(CJIT_RESULT_COMPILER_ERROR, 1, false, "Error loading source input");
+        return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Error loading source input");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult add_source_buffer(void *context, RuntimeSession *session, const char *buffer)
@@ -64,9 +54,9 @@ static CJITResult add_source_buffer(void *context, RuntimeSession *session, cons
     CJITState *cjit = state_from_context(context);
     (void)session;
     if (!cjit_add_buffer(cjit, buffer)) {
-        return make_result(CJIT_RESULT_COMPILER_ERROR, 1, false, "Code runtime error in stdin");
+        return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Code runtime error in stdin");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult add_binary_input(void *context, RuntimeSession *session, const char *path)
@@ -80,7 +70,7 @@ static CJITResult define_symbol(void *context, RuntimeSession *session,
     CJITState *cjit = state_from_context(context);
     (void)session;
     cjit_define_symbol(cjit, name, value);
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult add_include_path(void *context, RuntimeSession *session, const char *path)
@@ -88,7 +78,7 @@ static CJITResult add_include_path(void *context, RuntimeSession *session, const
     CJITState *cjit = state_from_context(context);
     (void)session;
     cjit_add_include_path(cjit, path);
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult add_library_path(void *context, RuntimeSession *session, const char *path)
@@ -96,7 +86,7 @@ static CJITResult add_library_path(void *context, RuntimeSession *session, const
     CJITState *cjit = state_from_context(context);
     (void)session;
     cjit_add_library_path(cjit, path);
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult set_options(void *context, RuntimeSession *session, const char *options)
@@ -104,7 +94,7 @@ static CJITResult set_options(void *context, RuntimeSession *session, const char
     CJITState *cjit = state_from_context(context);
     (void)session;
     cjit_set_tcc_options(cjit, options);
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult output_file(void *context, RuntimeSession *session, const char *path)
@@ -119,7 +109,7 @@ static CJITResult output_file(void *context, RuntimeSession *session, const char
         cjit->output_filename = malloc(strlen(path) + 1);
         strcpy(cjit->output_filename, path);
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult compile_object(void *context, RuntimeSession *session, const char *path)
@@ -127,9 +117,9 @@ static CJITResult compile_object(void *context, RuntimeSession *session, const c
     CJITState *cjit = state_from_context(context);
     (void)session;
     if (!cjit_compile_file(cjit, path)) {
-        return make_result(CJIT_RESULT_COMPILER_ERROR, 1, false, "Compile to object failed");
+        return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult link_executable(void *context, RuntimeSession *session)
@@ -137,9 +127,9 @@ static CJITResult link_executable(void *context, RuntimeSession *session)
     CJITState *cjit = state_from_context(context);
     (void)session;
     if (cjit_link(cjit) < 0) {
-        return make_result(CJIT_RESULT_LINK_ERROR, 1, false, "Error in linker compiling to file");
+        return cjit_result_error(CJIT_RESULT_LINK_ERROR, 1, "Error in linker compiling to file");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult execute_program(void *context, RuntimeSession *session,
@@ -148,15 +138,15 @@ static CJITResult execute_program(void *context, RuntimeSession *session,
     CJITState *cjit = state_from_context(context);
     (void)session;
     *exit_status = cjit_exec(cjit, argc, argv);
-    return make_result((*exit_status == 0) ? CJIT_RESULT_OK : CJIT_RESULT_EXEC_ERROR,
-                       *exit_status, (*exit_status == 0), NULL);
+    return cjit_result_make((*exit_status == 0) ? CJIT_RESULT_OK : CJIT_RESULT_EXEC_ERROR,
+                            *exit_status, (*exit_status == 0), NULL);
 }
 
 static CJITResult relocate(void *context, RuntimeSession *session)
 {
     (void)context;
     (void)session;
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult resolve_symbol(void *context, RuntimeSession *session,
@@ -166,7 +156,7 @@ static CJITResult resolve_symbol(void *context, RuntimeSession *session,
     (void)session;
     (void)symbol_name;
     (void)symbol;
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static void end_session(void *context, RuntimeSession *session)

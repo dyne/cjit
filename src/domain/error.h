@@ -30,4 +30,35 @@ typedef struct CJITResult {
     const char *message;
 } CJITResult;
 
+/**
+ * Build one result value explicitly.
+ */
+static inline CJITResult cjit_result_make(CJITResultCode code, int exit_status,
+                                          bool ok, const char *message)
+{
+    CJITResult result;
+    result.code = code;
+    result.exit_status = exit_status;
+    result.ok = ok;
+    result.message = message;
+    return result;
+}
+
+/**
+ * Return a successful result.
+ */
+static inline CJITResult cjit_result_ok(void)
+{
+    return cjit_result_make(CJIT_RESULT_OK, 0, true, NULL);
+}
+
+/**
+ * Return a failed result with message.
+ */
+static inline CJITResult cjit_result_error(CJITResultCode code, int exit_status,
+                                           const char *message)
+{
+    return cjit_result_make(code, exit_status, false, message);
+}
+
 #endif

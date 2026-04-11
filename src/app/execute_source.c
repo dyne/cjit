@@ -9,20 +9,14 @@
 static ExecuteResponse make_error(CJITResultCode code, int exit_status, const char *message)
 {
     ExecuteResponse response;
-    response.result.code = code;
-    response.result.exit_status = exit_status;
-    response.result.ok = false;
-    response.result.message = message;
+    response.result = cjit_result_error(code, exit_status, message);
     return response;
 }
 
 static ExecuteResponse make_success(int exit_status)
 {
     ExecuteResponse response;
-    response.result.code = CJIT_RESULT_OK;
-    response.result.exit_status = exit_status;
-    response.result.ok = true;
-    response.result.message = NULL;
+    response.result = cjit_result_make(CJIT_RESULT_OK, exit_status, true, NULL);
     return response;
 }
 

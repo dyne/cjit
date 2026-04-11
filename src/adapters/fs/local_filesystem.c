@@ -11,28 +11,18 @@ extern char *load_stdin();
 extern char *new_abspath(const char *path);
 extern bool write_to_file(const char *path, const char *filename, const char *buf, unsigned int len);
 
-static CJITResult make_result(CJITResultCode code, int exit_status, bool ok, const char *message)
-{
-    CJITResult result;
-    result.code = code;
-    result.exit_status = exit_status;
-    result.ok = ok;
-    result.message = message;
-    return result;
-}
-
 static CJITResult read_file_impl(void *context, const char *path, char **contents, size_t *length)
 {
     unsigned int len = 0;
     (void)context;
     *contents = file_load(path, &len);
     if (!*contents) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to read file");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to read file");
     }
     if (length) {
         *length = len;
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult read_stdin_impl(void *context, char **contents, size_t *length)
@@ -40,12 +30,12 @@ static CJITResult read_stdin_impl(void *context, char **contents, size_t *length
     (void)context;
     *contents = load_stdin();
     if (!*contents) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Error reading from standard input");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Error reading from standard input");
     }
     if (length) {
         *length = *contents ? strlen(*contents) : 0;
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult detect_source_encoding_impl(void *context, const char *path,
@@ -56,7 +46,7 @@ static CJITResult detect_source_encoding_impl(void *context, const char *path,
     (void)context;
     contents = file_load(path, &len);
     if (!contents) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to inspect source encoding");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to inspect source encoding");
     }
     free(contents);
     if (encoding) {
@@ -65,7 +55,7 @@ static CJITResult detect_source_encoding_impl(void *context, const char *path,
     if (length) {
         *length = len;
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult make_absolute_path_impl(void *context, const char *path, char **absolute_path)
@@ -73,9 +63,9 @@ static CJITResult make_absolute_path_impl(void *context, const char *path, char 
     (void)context;
     *absolute_path = new_abspath(path);
     if (!*absolute_path) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to resolve absolute path");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to resolve absolute path");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult write_file_impl(void *context, const char *dir, const char *filename,
@@ -83,9 +73,9 @@ static CJITResult write_file_impl(void *context, const char *dir, const char *fi
 {
     (void)context;
     if (!write_to_file(dir, filename, contents, length)) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to write file");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to write file");
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 static CJITResult ensure_tempdir_impl(void *context, const char *requested_path,
@@ -93,7 +83,7 @@ static CJITResult ensure_tempdir_impl(void *context, const char *requested_path,
 {
     CJITState *cjit = (CJITState *)context;
     if (!cjit_mkdtemp(cjit, requested_path)) {
-        return make_result(CJIT_RESULT_IO_ERROR, 1, false, "Failed to create tempdir");
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1, "Failed to create tempdir");
     }
     if (resolved_path) {
         *resolved_path = cjit->tmpdir;
@@ -101,7 +91,7 @@ static CJITResult ensure_tempdir_impl(void *context, const char *requested_path,
     if (is_fresh) {
         *is_fresh = cjit->fresh;
     }
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 }
 
 const FilesystemPort local_filesystem_port = {

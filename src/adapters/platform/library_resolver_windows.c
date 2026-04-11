@@ -8,16 +8,6 @@
 int windows_resolve_libs(CJITState *cjit);
 #endif
 
-static CJITResult make_result(CJITResultCode code, int exit_status, bool ok, const char *message)
-{
-    CJITResult result;
-    result.code = code;
-    result.exit_status = exit_status;
-    result.ok = ok;
-    result.message = message;
-    return result;
-}
-
 static CJITResult resolve_impl(void *context, const LibraryResolverRequest *request,
                                LibraryResolverResponse *response)
 {
@@ -28,14 +18,14 @@ static CJITResult resolve_impl(void *context, const LibraryResolverRequest *requ
     found = windows_resolve_libs(cjit);
     response->resolved_count = found;
     response->resolved_paths = NULL;
-    return make_result(CJIT_RESULT_OK, 0, true, NULL);
+    return cjit_result_ok();
 #else
     (void)context;
     (void)request;
     response->resolved_count = 0;
     response->resolved_paths = NULL;
-    return make_result(CJIT_RESULT_PLATFORM_ERROR, 1, false,
-                       "Windows library resolver unavailable on this platform");
+    return cjit_result_error(CJIT_RESULT_PLATFORM_ERROR, 1,
+                             "Windows library resolver unavailable on this platform");
 #endif
 }
 
