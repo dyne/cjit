@@ -21,6 +21,7 @@
 #include <libtcc.h>
 #include <cwalk.h>
 #include <elflinker.h>
+#include <adapters/compiler/tinycc_adapter.h>
 #include <adapters/platform/library_resolver_posix.h>
 #include <adapters/platform/library_resolver_windows.h>
 #include <adapters/platform/runtime_platform.h>
@@ -466,22 +467,25 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 	}
 	int res = 1;
 	int (*_ep)(int, char**);
+	RuntimeSession session;
+	CompilerPort compiler = tinycc_compiler_port;
+	compiler.context = cjit;
+	compiler.begin_session(compiler.context, &session);
 	// relocate the code (link symbols)
-#if defined(SHAREDTCC)
-	if (tcc_relocate(tcc(cjit), TCC_RELOCATE_AUTO) < 0) {
-#else
-	if (tcc_relocate(tcc(cjit)) < 0) {
-#endif
+	if (!compiler.relocate(compiler.context, &session).ok) {
+		compiler.end_session(compiler.context, &session);
 		_err("%s: TCC linker error",__func__);
 		_err("Library functions missing.");
 		return -1;
 	}
-	_ep = tcc_get_symbol(tcc(cjit), cjit->entry?cjit->entry:"main");
-	if (!_ep) {
+	if (!compiler.resolve_symbol(compiler.context, &session,
+								 cjit->entry?cjit->entry:"main", (void **)&_ep).ok) {
+		compiler.end_session(compiler.context, &session);
 		_err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
 		return -1;
 	}
 	res = cjit_platform_exec(cjit, _ep, argc, argv);
+	compiler.end_session(compiler.context, &session);
 	return res;
 }
 

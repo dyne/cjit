@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "cjit.h"
+#include "libtcc.h"
 
 static CJITState *state_from_context(void *context)
 {
@@ -144,18 +145,31 @@ static CJITResult execute_program(void *context, RuntimeSession *session,
 
 static CJITResult relocate(void *context, RuntimeSession *session)
 {
+    TCCState *compiler_handle;
+
     (void)context;
-    (void)session;
+    compiler_handle = (TCCState *)session->compiler_handle;
+#if defined(SHAREDTCC)
+    if (tcc_relocate(compiler_handle, TCC_RELOCATE_AUTO) < 0) {
+#else
+    if (tcc_relocate(compiler_handle) < 0) {
+#endif
+        return cjit_result_error(CJIT_RESULT_LINK_ERROR, -1, "TCC linker error");
+    }
     return cjit_result_ok();
 }
 
 static CJITResult resolve_symbol(void *context, RuntimeSession *session,
                                  const char *symbol_name, void **symbol)
 {
+    TCCState *compiler_handle;
+
     (void)context;
-    (void)session;
-    (void)symbol_name;
-    (void)symbol;
+    compiler_handle = (TCCState *)session->compiler_handle;
+    *symbol = tcc_get_symbol(compiler_handle, symbol_name);
+    if (!*symbol) {
+        return cjit_result_error(CJIT_RESULT_LINK_ERROR, -1, "Entrypoint symbol not found");
+    }
     return cjit_result_ok();
 }
 
