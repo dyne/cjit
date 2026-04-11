@@ -85,6 +85,7 @@ _: ##
 ------: ## __ Testing targets
 
 check: ## 🧪 Run all tests using the currently built binary ./cjit
+	@$(MAKE) check-unit
 	@./test/bats/bin/bats test/cli.bats
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
 	@./test/bats/bin/bats test/windows.bats
@@ -92,10 +93,15 @@ check: ## 🧪 Run all tests using the currently built binary ./cjit
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/dmon.bats; fi
 
 check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
+	@$(MAKE) check-unit
 	@./test/bats/bin/bats test/cli.bats
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
 	@./test/bats/bin/bats test/windows.bats
 	@./test/bats/bin/bats test/muntar.bats
+
+check-unit: ## 🧪 Run small direct C tests for pure support logic
+	@$(CC) -Isrc -o test/source_files_unit.bin test/source_files_unit.c src/support/source_files.c src/cwalk.c
+	@./test/source_files_unit.bin
 
 
 _: ##
@@ -122,4 +128,5 @@ clean: ## 🧹 Clean the source from all built objects
 	${MAKE} -C lib/tinycc clean distclean
 	${MAKE} -C src clean
 	@rm -f cjit cjit.exe cjit-ar.exe cjit.command
+	@rm -f test/source_files_unit test/source_files_unit.bin
 	@rm -rf meson
