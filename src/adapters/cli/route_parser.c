@@ -19,7 +19,8 @@ CJITCommonOptions build_cli_common_options(const CJITState *cjit)
 }
 
 ParsedRoute parse_cli_route(CJITState *cjit, int argc, char **argv,
-                            int opt_ind, int arg_separator)
+                            int opt_ind, int arg_separator,
+                            CliRoute forced_route, const char *forced_path)
 {
     ParsedRoute parsed;
 
@@ -31,8 +32,16 @@ ParsedRoute parse_cli_route(CJITState *cjit, int argc, char **argv,
     parsed.sources = parsed.source_count > 0 ? (const char **)&argv[opt_ind] : NULL;
     parsed.app_argc = argc - parsed.left_args + 1;
     parsed.app_argv = &argv[parsed.left_args - 1];
+    parsed.asset_destination_path = NULL;
+    parsed.archive_path = NULL;
 
-    if (opt_ind >= argc && cjit->print_status) {
+    if (forced_route == CLI_ROUTE_EXTRACT_ASSETS) {
+        parsed.route = forced_route;
+        parsed.asset_destination_path = forced_path;
+    } else if (forced_route == CLI_ROUTE_EXTRACT_ARCHIVE) {
+        parsed.route = forced_route;
+        parsed.archive_path = forced_path;
+    } else if (opt_ind >= argc && cjit->print_status) {
         parsed.route = CLI_ROUTE_PRINT_STATUS;
     } else if (cjit->tcc_output == OBJ) {
         parsed.route = CLI_ROUTE_COMPILE_OBJECT;
@@ -84,5 +93,21 @@ ExecuteRequest build_execute_request(const CJITState *cjit,
     request.sources = parsed->sources;
     request.app_argc = parsed->app_argc;
     request.app_argv = parsed->app_argv;
+    return request;
+}
+
+ExtractAssetsRequest build_extract_assets_request(const ParsedRoute *parsed)
+{
+    ExtractAssetsRequest request;
+
+    request.destination_path = parsed->asset_destination_path;
+    return request;
+}
+
+ExtractArchiveRequest build_extract_archive_request(const ParsedRoute *parsed)
+{
+    ExtractArchiveRequest request;
+
+    request.archive_path = parsed->archive_path;
     return request;
 }

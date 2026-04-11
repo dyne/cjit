@@ -126,6 +126,8 @@ int main(int argc, char **argv) {
   int arg_separator = 0;
   int res = 1;
   int i, c;
+  CliRoute forced_route = CLI_ROUTE_NONE;
+  const char *forced_route_path = NULL;
 
 #ifndef CJIT_WITHOUT_AR
   // cjit-ar
@@ -255,26 +257,14 @@ int main(int argc, char **argv) {
 #endif
 #if !defined(SHAREDTCC)
 	  } else if (c == 401) { // --xass
-		  ExtractAssetsRequest request;
-		  ExtractAssetsResponse response;
-		  request.destination_path = opt.arg;
-		  if(opt.arg) {
-			  _err("Extracting runtime assets to: %s",opt.arg);
-		  }
-		  response = extract_assets_route(CJIT, &request);
-		  render_extract_assets_response(CJIT, &response);
-		  res = response.result.exit_status;
-		  goto endgame;
+		  forced_route = CLI_ROUTE_EXTRACT_ASSETS;
+		  forced_route_path = opt.arg;
+		  break;
 #endif
 	  } else if (c == 501) { // --xtgz
-		  ExtractArchiveRequest request;
-		  ExtractArchiveResponse response;
-		  request.archive_path = opt.arg;
-		  _err("Extract contents of: %s",opt.arg);
-		  response = extract_archive_route(&request);
-		  render_extract_archive_response(NULL, &response);
-		  res = response.result.exit_status;
-		  goto endgame;
+		  forced_route = CLI_ROUTE_EXTRACT_ARCHIVE;
+		  forced_route_path = opt.arg;
+		  break;
 	  }
 	  else if (c == '?') _err("unknown opt: -%c\n", opt.opt? opt.opt : ':');
 	  else if (c == ':') _err("missing arg: -%c\n", opt.opt? opt.opt : ':');
@@ -286,9 +276,30 @@ int main(int argc, char **argv) {
 	_err("cjit version %s (c) 2024-2025 Dyne.org foundation",&VERSION[1]);
 
   {
-	  ParsedRoute parsed = parse_cli_route(CJIT, argc, clean_argv, opt.ind, arg_separator);
+	  ParsedRoute parsed = parse_cli_route(CJIT, argc, clean_argv, opt.ind, arg_separator,
+											  forced_route, forced_route_path);
 
-	  if(parsed.route == CLI_ROUTE_PRINT_STATUS) {
+	  if(parsed.route == CLI_ROUTE_EXTRACT_ASSETS) {
+		  ExtractAssetsRequest request;
+		  ExtractAssetsResponse response;
+		  request = build_extract_assets_request(&parsed);
+		  if(request.destination_path) {
+			  _err("Extracting runtime assets to: %s", request.destination_path);
+		  }
+		  response = extract_assets_route(CJIT, &request);
+		  render_extract_assets_response(CJIT, &response);
+		  res = response.result.exit_status;
+		  goto endgame;
+	  } else if(parsed.route == CLI_ROUTE_EXTRACT_ARCHIVE) {
+		  ExtractArchiveRequest request;
+		  ExtractArchiveResponse response;
+		  request = build_extract_archive_request(&parsed);
+		  _err("Extract contents of: %s", request.archive_path);
+		  response = extract_archive_route(&request);
+		  render_extract_archive_response(NULL, &response);
+		  res = response.result.exit_status;
+		  goto endgame;
+	  } else if(parsed.route == CLI_ROUTE_PRINT_STATUS) {
 		  StatusRequest request;
 		  StatusResponse response;
 		  request = build_status_request(CJIT);
