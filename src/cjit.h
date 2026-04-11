@@ -23,6 +23,8 @@
 #include <platforms.h>
 #include <stdbool.h>
 
+typedef struct StringList StringList;
+
 #if !defined(PATH_MAX)
 #define PATH_MAX 1024
 #endif
@@ -52,10 +54,10 @@ struct CJITState {
 	bool print_status;
 	// INTERNAL
 	// sources and libs used and paths to libs
-	void *sources; // xarray of source files loaded
-	void *libs;    // xarray of library names to be resolved
-	void *libpaths; // xarray of library paths to be searched
-	void *reallibs; // xarray of paths made by resolve_libs()
+	StringList *sources; // source files loaded
+	StringList *libs;    // library names to be resolved
+	StringList *libpaths; // library paths to be searched
+	StringList *reallibs; // paths made by resolve_libs()
 	// switch gcc subcall emulation
 	bool call_ar; // execute ar
 	bool output_obj; // don't link just compile obj

@@ -20,10 +20,10 @@
 #include <cjit.h>
 #include <libtcc.h>
 #include <cwalk.h>
-#include <array.h>
 #include <elflinker.h>
 #include <adapters/platform/library_resolver_posix.h>
 #include <adapters/platform/library_resolver_windows.h>
+#include <support/string_list.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h> // _err/_out
@@ -38,7 +38,7 @@
 #define tcc(cjit) (TCCState*)cjit->TCC
 #define setup if(!cjit->done_setup)cjit_setup(cjit)
 #define debug(fmt,par) if(cjit->verbose)_err(fmt,par)
-#define add(buf,s) if(s!=NULL)XArray_AddData((xarray_t*)cjit->buf,(char*)s,strlen(s)+1); else _err("!!! NULL var added to array: %s","buf")
+#define add(buf,s) if ((s) != NULL) string_list_add(cjit->buf, s); else _err("!!! NULL var added to list: %s", #buf)
 
 // declared at bottom
 void _out(const char *fmt, ...);
@@ -142,9 +142,9 @@ static int resolve_libraries(CJITState *cjit) {
 	LibraryResolverPort resolver;
 	LibraryResolverRequest request;
 	LibraryResolverResponse response;
-	request.library_count = XArray_Used(cjit->libs);
+	request.library_count = (int)string_list_count(cjit->libs);
 	request.libraries = NULL;
-	request.search_path_count = XArray_Used(cjit->libpaths);
+	request.search_path_count = (int)string_list_count(cjit->libpaths);
 	request.search_paths = NULL;
 #if defined(WINDOWS)
 	resolver = windows_library_resolver_port;
@@ -178,10 +178,10 @@ CJITState* cjit_new() {
 	// error handler callback for TCC
 	tcc_set_error_func(tcc(cjit), stderr, cjit_tcc_handle_error);
 	// initialize internal arrays
-	cjit->sources  = (void*)XArray_New(2, 0);
-	cjit->libs     = (void*)XArray_New(2, 0);
-	cjit->libpaths = (void*)XArray_New(2, 0);
-	cjit->reallibs = (void*)XArray_New(2, 0);
+	cjit->sources  = string_list_new();
+	cjit->libs     = string_list_new();
+	cjit->libpaths = string_list_new();
+	cjit->reallibs = string_list_new();
 	return(cjit);
 }
 
@@ -191,10 +191,10 @@ void cjit_free(CJITState *cjit) {
 	if(cjit->entry) free(cjit->entry);
 	if(cjit->output_filename) free(cjit->output_filename);
 	if(cjit->TCC) tcc_delete(tcc(cjit));
-	XArray_Free((xarray_t**)&cjit->sources);
-	XArray_Free((xarray_t**)&cjit->libs);
-	XArray_Free((xarray_t**)&cjit->libpaths);
-	XArray_Free((xarray_t**)&cjit->reallibs);
+	string_list_free(&cjit->sources);
+	string_list_free(&cjit->libs);
+	string_list_free(&cjit->libpaths);
+	string_list_free(&cjit->reallibs);
 	free(cjit);
 }
 
@@ -329,32 +329,32 @@ bool cjit_status(CJITState *cjit) {
 	{
 		size_t i;
 		size_t used;
-		used= XArray_Used(cjit->sources);
+		used = string_list_count(cjit->sources);
 		if(used) {
 			_err("Sources (%u)",used);
 			for(i=0;i<used;i++)
-				_err("+ %s",XArray_GetData(cjit->sources,i));
+				_err("+ %s",string_list_get(cjit->sources,i));
 		}
-		used = XArray_Used(cjit->libpaths);
+		used = string_list_count(cjit->libpaths);
 		if(used) {
 			_err("Library paths (%u)",used);
 			for(i=0;i<used;i++) {
-				char *d = XArray_GetData(cjit->libpaths,i);
+				char *d = string_list_get(cjit->libpaths,i);
 				_err("+ %s",d?d:"(null)");
 			}
 		}
-		used = XArray_Used(cjit->libs);
+		used = string_list_count(cjit->libs);
 		if(used) {
 			_err("Libraries (%u)",used);
 			for(i=0;i<used;i++)
-				_err("+ %s",XArray_GetData(cjit->libs,i));
+				_err("+ %s",string_list_get(cjit->libs,i));
 		}
 		resolve_libraries(cjit);
-		used = XArray_Used(cjit->reallibs);
+		used = string_list_count(cjit->reallibs);
 		if(used) {
 			_err("Lib files (%u)",used);
 			for(i=0;i<used;i++)
-				_err("+ %s",XArray_GetData(cjit->reallibs,i));
+				_err("+ %s",string_list_get(cjit->reallibs,i));
 		}
 	}
 	return true;
@@ -561,7 +561,7 @@ int cjit_link(CJITState *cjit) {
 	// resolve library files on UNIX systems
 	int found = resolve_libraries(cjit);
 	for(int i=0;i<found;i++) {
-		char *f = XArray_GetData(cjit->reallibs,i);
+		char *f = string_list_get(cjit->reallibs,i);
 		if(f) {
 			tcc_add_file(tcc(cjit), f);
 		}
@@ -580,10 +580,10 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 		return 1;
 	}
 	debug("resolve paths to library files (%i)",
-		  XArray_Used(cjit->libs));
+		  (int)string_list_count(cjit->libs));
 	int found = resolve_libraries(cjit);
 	for(int i=0;i<found;i++) {
-		char *f = XArray_GetData(cjit->reallibs,i);
+		char *f = string_list_get(cjit->reallibs,i);
 		if(f) {
 			debug(" +file: %s",f);
 			tcc_add_file(tcc(cjit), f);

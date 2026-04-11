@@ -27,6 +27,7 @@
 #include <cjit.h>
 #include <cwalk.h>
 #include <elflinker.h>
+#include <support/string_list.h>
 
 #define CH_EOF   (-1) //end of file
 #define LD_TOK_NAME 256
@@ -53,7 +54,7 @@ extern char *pstrcpy(char *buf, size_t buf_size, const char *s);
 static int resolve_ldscript(LDState *s1, char *path);
 static int find_library(CJITState *cjit, const char *path);
 
-bool read_ldsoconf(xarray_t *dest, char *path) {
+bool read_ldsoconf(StringList *dest, char *path) {
 	FILE *file = fopen(path, "r");
 	if (!file) {
 		fail(path);
@@ -68,13 +69,13 @@ bool read_ldsoconf(xarray_t *dest, char *path) {
 		size_t len = strlen(line);
 		if(line[len-1]=='\n') line[len-1]=0x0;
 		// add the line to the result array
-		XArray_AddData(dest,line,len+1);
+		string_list_add(dest, line);
 	}
 	fclose(file);
     return true;
 }
 
-bool read_ldsoconf_dir(xarray_t *dest, const char *directory) {
+bool read_ldsoconf_dir(StringList *dest, const char *directory) {
     struct dirent **namelist;
     char path[MAX_PATH];
     int n;
@@ -110,13 +111,13 @@ int posix_resolve_libs(CJITState *cjit) {
 	int found = -1;
 	// search in all paths if lib%s.so exists
 	// TODO: support --static here
-	libpaths_num = XArray_Used(cjit->libpaths);
-	libnames_num = XArray_Used(cjit->libs);
+	libpaths_num = (int)string_list_count(cjit->libpaths);
+	libnames_num = (int)string_list_count(cjit->libs);
 	for(i=0;i<libnames_num;i++) {
-		lname = XArray_GetData(cjit->libs,i);
+		lname = string_list_get(cjit->libs,i);
 		found = -1;
 		for(ii=0;ii<libpaths_num;ii++) {
-			lpath = XArray_GetData(cjit->libpaths,ii);
+			lpath = string_list_get(cjit->libpaths,ii);
 			snprintf(tryfile,PATH_MAX-2,"%s/lib%s.so",lpath,lname);
 			// _err("%s: try: %s",__func__,tryfile);
 			found = find_library(cjit, tryfile);
@@ -129,7 +130,7 @@ int posix_resolve_libs(CJITState *cjit) {
 			_err("Library not found: lib%s.so",lname);
 		// continue anyway (will log missing symbol names)
 	}
-	return(XArray_Used(cjit->reallibs));
+	return(string_list_count(cjit->reallibs));
 }
 
 static char *new_solve_symlink(const char *path) {
@@ -209,7 +210,7 @@ static int find_library(CJITState *cjit, const char *path) {
 		rr = resolve_ldscript(&s1, reallib);
 		if(rr<1)_err("Library not found: %s",reallib);
 	} else {
-		XArray_AddData(cjit->reallibs,reallib,strlen(reallib));
+		string_list_add(cjit->reallibs, reallib);
 	}
 	free(reallib);
 	return 0;
@@ -369,11 +370,11 @@ static int ld_add_file(LDState *s1, const char filename[]) {
 			return 0;
 		}
 	} else {
-		libpaths_num = XArray_Used(s1->libpaths);
+		libpaths_num = (int)string_list_count(s1->libpaths);
 		// search in all paths if lib%s.so exists
 		// TODO: support --static here
 		for(int ii=0;ii<libpaths_num;ii++) {
-			lpath = XArray_GetData(s1->libpaths,ii);
+			lpath = string_list_get(s1->libpaths,ii);
 			cwk_path_join(lpath,filename,tryfile,PATH_MAX);
 			if (lstat(tryfile, &statbuf) == -1) continue;
 			if (S_ISREG(statbuf.st_mode)) break;
@@ -395,7 +396,7 @@ static int ld_add_file(LDState *s1, const char filename[]) {
 			_err("Library file not recognized: %s",tryfile);
 		}
 	}
-	XArray_AddData(s1->libs, tryfile, strlen(tryfile));
+	string_list_add(s1->libs, tryfile);
 	return 1;
 }
 

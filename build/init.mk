@@ -16,6 +16,7 @@ CFLAGS ?= -O2 ${cflags_stack_protect}
 cflags := ${CFLAGS} ${cflags_includes}
 
 SOURCES := src/file.o src/cjit.o \
+           src/support/string_list.o \
 		   src/app/execute_source.o \
 		   src/app/compile_object.o \
 		   src/app/build_executable.o \
