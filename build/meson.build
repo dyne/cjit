@@ -13,10 +13,34 @@ message('Building project version: @0@'.format(meson.project_version()))
 
 # Define the source files
 
-src = files( '../src/cjit.c', '../src/file.c', '../src/elflinker.c',
-'../src/main.c', '../src/cwalk.c', '../src/array.c',
-'../lib/muntarfs/muntar.c', '../lib/muntarfs/tinflate.c', '../lib/muntarfs/tinfgzip.c',
-'../lib/muntarfs/muntarfs_runtime.c')
+src = files(
+  '../src/cjit.c',
+  '../src/file.c',
+  '../src/elflinker.c',
+  '../src/winlinker.c',
+  '../src/main.c',
+  '../src/cwalk.c',
+  '../src/array.c',
+  '../src/support/string_list.c',
+  '../src/app/execute_source.c',
+  '../src/app/compile_object.c',
+  '../src/app/build_executable.c',
+  '../src/app/print_status.c',
+  '../src/app/extract_assets.c',
+  '../src/app/extract_archive.c',
+  '../src/adapters/cli/route_parser.c',
+  '../src/adapters/cli/render_response.c',
+  '../src/adapters/compiler/tinycc_adapter.c',
+  '../src/adapters/fs/local_filesystem.c',
+  '../src/adapters/fs/local_asset.c',
+  '../src/adapters/platform/library_resolver_posix.c',
+  '../src/adapters/platform/library_resolver_windows.c',
+  '../src/adapters/platform/runtime_platform.c',
+  '../lib/muntarfs/muntar.c',
+  '../lib/muntarfs/tinflate.c',
+  '../lib/muntarfs/tinfgzip.c',
+  '../lib/muntarfs/muntarfs_runtime.c',
+)
 
 # Check for tcc command
 tcc_exe = find_program('tcc', required: true)
@@ -85,7 +109,7 @@ prefix = get_option('prefix')
 version = meson.project_version()
 
 # Compiler arguments
-c_args = [ '-I../src', '-I../lib/muntarfs',
+c_args = [ '-I../src', '-I../lib/tinycc', '-I../lib/muntarfs',
 		   '-DCJIT_WITHOUT_AR',
 		   '-DSHAREDTCC="@0@libtcc1.a"'.format(libtcc_found),
 		   '-DPREFIX="@0@"'.format(prefix),
