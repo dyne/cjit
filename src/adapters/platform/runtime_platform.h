@@ -15,4 +15,9 @@ void cjit_platform_setup_runtime(CJITState *cjit);
 int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
                        int argc, char **argv);
 
+/**
+ * Records a user-provided library path using the host platform rules.
+ */
+void cjit_platform_add_library_path(CJITState *cjit, const char *path);
+
 #endif
