@@ -481,64 +481,8 @@ int cjit_exec(CJITState *cjit, int argc, char **argv) {
 		_err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
 		return -1;
 	}
-#if defined(WINDOWS)
-	if(cjit->write_pid) {
-		pid_t pid = getpid();
-		FILE *fd = fopen(cjit->write_pid, "w");
-		if(!fd) {
-			fail(cjit->write_pid);
-			_err("Cannot create pid file");
-			return -1;
-		}
-		fprintf(fd,"%d\n",pid);
-		fclose(fd);
-	}
-	cjit->done_exec = true;
-	res = _ep(argc, argv);
-	return(res);
-#else // we assume anything else but WINDOWS has fork()
-	pid_t pid;
-	cjit->done_exec = true;
-	pid = fork();
-	if (pid == 0) {
-		res = _ep(argc, argv);
-		exit(res);
-	} else {
-		if(cjit->write_pid) {
-			// pid_t pid = getpid();
-			FILE *fd = fopen(cjit->write_pid, "w");
-			if(!fd) {
-				fail(cjit->write_pid);
-				_err("Cannot create pid file");
-				return -1;
-			}
-			fprintf(fd,"%d\n",pid);
-			fclose(fd);
-		}
-		int status;
-		int ret;
-		ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
-		if (ret != pid){
-			_err("Wait error in source: %s",cjit->entry);
-		}
-		if (WIFEXITED(status)) {
-			res = WEXITSTATUS(status);
-			//_err("Process has returned %d", res);
-		} else if (WIFSIGNALED(status)) {
-			res = WTERMSIG(status);
-			_err("Process terminated with signal %d", WTERMSIG(status));
-		} else if (WIFSTOPPED(status)) {
-			res = WSTOPSIG(status);
-			//_err("Process has returned %d", WSTOPSIG(status));
-		} else if (WIFSTOPPED(status)) {
-			res = WSTOPSIG(status);
-			_err("Process stopped with signal", WSTOPSIG(status));
-		} else {
-			_err("wait: unknown status: %d", status);
-		}
-	}
+	res = cjit_platform_exec(cjit, _ep, argc, argv);
 	return res;
-#endif // cjit_exec with fork()
 }
 
 
