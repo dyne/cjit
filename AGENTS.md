@@ -33,11 +33,12 @@ Main files:
 
 Important current behavior:
 
-- `main()` builds `CJITState`, parses argv, and mutates runtime state directly.
+- `main()` still builds `CJITState` and parses argv, but route request construction now lives in `src/adapters/cli/route_parser.c`.
 - `cjit_setup()` is lazy and must happen before compile/link/execute flows.
 - non-`SHAREDTCC` builds depend on extracted embedded assets.
-- POSIX execution forks before running the compiled entrypoint.
-- Windows execution runs in-process.
+- the TinyCC adapter now owns the execute, compile-object, and build-executable flows.
+- POSIX execution still forks before running the compiled entrypoint.
+- Windows execution still runs in-process.
 - stdin execution is supported on POSIX and not supported as the no-file fallback on Windows.
 - `-c` currently supports only one source file.
 - UTF BOM source files are explicitly rejected.
@@ -140,7 +141,8 @@ Target destination:
 
 Current start point:
 
-- [src/cjit.c](/home/jrml/devel/cjit/src/cjit.c)
+- [src/adapters/compiler/tinycc_adapter.c](/home/jrml/devel/cjit/src/adapters/compiler/tinycc_adapter.c)
+- [src/cjit.c](/home/jrml/devel/cjit/src/cjit.c) for legacy compatibility wrappers
 
 Target destination:
 
