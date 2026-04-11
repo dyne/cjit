@@ -11,6 +11,10 @@
 # use only SOURCES from init
 include build/init.mk
 
+GENERATED_WIN_FILES := src/assets.c src/assets.h \
+	src/embed_libtcc1.a.c src/embed_include.c \
+	src/embed_tinycc_win32.c src/embed_win32ports.c
+
 SHELL := C:\Program Files\Git\bin\bash.exe
 
 # redefine compilation flags
@@ -28,8 +32,10 @@ SOURCES += src/win-compat.o  \
 
 all: embed-win cjit.exe cjit-ar.exe
 
-cjit.exe: ${SOURCES}
+cjit.exe: embed-win ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
+
+${GENERATED_WIN_FILES}: embed-win
 
 cjit-ar.exe: cflags += -DCJIT_AR_MAIN
 cjit-ar.exe:

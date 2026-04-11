@@ -1,5 +1,8 @@
 include build/init.mk
 
+GENERATED_POSIX_FILES := src/assets.c src/assets.h \
+	src/embed_libtcc1.a.c src/embed_include.c
+
 cflags += -DLIBC_GNU
 cflags += -DKILO_SUPPORTED
 cflags += -DCJIT_BUILD_LINUX
@@ -34,8 +37,10 @@ ifdef SELFHOST
 	cflags += -DSELFHOST
 endif
 
-cjit: ${SOURCES}
+cjit: embed-posix ${SOURCES}
 	$(cc) $(cflags) -o $@ $(SOURCES) ${ldflags} ${ldadd}
+
+${GENERATED_POSIX_FILES}: embed-posix
 
 cjit-ar: cflags += -DCJIT_AR_MAIN
 cjit-ar:
