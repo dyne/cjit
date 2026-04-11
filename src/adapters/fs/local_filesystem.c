@@ -2,14 +2,97 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+
+#include "cwalk.h"
 
 #include "cjit.h"
 
 extern char *load_stdin();
 extern char *new_abspath(const char *path);
 extern bool write_to_file(const char *path, const char *filename, const char *buf, unsigned int len);
+
+/**
+ * Creates or reuses the runtime temp directory and records whether it was
+ * freshly created for this session.
+ */
+bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
+{
+    char *temp_dir;
+
+    if (optional_path) {
+        temp_dir = malloc(strlen(optional_path) + 512);
+        cwk_path_normalize(optional_path, temp_dir, strlen(optional_path) + 511);
+#if defined(WINDOWS)
+        if (CreateDirectory(temp_dir, NULL) == 0) {
+            _err("Failed to create temporary dir: %s", temp_dir);
+            return false;
+        }
+#else
+        struct stat info;
+        if (stat(temp_dir, &info) != 0) {
+            cjit->fresh = true;
+        } else if (info.st_mode & S_IFDIR) {
+            cjit->fresh = false;
+        } else {
+            _err("Cannot overwrite runtime include dir: %s", temp_dir);
+            return false;
+        }
+        if (cjit->fresh) {
+            mkdir(temp_dir, 0755);
+        }
+#endif
+    } else {
+        temp_dir = malloc(MAX_PATH + 1);
+#if defined(WINDOWS)
+        char temp_path[MAX_PATH];
+        char dirname[64];
+
+        snprintf(dirname, 63, "CJIT-%s", VERSION);
+        if (GetTempPath(MAX_PATH, temp_path) == 0) {
+            _err("Failed to get temporary path");
+            return false;
+        }
+        cwk_path_join(temp_path, dirname, temp_dir, MAX_PATH);
+        DWORD attributes = GetFileAttributes(temp_dir);
+        if (attributes == INVALID_FILE_ATTRIBUTES) {
+            cjit->fresh = true;
+        } else if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
+            cjit->fresh = false;
+        } else {
+            _err("Temp dir is a file, cannot overwrite: %s", temp_dir);
+            return false;
+        }
+        if (cjit->fresh && CreateDirectory(temp_dir, NULL) == 0) {
+            _err("Failed to create temporary dir: %s", temp_dir);
+            return false;
+        }
+#else
+        struct stat info;
+
+        snprintf(temp_dir, 259, "/tmp/cjit-%s", VERSION);
+        if (stat(temp_dir, &info) != 0) {
+            cjit->fresh = true;
+        } else if (info.st_mode & S_IFDIR) {
+            cjit->fresh = false;
+        } else {
+            _err("Temp dir is a file, cannot overwrite: %s", temp_dir);
+            return false;
+        }
+        if (cjit->fresh) {
+            mkdir(temp_dir, 0755);
+        }
+#endif
+    }
+
+    cjit->tmpdir = malloc(strlen(temp_dir) + 1);
+    strcpy(cjit->tmpdir, temp_dir);
+    free(temp_dir);
+    return true;
+}
 
 static CJITResult read_file_impl(void *context, const char *path, char **contents, size_t *length)
 {
