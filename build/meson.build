@@ -21,6 +21,7 @@ src = files(
   '../src/main.c',
   '../src/cwalk.c',
   '../src/array.c',
+  '../src/support/source_files.c',
   '../src/support/string_list.c',
   '../src/app/execute_source.c',
   '../src/app/compile_object.c',
