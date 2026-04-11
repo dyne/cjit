@@ -117,6 +117,9 @@ const char *ignored_args[] = {
 	"-O:",
 	"-f:",
 	"-W:",
+	"-MF:",
+	"-MQ:",
+	"-MT:",
 	"-M:",
 	"-g:"
 };
