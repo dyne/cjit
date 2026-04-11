@@ -38,6 +38,8 @@ SOURCES := src/file.o src/cjit.o \
            src/embed_libtcc1.a.o src/embed_include.o \
            src/cjit-ar.o
 
+DEPFILES := ${SOURCES:.o=.d}
+
 #src/embed_source.o
 
 

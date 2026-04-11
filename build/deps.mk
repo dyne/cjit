@@ -1,6 +1,7 @@
 .c.o:
 	$(cc) \
 	$(cflags) \
+	-MMD -MP -MF $(@:.o=.d) \
 	-c $< -o $@ \
 	-DPREFIX=\"${PREFIX}\" \
 	-DVERSION=\"${VERSION}\" \
@@ -32,3 +33,5 @@ lib/glew/lib/libGLEW.a:
 # ${MAKE} -C lib/glfw clean
 # ${MAKE} -C lib/glew/auto clean
 # ${MAKE} -C lib/glew clean
+
+-include ${DEPFILES}
