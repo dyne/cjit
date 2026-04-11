@@ -23,6 +23,7 @@
 #include <elflinker.h>
 #include <adapters/platform/library_resolver_posix.h>
 #include <adapters/platform/library_resolver_windows.h>
+#include <adapters/platform/runtime_platform.h>
 #include <support/string_list.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,11 +44,6 @@
 // declared at bottom
 void _out(const char *fmt, ...);
 void _err(const char *fmt, ...);
-
-// from win-compat.c
-extern void    win_compat_usleep(unsigned int microseconds);
-extern ssize_t win_compat_getline(char **lineptr, size_t *n, FILE *stream);
-extern bool    get_winsdkpath(char *dst, size_t destlen);
 
 // from file.c
 extern char *new_abspath(const char *path);
@@ -222,11 +218,6 @@ static bool cjit_setup(CJITState *cjit) {
 		debug(" -C %s",extra_cflags);
 		tcc_set_options(tcc(cjit), extra_cflags);
 	}
-#if defined(WINDOWS)
-	// add symbols for windows compatibility
-	tcc_add_symbol(tcc(cjit), "usleep", &win_compat_usleep);
-	tcc_add_symbol(tcc(cjit), "getline", &win_compat_getline);
-#endif
 	// When using SDL2 these defines are needed
 	tcc_define_symbol(tcc(cjit),"SDL_DISABLE_IMMINTRIN_H",NULL);
 	tcc_define_symbol(tcc(cjit),"SDL_MAIN_HANDLED",NULL);
@@ -248,42 +239,7 @@ static bool cjit_setup(CJITState *cjit) {
 		}
 	}
 
-#if defined(WINDOWS)
-	{
-		size_t plen;
-		char *tpath;
-		// TODO: support WIN32 here: "C:\\Windows\\System32"
-		add(libpaths,"C:\\Windows\\SysWOW64");
-		debug(" -L %s","C:\\Windows\\SysWOW64");
-		tcc_add_library_path(tcc(cjit), "C:\\Windows\\SysWOW64");
-		// tinycc win32 headers
-		plen = strlen(cjit->tmpdir)+strlen("/tinycc_win32/winapi")+8;
-		tpath = malloc(plen);
-		cwk_path_join(cjit->tmpdir,"/tinycc_win32/winapi",tpath,plen);
-		debug(" -I %s",tpath);
-		tcc_add_sysinclude_path(tcc(cjit), tpath);
-		free(tpath);
-		// windows SDK headers
-		char *sdkpath = malloc(512);
-		if( get_winsdkpath(sdkpath,511) ) {
-			plen = strlen(sdkpath)+16;
-			tpath = malloc(plen);
-			cwk_path_join(sdkpath,"/um",tpath,plen); // um/GL
-			debug(" -I %s",tpath);
-			tcc_add_sysinclude_path(tcc(cjit), tpath);
-			cwk_path_join(sdkpath,"/shared",tpath,plen); // winapifamili.h etc.
-			debug(" -I %s",tpath);
-			tcc_add_sysinclude_path(tcc(cjit), tpath);
-			free(tpath);
-		}
-		free(sdkpath);
-	}
-#endif
-
-#if defined(UNIX)
-	read_ldsoconf(cjit->libpaths,"/etc/ld.so.conf");
-	read_ldsoconf_dir(cjit->libpaths,"/etc/ld.so.conf.d");
-#endif
+	cjit_platform_setup_runtime(cjit);
 
 	cjit->done_setup = true;
 	return(true);
