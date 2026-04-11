@@ -38,7 +38,6 @@ struct CJITState {
 	char *tmpdir; // path to execution temporary directory
 	char *write_pid; // filename to write the pid of execution
 	char *entry; // entry point, default "main" if left NULL
-	bool live; // live coding mode
 	bool quiet; // print less to stderr
 	bool verbose; // print more to stderr
 	bool fresh; // tempdir is freshly created and needs to be populated
@@ -105,9 +104,5 @@ extern char* file_load(const char *filename, unsigned int *len);
 // terminal printing functions
 extern void _out(const char *fmt, ...);
 extern void _err(const char *fmt, ...);
-
-/////////////
-// from repl.c
-extern int cjit_cli_tty(CJITState *cjit);
 
 #endif
