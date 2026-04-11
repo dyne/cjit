@@ -15,7 +15,7 @@ setup() {
 	  exit 1
 	}
 	${CJIT} -v 2>&1| grep 'System libtcc' >/dev/null && SYSTCC=1
-	if [ -z $SYSTCC ]; then
+	if [ -z "${SYSTCC:-}" ]; then
 		rm -rf `${CJIT} --xass`
 	fi
 	TCC="${R}/lib/tinycc/tcc"
