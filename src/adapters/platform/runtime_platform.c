@@ -1,7 +1,10 @@
 #include "adapters/platform/runtime_platform.h"
 
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "cwalk.h"
 #include "elflinker.h"
@@ -50,5 +53,76 @@ void cjit_platform_setup_runtime(CJITState *cjit)
     read_ldsoconf_dir(cjit->libpaths, "/etc/ld.so.conf.d");
 #else
     (void)cjit;
+#endif
+}
+
+/**
+ * Writes the process id file used by the file watcher integration.
+ */
+static int write_pid_file(CJITState *cjit, pid_t pid)
+{
+    FILE *fd;
+
+    if (!cjit->write_pid) {
+        return 0;
+    }
+
+    fd = fopen(cjit->write_pid, "w");
+    if (!fd) {
+        fail(cjit->write_pid);
+        _err("Cannot create pid file");
+        return -1;
+    }
+
+    fprintf(fd, "%d\n", pid);
+    fclose(fd);
+    return 0;
+}
+
+int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
+                       int argc, char **argv)
+{
+#if defined(WINDOWS)
+    if (write_pid_file(cjit, getpid()) < 0) {
+        return -1;
+    }
+    cjit->done_exec = true;
+    return entrypoint(argc, argv);
+#else
+    int res = 1;
+    pid_t pid;
+
+    cjit->done_exec = true;
+    pid = fork();
+    if (pid == 0) {
+        res = entrypoint(argc, argv);
+        exit(res);
+    }
+
+    if (write_pid_file(cjit, pid) < 0) {
+        return -1;
+    }
+
+    {
+        int status;
+        int ret;
+
+        ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+        if (ret != pid) {
+            _err("Wait error in source: %s", cjit->entry);
+        }
+        if (WIFEXITED(status)) {
+            return WEXITSTATUS(status);
+        }
+        if (WIFSIGNALED(status)) {
+            _err("Process terminated with signal %d", WTERMSIG(status));
+            return WTERMSIG(status);
+        }
+        if (WIFSTOPPED(status)) {
+            return WSTOPSIG(status);
+        }
+        _err("wait: unknown status: %d", status);
+        return res;
+    }
 #endif
 }

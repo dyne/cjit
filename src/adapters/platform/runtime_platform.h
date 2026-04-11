@@ -9,4 +9,10 @@
  */
 void cjit_platform_setup_runtime(CJITState *cjit);
 
+/**
+ * Executes the compiled entrypoint using the host platform process model.
+ */
+int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
+                       int argc, char **argv);
+
 #endif
