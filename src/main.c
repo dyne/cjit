@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
 	  if(parsed.route == CLI_ROUTE_PRINT_STATUS) {
 		  StatusRequest request;
 		  StatusResponse response;
-		  request.verbose = CJIT->verbose;
+		  request = build_status_request(CJIT);
 		  response = print_status(CJIT, &request);
 		  render_status_response(CJIT, &response);
 		  res = response.result.exit_status;
@@ -300,57 +300,26 @@ int main(int argc, char **argv) {
 	  CompileObjectRequest request;
 	  CompileObjectResponse response;
 	  if(CJIT->print_status) cjit_status(CJIT);
-	  /////////////////////////////
-	  // Compile one .c file to .o
-	  if(parsed.source_count != 1) {
-		  _err("Compiling to object files supports only one file argument");
-		  goto endgame;
-	  }
-	  request.options.quiet = CJIT->quiet;
-	  request.options.verbose = CJIT->verbose;
-	  request.options.print_status = CJIT->print_status;
-	  request.options.entry = CJIT->entry;
-	  request.options.pid_file = CJIT->write_pid;
-	  request.options.output_path = CJIT->output_filename;
-	  request.source_path = clean_argv[opt.ind];
+	  request = build_compile_object_request(CJIT, &parsed);
 	  response = compile_object(CJIT, &request);
 	  render_compile_object_response(CJIT, &response);
 	  res = response.result.exit_status;
 	  goto endgame;
-	  ////////////////////////////
 	  }
 
-	  /////////////////////////
-	  // compile to executable
   if(CJIT->print_status) cjit_status(CJIT);
   if(parsed.route == CLI_ROUTE_BUILD_EXECUTABLE) {
 	  BuildExecutableRequest request;
 	  BuildExecutableResponse response;
 	  _err("Create executable: %s", CJIT->output_filename);
-	  request.options.quiet = CJIT->quiet;
-	  request.options.verbose = CJIT->verbose;
-	  request.options.print_status = CJIT->print_status;
-	  request.options.entry = CJIT->entry;
-	  request.options.pid_file = CJIT->write_pid;
-	  request.options.output_path = CJIT->output_filename;
-	  request.source_count = parsed.source_count;
-	  request.sources = parsed.sources;
+	  request = build_build_executable_request(CJIT, &parsed);
 	  response = build_executable(CJIT, &request);
 	  render_build_executable_response(CJIT, &response);
 	  res = response.result.exit_status;
   } else {
 	  ExecuteRequest request;
 	  ExecuteResponse response;
-	  request.options.quiet = CJIT->quiet;
-	  request.options.verbose = CJIT->verbose;
-	  request.options.print_status = CJIT->print_status;
-	  request.options.entry = CJIT->entry;
-	  request.options.pid_file = CJIT->write_pid;
-	  request.options.output_path = CJIT->output_filename;
-	  request.source_count = parsed.source_count;
-	  request.sources = parsed.sources;
-	  request.app_argc = parsed.app_argc;
-	  request.app_argv = parsed.app_argv;
+	  request = build_execute_request(CJIT, &parsed);
 	  response = execute_source(CJIT, &request);
 	  render_execute_response(CJIT, &response);
 	  res = response.result.exit_status;
