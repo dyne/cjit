@@ -103,6 +103,12 @@ load bats_setup
     assert_line --partial 'Build system:'
 }
 
+@test "Compile driver ignores make dependency flags" {
+    run ${CJIT} -MMD -MP -MF ${TMP}/hello.d -c test/hello.c -o ${TMP}/hello.o
+    assert_success
+    [ -f "${TMP}/hello.o" ]
+}
+
 @test "Argument separator preserves app flags" {
     run ${CJIT} -q test/cargs.c -- --verb -q
     assert_success
