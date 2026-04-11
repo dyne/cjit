@@ -126,3 +126,15 @@ int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
     }
 #endif
 }
+
+void cjit_platform_add_library_path(CJITState *cjit, const char *path)
+{
+#if defined(UNIX)
+    string_list_add(cjit->libpaths, path);
+#elif !defined(SHAREDTCC)
+    tcc_add_library_path((TCCState *)cjit->TCC, path);
+#else
+    (void)cjit;
+    (void)path;
+#endif
+}

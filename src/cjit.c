@@ -514,11 +514,7 @@ void cjit_add_library_path(CJITState *cjit, const char *path) {
 		_err("%s: absolute path error: %s",__func__,path);
 		return;
 	}
-#if defined(UNIX)
-	add(libpaths,toadd);
-#elif !defined(SHAREDTCC)
-	tcc_add_library_path(tcc(cjit), toadd);
-#endif
+	cjit_platform_add_library_path(cjit, toadd);
 	debug(" -L %s",toadd);
 	free(toadd);
 }
