@@ -216,7 +216,7 @@ jobs:
     needs: [semantic-release]
     strategy:
       matrix:
-        os: [macos-14, macos-13]
+        os: [macos-14, macos-15, macos-26]
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: ${{ matrix.os }}
     steps:
