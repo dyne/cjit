@@ -9,10 +9,7 @@ static CompileObjectResponse make_compile_object_response(CJITResultCode code, i
                                                           const char *output_path)
 {
     CompileObjectResponse response;
-    response.result.code = code;
-    response.result.exit_status = exit_status;
-    response.result.ok = ok;
-    response.result.message = message;
+    response.result = cjit_result_make(code, exit_status, ok, message);
     response.output_path = output_path;
     return response;
 }
