@@ -13,6 +13,9 @@ load bats_setup
     run ${CJIT} -q test/cflags.c -DALLOWED=1
     assert_success
     assert_output 'Success.'
+    run ${CJIT} -q -C -DALLOWED=1 test/cflags.c
+    assert_success
+    assert_output 'Success.'
     run ${CJIT} -q test/cflags.c
     assert_failure
     assert_output --partial 'Please compile with -DALLOWED=1'
