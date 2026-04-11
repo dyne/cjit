@@ -22,8 +22,6 @@
 #include <cwalk.h>
 #include <elflinker.h>
 #include <adapters/compiler/tinycc_adapter.h>
-#include <adapters/platform/library_resolver_posix.h>
-#include <adapters/platform/library_resolver_windows.h>
 #include <adapters/platform/runtime_platform.h>
 #include <support/string_list.h>
 #include <stdlib.h>
@@ -61,11 +59,7 @@ static int resolve_libraries(CJITState *cjit) {
 	request.libraries = NULL;
 	request.search_path_count = (int)string_list_count(cjit->libpaths);
 	request.search_paths = NULL;
-#if defined(WINDOWS)
-	resolver = windows_library_resolver_port;
-#else
-	resolver = posix_library_resolver_port;
-#endif
+	resolver = cjit_platform_library_resolver();
 	resolver.context = cjit;
 	if (!resolver.resolve(resolver.context, &request, &response).ok) {
 		return 0;
@@ -173,38 +167,7 @@ CJITResult cjit_prepare(CJITState *cjit) {
 bool cjit_status(CJITState *cjit) {
 	CJITResult result;
 	_err("Build system: %s",PLATFORM);
-#if defined(TCC_TARGET_I386)
-        _err("Target platform: i386 code generator");
-#elif defined(TCC_TARGET_X86_64)
-        _err("Target platform: x86-64 code generator");
-#elif defined(TCC_TARGET_ARM)
-        _err("Target platform: ARMv4 code generator");
-#elif defined(TCC_TARGET_ARM64)
-        _err("Target platform: ARMv8 code generator");
-#elif defined(TCC_TARGET_C67)
-        _err("Target platform: TMS320C67xx code generator");
-#elif defined(TCC_TARGET_RISCV64)
-        _err("Target platform: risc-v code generator");
-#else
-        _err("Target platform: No target is defined");
-#endif
-#if   defined(TCC_TARGET_PE) && defined(TCC_TARGET_X86_64)
-	_err("Target system: WIN64");
-#elif defined(TCC_TARGET_PE) && defined(TCC_TARGET_I386)
-	_err("Target system: WIN32");
-#elif defined(TCC_TARGET_MACHO)
-	_err("Target system: Apple/OSX");
-#elif defined(TARGETOS_Linux)
-	_err("Target system: GNU/Linux");
-#elif defined(TARGETOS_BSD)
-	_err("Target system: BSD");
-#endif
-#if !(defined TCC_TARGET_PE || defined TCC_TARGET_MACHO)
-	_err("ELF interpreter: %s",CONFIG_TCC_ELFINTERP);
-#endif
-#if defined(SHAREDTCC)
-	_err("System libtcc: %s",SHAREDTCC);
-#endif
+	cjit_platform_print_status(cjit);
 	////////////////////////
 	// call cjit_setup here
 	if (!cjit->done_setup) {

@@ -2,6 +2,7 @@
 #define CJIT_ADAPTERS_PLATFORM_RUNTIME_PLATFORM_H
 
 #include "cjit.h"
+#include "ports/library_resolver_port.h"
 
 /**
  * Apply platform-specific runtime setup such as compatibility symbols,
@@ -19,5 +20,15 @@ int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
  * Records a user-provided library path using the host platform rules.
  */
 void cjit_platform_add_library_path(CJITState *cjit, const char *path);
+
+/**
+ * Returns the active host library resolver adapter.
+ */
+LibraryResolverPort cjit_platform_library_resolver(void);
+
+/**
+ * Prints target-system status lines that depend on the host/compiler build.
+ */
+void cjit_platform_print_status(const CJITState *cjit);
 
 #endif
