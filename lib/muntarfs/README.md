@@ -1,6 +1,6 @@
 # muntarfs
 
-`muntarfs` is the filesystem bundle component extracted from CJIT.
+`muntarfs` is a cross-platform filesystem bundler for C/C++
 
 It has two jobs:
 
@@ -18,21 +18,9 @@ Public responsibilities:
 - extract a tar bundle to a destination directory at runtime
 - extract a tar.gz bundle to a destination directory at runtime
 
-Non-goals:
-
-- CJIT-specific runtime policy
-- process management
-- tempdir policy
-- compiler integration
-- general-purpose archive management beyond the bundle use-case
-
-## Public Surface
+## API
 
 - `muntarfs_extract_tar_to_path`
 - `muntarfs_extract_targz_to_path`
 - `muntarfs-pack.sh`
 
-## Current Implementation Notes
-
-The tar reader, gzip inflater, and runtime extraction implementation now live in `lib/muntarfs/`.
-CJIT should consume this library surface instead of reaching into archive helpers under `src/`.

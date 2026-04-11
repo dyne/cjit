@@ -24,7 +24,7 @@ SPDX-License-Identifier = "MIT"
 [[annotations]]
 path = [".*", ".github/**"]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2024 Dyne.org foundation"
+SPDX-FileCopyrightText = "2024-2026 Dyne.org foundation"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
@@ -32,6 +32,12 @@ path = "lib/tinycc/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2001-2004 Fabrice Bellard"
 SPDX-License-Identifier = "LGPL-2.1-or-later"
+
+[[annotations]]
+path = "lib/muntarfs/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024-2026 Dyne.org foundation"
+SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = ["examples/tinyc.games/**", "examples/tetris/**"]
