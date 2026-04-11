@@ -1,4 +1,4 @@
-.TH cjit 1 "January 2025" "CJIT" "User Commands"
+.TH cjit 1 "April 2026" "CJIT" "User Commands"
 .SH NAME
 CJIT - Just-In-Time interpreter for C
 
@@ -24,13 +24,61 @@ including call functions from any installed library, and generate
 executables. It is also designed to be a drop-in replacement for gcc(1)
 and clang(1) for instance using CC=cjit as environment setting.
 
+.SH ROUTES
+
+The current CLI is easiest to understand as a small set of routes:
+
+.IP "execute-source"
+Default route. Provide one or more source, object, or shared-library inputs and CJIT compiles and runs the program entrypoint in memory.
+
+.IP "compile-object"
+Use \fB-c\fR with exactly one source file to compile to an object file and stop.
+
+.IP "build-executable"
+Use \fB-o\fR with one or more source files to build an executable file and stop.
+
+.IP "print-status"
+Use \fB-v\fR to print the current runtime/compiler configuration, including library paths and resolved libraries.
+
+.IP "extract-assets"
+Use \fB--xass\fR to extract the embedded runtime assets required by bundled TinyCC builds.
+
+.IP "extract-archive"
+Use \fB--xtgz\fR to unpack a tar.gz archive to the current directory.
+
+.SH EXAMPLES
+
+.IP "Run one source file"
+\fBcjit hello.c\fR
+
+.IP "Compile one source file to an object"
+\fBcjit -c hello.c\fR
+
+.IP "Build an executable without running it"
+\fBcjit -o hello hello.c\fR
+
+.IP "Pass application arguments"
+\fBcjit app.c -- --name cjit --verbose\fR
+
+.IP "Read code from standard input on POSIX"
+\fBprintf 'int main(){return 0;}' | cjit\fR
+
+.IP "Inspect runtime status"
+\fBcjit -v\fR
+
+.IP "Extract embedded assets"
+\fBcjit --xass /tmp/cjit-assets\fR
+
+.IP "Extract a tar.gz archive"
+\fBcjit --xtgz bundle.tar.gz\fR
+
 .SH OPTIONS
 
 .IP "-h"
 Displays a summary of the command-line options available with `cjit`. It is useful for users who need a quick reference on how to use the tool. This manual is meant to complete that knowledge with more in-depth information.
 
 .IP "-v"
-Prints the version number of `cjit`. It's helpful for verifying the specific version you're working with, especially when troubleshooting or reporting issues: always include the version output. It can also be quickly added to any commandline combination to show the internal state of cjit, for instance include and library paths configured, cflags and libraries linked.
+Prints runtime and compiler status information. This includes build and target platform information, configured library paths, requested libraries, and resolved library files. It is the current status route for CJIT.
 
 .IP "-q"
 Suppresses all non-essential output, providing a quieter operation. Only critical errors are displayed. This option is turned on by default when CJIT is launched inside a script (no tty).
@@ -39,10 +87,10 @@ Suppresses all non-essential output, providing a quieter operation. Only critica
 Use this option to specify custom flags for the interpreter or compiler. If not set, `cjit` uses the flags defined in the environment variable `CFLAGS`.
 
 .IP "-c"
-Only compiles a single provided source file, without executing it, to produce an object file. This option will generate a new pre-compiled object file named like the given source, changing its extension from .c to .o, unless a new name is specified using \fI-o\fR.
+Only compiles a single provided source file, without executing it, to produce an object file. This route accepts exactly one source file. The resulting object file uses the source basename with a `.o` extension unless a new name is specified using \fI-o\fR.
 
 .IP "-o \fI<filename>\fR"
-Specifies a filename output. When included in a command-line it switches CJIT to \fIBUILD\fR mode (see section below) and compiles all the source files into an executable but does not run the resulting program. You must provide the path for the output executable.
+Specifies an output filename. When included in a command line it switches CJIT to executable build mode and compiles the provided source files into an executable without running it.
 
 .IP "-D \fIkey[=value]\fR"
 Defines a "macro" key (and optionally its value) for the preprocessor, just like a \fI#define\fR directive would do when included inside the source. You can specify a simple symbol or use `key=value` to define a macro with a specific value.
@@ -66,10 +114,18 @@ Writes the process ID of the executing program to the specified file. This is us
 Enables verbose logging, which provides more detailed information about the actions CJIT is performing. It's useful for debugging and understanding the compilation and execution process.
 
 .IP "--xass \fI[path]\fR"
-Extract runtime assets required by CJIT to run you program. If a path is specified, the assets are extracted to that location; otherwise, they are extracted to the default directory, which is located in \fIAppData\\Local\\Temp\\CJIT-vN.N.N\fR on Windows and in \fI/tmp/cjit-vN.N.N\fR on POSIX systems.
+Extract runtime assets required by CJIT to run bundled TinyCC programs. If a path is specified, the assets are extracted there; otherwise, they are extracted to the default runtime directory, which is \fIAppData\\Local\\Temp\\CJIT-vN.N.N\fR on Windows and \fI/tmp/cjit-vN.N.N\fR on POSIX systems.
 
 .IP "--xtgz \fI<path>\fR"
-Extracts all files from a specified \fIUSTAR\fR format tar.gz archive. This is useful for setting up project dependencies or resources packaged in an archive, for instance is used to setup the \fIcjit-demo.tar.gz\fR tutorial assets by the script found on \fIhttps://dyne.org/cjit/demo\fR.
+Extracts all files from a specified \fIUSTAR\fR format tar.gz archive into the current directory. This is used by the demo bootstrap and can also be used directly to unpack bundled assets.
+
+.SH NOTES
+
+.IP "Standard input"
+On POSIX systems, if no source files are given and standard input is not a tty, CJIT reads source code from stdin and executes it. Windows does not support the no-file stdin fallback route.
+
+.IP "-- separator"
+All arguments after a double dash are passed unchanged to the executed program rather than interpreted as CJIT options.
 
 .SH AUTHOR
 
@@ -111,4 +167,3 @@ documentation is made available from its website on
 
 .SH SEE ALSO
 .BR tcc (1),
-
