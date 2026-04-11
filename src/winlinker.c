@@ -25,8 +25,7 @@
 #include <sys/stat.h>
 
 #include <cjit.h>
-// #include <cwalk.h>
-#include <array.h>
+#include <support/string_list.h>
 
 #define debug(fmt,par) if(cjit->verbose)_err(fmt,par)
 
@@ -41,18 +40,17 @@ int windows_resolve_libs(CJITState *cjit) {
     struct stat st;
 	// search in all paths if lib%s.so exists
 	// TODO: support --static here
-	libpaths_num = XArray_Used(cjit->libpaths);
-	libnames_num = XArray_Used(cjit->libs);
+	libpaths_num = (int)string_list_count(cjit->libpaths);
+	libnames_num = (int)string_list_count(cjit->libs);
 	for(i=0;i<libnames_num;i++) {
 		found=false;
-		lname = XArray_GetData(cjit->libs,i);
+		lname = string_list_get(cjit->libs,i);
 		for(ii=0;ii<libpaths_num;ii++) {
-			lpath = XArray_GetData(cjit->libpaths,ii);
+			lpath = string_list_get(cjit->libpaths,ii);
 			snprintf(tryfile,PATH_MAX-2,"%s/%s.dll",lpath,lname);
 			debug("resolve_libs try: %s",tryfile);
 			if (stat(tryfile, &st) == 0) {
-				XArray_AddData(cjit->reallibs,
-							   tryfile,strlen(tryfile));
+				string_list_add(cjit->reallibs, tryfile);
 				debug("library found: %s",tryfile);
 				found=true;
 				break;
@@ -62,7 +60,7 @@ int windows_resolve_libs(CJITState *cjit) {
 			_err("Library not found: %s.dll",lname);
 		// continue anyway (will log missing symbol names)
 	}
-	return(XArray_Used(cjit->reallibs));
+	return(string_list_count(cjit->reallibs));
 }
 
 #endif // defined(WINDOWS)

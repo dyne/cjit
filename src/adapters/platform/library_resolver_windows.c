@@ -3,7 +3,6 @@
 #include <stdbool.h>
 
 #include "cjit.h"
-#include "array.h"
 
 #if defined(WINDOWS)
 int windows_resolve_libs(CJITState *cjit);
@@ -28,7 +27,7 @@ static CJITResult resolve_impl(void *context, const LibraryResolverRequest *requ
     (void)request;
     found = windows_resolve_libs(cjit);
     response->resolved_count = found;
-    response->resolved_paths = (const char **)XArray_GetData((xarray_t *)cjit->reallibs, 0);
+    response->resolved_paths = NULL;
     return make_result(CJIT_RESULT_OK, 0, true, NULL);
 #else
     (void)context;

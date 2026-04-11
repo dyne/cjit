@@ -41,6 +41,7 @@ Important current behavior:
 - stdin execution is supported on POSIX and not supported as the no-file fallback on Windows.
 - `-c` currently supports only one source file.
 - UTF BOM source files are explicitly rejected.
+- source files, requested libraries, library search paths, and resolved library paths now use the `StringList` support wrapper instead of raw `XArray` calls in most runtime code.
 
 ## Target Architecture
 

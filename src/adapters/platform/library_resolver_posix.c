@@ -4,7 +4,6 @@
 
 #include "cjit.h"
 #include "elflinker.h"
-#include "array.h"
 
 static CJITResult make_result(CJITResultCode code, int exit_status, bool ok, const char *message)
 {
@@ -24,7 +23,7 @@ static CJITResult resolve_impl(void *context, const LibraryResolverRequest *requ
     (void)request;
     found = posix_resolve_libs(cjit);
     response->resolved_count = found;
-    response->resolved_paths = (const char **)XArray_GetData((xarray_t *)cjit->reallibs, 0);
+    response->resolved_paths = NULL;
     return make_result(CJIT_RESULT_OK, 0, true, NULL);
 }
 
