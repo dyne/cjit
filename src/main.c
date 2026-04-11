@@ -285,25 +285,6 @@ int main(int argc, char **argv) {
   if(!CJIT->quiet)
 	_err("cjit version %s (c) 2024-2025 Dyne.org foundation",&VERSION[1]);
 
-#if 0
-  // If no arguments then start the REPL
-  if (argc == 0 ) {
-    _err("No input file: interactive mode");
-    CJIT->live = true;
-  }
-  if(CJIT->live) {
-    if (!isatty(fileno(stdin))) {
-      _err("Live mode only available in terminal (tty not found)");
-      goto endgame;
-    }
-    cjit_setup(CJIT);
-    res = cjit_cli_tty(CJIT);
-    goto endgame;
-  }
-  // end of REPL
-  /////////////////////////////////////
-#endif
-
   {
 	  ParsedRoute parsed = parse_cli_route(CJIT, argc, clean_argv, opt.ind, arg_separator);
 
