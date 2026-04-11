@@ -13,18 +13,12 @@ static ExecuteResponse make_error(CJITResultCode code, int exit_status, const ch
     return response;
 }
 
-static ExecuteResponse make_success(int exit_status)
-{
-    ExecuteResponse response;
-    response.result = cjit_result_make(CJIT_RESULT_OK, exit_status, true, NULL);
-    return response;
-}
-
 ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
 {
     char *stdin_code = NULL;
     int i;
     int exit_status = 0;
+    CJITResult result;
     RuntimeSession session;
     CompilerPort compiler = tinycc_compiler_port;
     FilesystemPort filesystem = local_filesystem_port;
@@ -86,8 +80,12 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
         }
     }
 
-    compiler.execute_program(compiler.context, &session,
-                             request->app_argc, request->app_argv, &exit_status);
+    result = compiler.execute_program(compiler.context, &session,
+                                      request->app_argc, request->app_argv, &exit_status);
     compiler.end_session(compiler.context, &session);
-    return make_success(exit_status);
+    {
+        ExecuteResponse response;
+        response.result = result;
+        return response;
+    }
 }
