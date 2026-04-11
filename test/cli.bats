@@ -97,6 +97,12 @@ load bats_setup
     assert_line --partial 'Compiling to object files supports only one file argument'
 }
 
+@test "Compile to object prints status from its route" {
+    run ${CJIT} -v -c test/hello.c
+    assert_success
+    assert_line --partial 'Build system:'
+}
+
 @test "Argument separator preserves app flags" {
     run ${CJIT} -q test/cargs.c -- --verb -q
     assert_success

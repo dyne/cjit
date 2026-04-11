@@ -299,7 +299,6 @@ int main(int argc, char **argv) {
 	  } else if(parsed.route == CLI_ROUTE_COMPILE_OBJECT) {
 	  CompileObjectRequest request;
 	  CompileObjectResponse response;
-	  if(CJIT->print_status) cjit_status(CJIT);
 	  request = build_compile_object_request(CJIT, &parsed);
 	  response = compile_object(CJIT, &request);
 	  render_compile_object_response(CJIT, &response);
@@ -307,7 +306,6 @@ int main(int argc, char **argv) {
 	  goto endgame;
 	  }
 
-  if(CJIT->print_status) cjit_status(CJIT);
   if(parsed.route == CLI_ROUTE_BUILD_EXECUTABLE) {
 	  BuildExecutableRequest request;
 	  BuildExecutableResponse response;

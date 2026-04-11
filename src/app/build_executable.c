@@ -20,6 +20,9 @@ BuildExecutableResponse build_executable(CJITState *cjit, const BuildExecutableR
     BuildExecutableResponse response;
     RuntimeSession session;
     CompilerPort compiler = tinycc_compiler_port;
+    if (request->options.print_status) {
+        cjit_status(cjit);
+    }
     compiler.context = cjit;
     compiler.begin_session(compiler.context, &session);
 
