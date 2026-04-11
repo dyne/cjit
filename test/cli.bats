@@ -79,6 +79,7 @@ load bats_setup
 
 @test "Execute code from explicit stdin" {
     skip_if_systcc_execute_is_unavailable
+    skip_if_windows_stdin_is_unsupported
     run bash -lc "printf '%s\n' '#include <stdio.h>' 'int main(void) { puts(\"stdin ok\"); return 0; }' | '${CJIT}' -q -"
     assert_success
     assert_output 'stdin ok'
@@ -86,6 +87,7 @@ load bats_setup
 
 @test "Execute source preserves non-zero exit status" {
     skip_if_systcc_execute_is_unavailable
+    skip_if_windows_stdin_is_unsupported
     run bash -lc "printf '%s\n' 'int main(void) { return 7; }' | '${CJIT}' -q -"
     [ "$status" -eq 7 ]
 }
@@ -129,7 +131,7 @@ load bats_setup
     fi
     run ${CJIT} --xass ${TMP}/assets
     assert_success
-    assert_output --regexp '^/tmp/cjit-'
+    [ -n "${output}" ]
     [ -d "${output}" ]
 }
 

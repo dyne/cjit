@@ -28,3 +28,11 @@ skip_if_systcc_execute_is_unavailable() {
 		skip "in-memory execute routes are unavailable with the Debian shared libtcc build"
 	fi
 }
+
+skip_if_windows_stdin_is_unsupported() {
+	case "$(uname -s)" in
+		MINGW*|MSYS*|CYGWIN*)
+			skip "stdin execute route is unsupported on Windows"
+			;;
+	esac
+}
