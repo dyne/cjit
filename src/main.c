@@ -51,6 +51,8 @@ extern int cjit_ar(CJITState *CJIT, int argc, char **argv);
 // defined below
 static char** remove_args(int* argc,  char** argv,
 						  const char** to_remove, int remove_count);
+static int handle_archive_mode(CJITState *cjit, int argc, char **argv);
+static int handle_conftest_mode(CJITState *cjit, const char *source_path);
 
 #define MAX_ARG_STRING 1024
 static int parse_value(char *str) {
@@ -130,27 +132,15 @@ int main(int argc, char **argv) {
   const char *forced_route_path = NULL;
 
 #ifndef CJIT_WITHOUT_AR
-  // cjit-ar
   if(argv[1] && strlen(argv[1])==3 && strcmp(argv[1],"-ar")==0) {
-	  int res = cjit_ar(CJIT,argc-1,argv+1);
+	  int res = handle_archive_mode(CJIT, argc, argv);
 	  cjit_free(CJIT);
 	  exit(res);
   }
 #endif
 
-  // autoconf conftest
   if(argv[1] && strlen(argv[1])==10 && strcmp(argv[1],"conftest.c")==0) {
-	  _err("Detected conftest");
-	  int res = 0;
-	  CJIT->output_filename = "a.out";
-	  cjit_set_output(CJIT, EXE);
-	  cjit_add_file(CJIT, argv[1]);
-	  if(cjit_link(CJIT)<0) {
-		  _err("Error in linker compiling to file: %s",
-		       CJIT->output_filename);
-		  res = 1;
-	  }
-	  CJIT->output_filename = NULL;
+	  int res = handle_conftest_mode(CJIT, argv[1]);
 	  cjit_free(CJIT);
 	  exit(res);
   }
@@ -405,4 +395,36 @@ char** remove_args(int* argc, char** argv,
     free(keep);
     *argc = new_argc;
     return new_argv;
+}
+
+/**
+ * Runs the archive compatibility mode used to mimic `ar`.
+ */
+static int handle_archive_mode(CJITState *cjit, int argc, char **argv) {
+#ifndef CJIT_WITHOUT_AR
+	return cjit_ar(cjit, argc - 1, argv + 1);
+#else
+	(void)cjit;
+	(void)argc;
+	(void)argv;
+	return 1;
+#endif
+}
+
+/**
+ * Builds the autoconf `conftest.c` probe into `a.out`.
+ */
+static int handle_conftest_mode(CJITState *cjit, const char *source_path) {
+	int res = 0;
+	_err("Detected conftest");
+	cjit->output_filename = "a.out";
+	cjit_set_output(cjit, EXE);
+	cjit_add_file(cjit, source_path);
+	if(cjit_link(cjit)<0) {
+		_err("Error in linker compiling to file: %s",
+		     cjit->output_filename);
+		res = 1;
+	}
+	cjit->output_filename = NULL;
+	return res;
 }
