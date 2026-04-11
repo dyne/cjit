@@ -5,6 +5,10 @@
 
 include build/init.mk
 
+GENERATED_WIN_FILES := src/assets.c src/assets.h \
+	src/embed_libtcc1.a.c src/embed_include.c \
+	src/embed_tinycc_win32.c src/embed_win32ports.c
+
 cc := x86_64-w64-mingw32-gcc
 ar := x86_64-w64-mingw32-ar
 
@@ -24,9 +28,11 @@ SOURCES += src/win-compat.o  \
 
 all: cross-win embed-win cjit.exe cjit-ar.exe
 
-cjit.exe: ${SOURCES}
+cjit.exe: embed-win ${SOURCES}
 	bash build/stamp-exe.sh
 	$(cc) $(cflags) -o $@ $(SOURCES) cjit.res ${ldflags} ${ldadd}
+
+${GENERATED_WIN_FILES}: embed-win
 
 cjit-ar.exe: cflags += -DCJIT_AR_MAIN
 cjit-ar.exe:
