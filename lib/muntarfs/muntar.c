@@ -244,6 +244,9 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 #define DECOMPRESSED_SIZE_RATIO 10 // raise this on errors
 int muntargz_to_path(const char *path, const uint8_t *buf,
 		    const unsigned int len) {
+	unsigned int attempts = 0;
+	unsigned int destlen = len*DECOMPRESSED_SIZE_RATIO;
+	uint8_t *dest = NULL;
 	if(!buf) {
 		fprintf(stderr,"%s: called with NULL buffer\n",
 			__func__);
@@ -254,22 +257,30 @@ int muntargz_to_path(const char *path, const uint8_t *buf,
 			__func__);
 		return(-1);
 	}
-	int res;
-	unsigned int destlen = len*DECOMPRESSED_SIZE_RATIO;
-	uint8_t *dest = malloc(destlen);
-	res = tinf_gzip_uncompress(dest,&destlen,buf,len);
-	// fprintf(stdout,"Compressed source length: %u\n",len);
-	// fprintf(stdout,"Uncompressed destination length: %u\n",destlen);
-	// fprintf(stdout,"Max buffer length: %u\n",len*6);
-	// fprintf(stdout,"Multiplier ratio: %u\n",destlen/len);
-	if(res != TINF_OK) {
-		fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
+	for(attempts = 0; attempts < 8; attempts++) {
+		unsigned int outlen = destlen;
+		int res;
+		dest = malloc(destlen);
+		if(!dest) {
+			fprintf(stderr,"%s: out of memory\n", __func__);
+			return(-1);
+		}
+		res = tinf_gzip_uncompress(dest, &outlen, buf, len);
+		if(res == TINF_OK) {
+			res = muntar_to_path(path, dest, outlen);
+			free(dest);
+			return(res);
+		}
 		free(dest);
-		exit(res);
+		dest = NULL;
+		if(res != TINF_BUF_ERROR) {
+			fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
+			return(res);
+		}
+		destlen *= 2;
 	}
-	res = muntar_to_path(path, dest, destlen);
-	free(dest);
-	return(res);
+	fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
+	return(TINF_BUF_ERROR);
 }
 #endif
 

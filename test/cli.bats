@@ -116,3 +116,16 @@ load bats_setup
     assert_output --regexp '^/tmp/cjit-'
     [ -d "${output}" ]
 }
+
+@test "Extract archive route" {
+    mkdir -p "${TMP}/bundle-src"
+    printf '%s\n' 'bundle ok' > "${TMP}/bundle-src/hello.txt"
+    run ${R}/lib/muntarfs/muntarfs-pack.sh "${TMP}/bundle-src" "${TMP}/bundle" bundle
+    assert_success
+    mkdir -p "${TMP}/bundle-out"
+    pushd "${TMP}/bundle-out" >/dev/null
+    run ${CJIT} --xtgz "${TMP}/bundle.tar.gz"
+    popd >/dev/null
+    assert_success
+    [ -f "${TMP}/bundle-out/bundle/hello.txt" ]
+}
