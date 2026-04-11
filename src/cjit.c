@@ -385,65 +385,34 @@ bool cjit_add_file(CJITState *cjit, const char *path) {
 }
 
 bool cjit_compile_file(CJITState *cjit, const char *path) {
-	int is_source = has_source_extension(path);
-	// _err("basename: %s",tmp);
-	if( is_source == 0) {
-		fail(path);
-		_err("filename has no extension");
-		return false;
+	RuntimeSession session;
+	CompilerPort compiler = tinycc_compiler_port;
+	CJITResult result;
+	compiler.context = cjit;
+	compiler.begin_session(compiler.context, &session);
+	result = compiler.compile_object(compiler.context, &session, path);
+	compiler.end_session(compiler.context, &session);
+	if (!result.ok && result.message) {
+		_err("%s: %s", __func__, result.message);
 	}
-	if( is_source < 0) {
-		fail(path);
-		_err("filename has wrong extension");
-		return false;
-	}
-	setup;
-	tcc_add_file(tcc(cjit), path);
-	if(cjit->output_filename) {
-		if(!cjit->quiet)
-			_err("Compiling: %s -> %s",path,
-			     cjit->output_filename);
-		tcc_output_file(tcc(cjit),
-				cjit->output_filename);
-	} else {
-		char *ext;
-		size_t extlen;
-		char *restrict tmp;
-		const char *basename;
-		size_t len;
-		cwk_path_get_basename((char*)path, &basename, &len);
-		tmp = malloc(len+2);
-		strncpy(tmp,basename,len+1);
-		cwk_path_get_extension(tmp,(const char**)&ext,&extlen);
-		strcpy(ext,".o");
-		if(!cjit->quiet)
-			_err("Compiling: %s -> %s",path,tmp);
-		tcc_output_file(tcc(cjit),tmp);
-		free(tmp);
-	}
-	return true;
+	return result.ok;
 }
 
 // link all setup and create an executable file
 int cjit_link(CJITState *cjit) {
-	if(!cjit->done_setup) {
-		_err("%s: no source code found",__func__);
-		return 1;
+	RuntimeSession session;
+	CompilerPort compiler = tinycc_compiler_port;
+	CJITResult result;
+	int res = 0;
+	compiler.context = cjit;
+	compiler.begin_session(compiler.context, &session);
+	result = compiler.link_executable(compiler.context, &session);
+	compiler.end_session(compiler.context, &session);
+	if (!result.ok && result.message) {
+		_err("%s: %s", __func__, result.message);
+		res = result.exit_status ? result.exit_status : 1;
 	}
-	if(!cjit->output_filename) {
-		_err("%s: no output file configured (-o)",__func__);
-		return 1;
-	}
-	// resolve library files on UNIX systems
-	int found = resolve_libraries(cjit);
-	for(int i=0;i<found;i++) {
-		char *f = string_list_get(cjit->reallibs,i);
-		if(f) {
-			tcc_add_file(tcc(cjit), f);
-		}
-	}
-	debug(" -o %s",cjit->output_filename);
-	return( tcc_output_file(tcc(cjit),cjit->output_filename));
+	return res;
 }
 
 int cjit_exec(CJITState *cjit, int argc, char **argv) {
