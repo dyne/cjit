@@ -1,12 +1,14 @@
 load bats_setup
 
 @test "Hello World!" {
+    skip_if_systcc_execute_is_unavailable
     run ${CJIT} -q test/hello.c
     assert_success
     assert_output 'Hello World!'
 }
 
 @test "Pass pre-processor defines" {
+    skip_if_systcc_execute_is_unavailable
     run ${CJIT} -q test/cflags.c -DALLOWED
     assert_success
     assert_output 'Success.'
@@ -57,7 +59,8 @@ load bats_setup
 }
 
 @test "Execute multiple files" {
-    run ${CJIT} -q test/multifile/*
+    skip_if_systcc_execute_is_unavailable
+    run ${CJIT} -q test/multifile/*.c
     assert_success
     assert_line --partial 'hello from myfunc'
     assert_line --partial 'hello from myfunc2'
@@ -65,6 +68,7 @@ load bats_setup
 }
 
 @test "Pass arguments to executed source" {
+    skip_if_systcc_execute_is_unavailable
     run ${CJIT} -q test/cargs.c -- a b c
     assert_success
     assert_line --partial '0: test/cargs.c'
@@ -74,12 +78,14 @@ load bats_setup
 }
 
 @test "Execute code from explicit stdin" {
+    skip_if_systcc_execute_is_unavailable
     run bash -lc "printf '%s\n' '#include <stdio.h>' 'int main(void) { puts(\"stdin ok\"); return 0; }' | '${CJIT}' -q -"
     assert_success
     assert_output 'stdin ok'
 }
 
 @test "Execute source preserves non-zero exit status" {
+    skip_if_systcc_execute_is_unavailable
     run bash -lc "printf '%s\n' 'int main(void) { return 7; }' | '${CJIT}' -q -"
     [ "$status" -eq 7 ]
 }
@@ -110,6 +116,7 @@ load bats_setup
 }
 
 @test "Argument separator preserves app flags" {
+    skip_if_systcc_execute_is_unavailable
     run ${CJIT} -q test/cargs.c -- --verb -q
     assert_success
     assert_line --partial '1: --verb'
