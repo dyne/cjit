@@ -18,31 +18,36 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
     char *stdin_code = NULL;
     int i;
     int exit_status = 0;
-    CJITResult result;
+    ExecuteResponse response;
     RuntimeSession session;
     CompilerPort compiler = tinycc_compiler_port;
     FilesystemPort filesystem = local_filesystem_port;
     compiler.context = cjit;
     filesystem.context = cjit;
     compiler.begin_session(compiler.context, &session);
+    response.result = cjit_result_ok();
 
     if (request->source_count == 0) {
 #if defined(_WIN32)
-        return make_error(CJIT_RESULT_INVALID_REQUEST, 1,
-                          "No files specified on commandline");
+        response = make_error(CJIT_RESULT_INVALID_REQUEST, 1,
+                              "No files specified on commandline");
+        goto cleanup;
 #else
         if (!cjit->quiet) {
             _err("No files specified on commandline, reading code from stdin");
         }
         if (!filesystem.read_stdin(filesystem.context, &stdin_code, NULL).ok) {
-            return make_error(CJIT_RESULT_IO_ERROR, 1, "Error reading from standard input");
+            response = make_error(CJIT_RESULT_IO_ERROR, 1,
+                                  "Error reading from standard input");
+            goto cleanup;
         }
         if (!compiler.add_source_buffer(compiler.context, &session, stdin_code).ok) {
-            free(stdin_code);
-            return make_error(CJIT_RESULT_COMPILER_ERROR, 1,
-                              "Code runtime error in stdin");
+            response = make_error(CJIT_RESULT_COMPILER_ERROR, 1,
+                                  "Code runtime error in stdin");
+            goto cleanup;
         }
         free(stdin_code);
+        stdin_code = NULL;
 #endif
     } else {
         if (cjit->verbose) {
@@ -56,36 +61,37 @@ ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
             }
             if (*code_path == '-') {
 #if defined(_WIN32)
-                return make_error(CJIT_RESULT_INVALID_REQUEST, 1,
-                                  "Code from standard input not supported on Windows");
+                response = make_error(CJIT_RESULT_INVALID_REQUEST, 1,
+                                      "Code from standard input not supported on Windows");
+                goto cleanup;
 #else
                 if (!filesystem.read_stdin(filesystem.context, &stdin_code, NULL).ok) {
-                    return make_error(CJIT_RESULT_IO_ERROR, 1,
-                                      "Error reading from standard input");
+                    response = make_error(CJIT_RESULT_IO_ERROR, 1,
+                                          "Error reading from standard input");
+                    goto cleanup;
                 }
                 if (!compiler.add_source_buffer(compiler.context, &session, stdin_code).ok) {
-                    free(stdin_code);
-                    return make_error(CJIT_RESULT_COMPILER_ERROR, 1,
-                                      "Code runtime error in stdin");
+                    response = make_error(CJIT_RESULT_COMPILER_ERROR, 1,
+                                          "Code runtime error in stdin");
+                    goto cleanup;
                 }
                 free(stdin_code);
                 stdin_code = NULL;
 #endif
             } else {
                 if (!compiler.add_source_file(compiler.context, &session, code_path).ok) {
-                    return make_error(CJIT_RESULT_COMPILER_ERROR, 1,
-                                      "Error loading source input");
+                    response = make_error(CJIT_RESULT_COMPILER_ERROR, 1,
+                                          "Error loading source input");
+                    goto cleanup;
                 }
             }
         }
     }
 
-    result = compiler.execute_program(compiler.context, &session,
-                                      request->app_argc, request->app_argv, &exit_status);
+    response.result = compiler.execute_program(compiler.context, &session,
+                                               request->app_argc, request->app_argv, &exit_status);
+cleanup:
+    free(stdin_code);
     compiler.end_session(compiler.context, &session);
-    {
-        ExecuteResponse response;
-        response.result = result;
-        return response;
-    }
+    return response;
 }
