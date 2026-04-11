@@ -23,6 +23,7 @@
 #include <elflinker.h>
 #include <adapters/compiler/tinycc_adapter.h>
 #include <adapters/platform/runtime_platform.h>
+#include <support/source_files.h>
 #include <support/string_list.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -213,26 +214,6 @@ bool cjit_status(CJITState *cjit) {
 	return true;
 }
 
-static int has_source_extension(const char *path) {
-	char *ext;
-	size_t extlen;
-	bool is_source;
-	is_source = cwk_path_get_extension(path,(const char**)&ext,&extlen);
-	//_err("%s: extension: %s",__func__,ext);
-	if(!is_source) // no extension at all
-		return 0;
-	if(extlen==2 && (ext[1]=='c' || ext[1]=='C')) is_source = true;
-	else if(extlen==3
-	   && (ext[1]=='c' || ext[1]=='C')
-	   && (ext[2]=='c' || ext[2]=='C')) is_source = true;
-	else if(extlen==4
-	   && (ext[1]=='c' || ext[1]=='C')
-	   && (ext[2]=='x' || ext[2]=='X')
-	   && (ext[3]=='x' || ext[3]=='X')) is_source = true;
-	else is_source = false;
-	return (is_source? 1 : -1);
-}
-
 static int detect_bom(const char *filename,size_t *filesize) {
 	uint8_t bom[3];
 	int res;
@@ -368,7 +349,7 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 
 CJITResult cjit_add_file_result(CJITState *cjit, const char *path) {
 	CJITResult result;
-	int is_source = has_source_extension(path);
+	int is_source = cjit_classify_source_path(path);
 	result = cjit_prepare(cjit);
 	if (!result.ok) {
 		return result;

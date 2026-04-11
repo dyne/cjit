@@ -9,38 +9,12 @@
 #include "cjit.h"
 #include "cwalk.h"
 #include "libtcc.h"
+#include "support/source_files.h"
 #include "support/string_list.h"
 
 static CJITState *state_from_context(void *context)
 {
     return (CJITState *)context;
-}
-
-static int has_source_extension(const char *path)
-{
-    char *ext;
-    size_t extlen;
-    bool is_source;
-
-    is_source = cwk_path_get_extension(path, (const char **)&ext, &extlen);
-    if (!is_source) {
-        return 0;
-    }
-    if (extlen == 2 && (ext[1] == 'c' || ext[1] == 'C')) {
-        is_source = true;
-    } else if (extlen == 3
-               && (ext[1] == 'c' || ext[1] == 'C')
-               && (ext[2] == 'c' || ext[2] == 'C')) {
-        is_source = true;
-    } else if (extlen == 4
-               && (ext[1] == 'c' || ext[1] == 'C')
-               && (ext[2] == 'x' || ext[2] == 'X')
-               && (ext[3] == 'x' || ext[3] == 'X')) {
-        is_source = true;
-    } else {
-        is_source = false;
-    }
-    return is_source ? 1 : -1;
 }
 
 static CJITResult relocate(void *context, RuntimeSession *session);
@@ -166,7 +140,7 @@ static CJITResult output_file(void *context, RuntimeSession *session, const char
 static CJITResult compile_object(void *context, RuntimeSession *session, const char *path)
 {
     CJITState *cjit = state_from_context(context);
-    int is_source = has_source_extension(path);
+    int is_source = cjit_classify_source_path(path);
     TCCState *compiler_handle = (TCCState *)session->compiler_handle;
 
     if (is_source == 0 || is_source < 0) {
