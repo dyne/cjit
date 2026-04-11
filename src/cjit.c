@@ -447,45 +447,24 @@ int cjit_link(CJITState *cjit) {
 }
 
 int cjit_exec(CJITState *cjit, int argc, char **argv) {
-	if(!cjit->done_setup) {
-		_err("%s: no source code found",__func__);
-		return 1;
-	}
-	if(cjit->done_exec) {
-		_err("%s: CJIT already executed once",__func__);
-		return 1;
-	}
-	debug("resolve paths to library files (%i)",
-		  (int)string_list_count(cjit->libs));
-	int found = resolve_libraries(cjit);
-	for(int i=0;i<found;i++) {
-		char *f = string_list_get(cjit->reallibs,i);
-		if(f) {
-			debug(" +file: %s",f);
-			tcc_add_file(tcc(cjit), f);
-		}
-	}
-	int res = 1;
-	int (*_ep)(int, char**);
 	RuntimeSession session;
 	CompilerPort compiler = tinycc_compiler_port;
+	CJITResult result;
+	int res = 1;
 	compiler.context = cjit;
 	compiler.begin_session(compiler.context, &session);
-	// relocate the code (link symbols)
-	if (!compiler.relocate(compiler.context, &session).ok) {
-		compiler.end_session(compiler.context, &session);
-		_err("%s: TCC linker error",__func__);
-		_err("Library functions missing.");
-		return -1;
-	}
-	if (!compiler.resolve_symbol(compiler.context, &session,
-								 cjit->entry?cjit->entry:"main", (void **)&_ep).ok) {
-		compiler.end_session(compiler.context, &session);
-		_err("Symbol not found in source: %s",cjit->entry?cjit->entry:"main");
-		return -1;
-	}
-	res = cjit_platform_exec(cjit, _ep, argc, argv);
+	result = compiler.execute_program(compiler.context, &session, argc, argv, &res);
 	compiler.end_session(compiler.context, &session);
+	if (!result.ok) {
+		if (result.message && strcmp(result.message, "Entrypoint symbol not found") == 0) {
+			_err("Symbol not found in source: %s", cjit->entry ? cjit->entry : "main");
+		} else if (result.message && strcmp(result.message, "TCC linker error") == 0) {
+			_err("%s: %s", __func__, result.message);
+			_err("Library functions missing.");
+		} else if (result.message) {
+			_err("%s: %s", __func__, result.message);
+		}
+	}
 	return res;
 }
 
