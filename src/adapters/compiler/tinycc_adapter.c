@@ -277,7 +277,7 @@ static CJITResult relocate(void *context, RuntimeSession *session)
 
     (void)context;
     compiler_handle = (TCCState *)session->compiler_handle;
-#if defined(SHAREDTCC)
+#if defined(TCC_RELOCATE_AUTO)
     if (tcc_relocate(compiler_handle, TCC_RELOCATE_AUTO) < 0) {
 #else
     if (tcc_relocate(compiler_handle) < 0) {
