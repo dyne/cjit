@@ -10,6 +10,8 @@
 #include "elflinker.h"
 #include "libtcc.h"
 #include "support/string_list.h"
+#include "adapters/platform/library_resolver_posix.h"
+#include "adapters/platform/library_resolver_windows.h"
 
 #if defined(WINDOWS)
 extern void win_compat_usleep(unsigned int microseconds);
@@ -136,5 +138,54 @@ void cjit_platform_add_library_path(CJITState *cjit, const char *path)
 #else
     (void)cjit;
     (void)path;
+#endif
+}
+
+LibraryResolverPort cjit_platform_library_resolver(void)
+{
+#if defined(WINDOWS)
+    return windows_library_resolver_port;
+#else
+    return posix_library_resolver_port;
+#endif
+}
+
+void cjit_platform_print_status(const CJITState *cjit)
+{
+    (void)cjit;
+#if defined(TCC_TARGET_I386)
+    _err("Target platform: i386 code generator");
+#elif defined(TCC_TARGET_X86_64)
+    _err("Target platform: x86-64 code generator");
+#elif defined(TCC_TARGET_ARM)
+    _err("Target platform: ARMv4 code generator");
+#elif defined(TCC_TARGET_ARM64)
+    _err("Target platform: ARMv8 code generator");
+#elif defined(TCC_TARGET_C67)
+    _err("Target platform: TMS320C67xx code generator");
+#elif defined(TCC_TARGET_RISCV64)
+    _err("Target platform: risc-v code generator");
+#else
+    _err("Target platform: No target is defined");
+#endif
+
+#if defined(TCC_TARGET_PE) && defined(TCC_TARGET_X86_64)
+    _err("Target system: WIN64");
+#elif defined(TCC_TARGET_PE) && defined(TCC_TARGET_I386)
+    _err("Target system: WIN32");
+#elif defined(TCC_TARGET_MACHO)
+    _err("Target system: Apple/OSX");
+#elif defined(TARGETOS_Linux)
+    _err("Target system: GNU/Linux");
+#elif defined(TARGETOS_BSD)
+    _err("Target system: BSD");
+#endif
+
+#if !(defined(TCC_TARGET_PE) || defined(TCC_TARGET_MACHO))
+    _err("ELF interpreter: %s", CONFIG_TCC_ELFINTERP);
+#endif
+
+#if defined(SHAREDTCC)
+    _err("System libtcc: %s", SHAREDTCC);
 #endif
 }
