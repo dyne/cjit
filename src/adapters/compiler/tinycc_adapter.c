@@ -3,12 +3,42 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "adapters/platform/library_resolver_posix.h"
+#include "adapters/platform/library_resolver_windows.h"
+#include "adapters/platform/runtime_platform.h"
 #include "cjit.h"
 #include "libtcc.h"
+#include "support/string_list.h"
 
 static CJITState *state_from_context(void *context)
 {
     return (CJITState *)context;
+}
+
+static CJITResult relocate(void *context, RuntimeSession *session);
+static CJITResult resolve_symbol(void *context, RuntimeSession *session,
+                                 const char *symbol_name, void **symbol);
+
+static int resolve_libraries(CJITState *cjit)
+{
+    LibraryResolverPort resolver;
+    LibraryResolverRequest request;
+    LibraryResolverResponse response;
+
+    request.library_count = (int)string_list_count(cjit->libs);
+    request.libraries = NULL;
+    request.search_path_count = (int)string_list_count(cjit->libpaths);
+    request.search_paths = NULL;
+#if defined(WINDOWS)
+    resolver = windows_library_resolver_port;
+#else
+    resolver = posix_library_resolver_port;
+#endif
+    resolver.context = cjit;
+    if (!resolver.resolve(resolver.context, &request, &response).ok) {
+        return 0;
+    }
+    return response.resolved_count;
 }
 
 static CJITResult begin_session(void *context, RuntimeSession *session)
@@ -137,8 +167,36 @@ static CJITResult execute_program(void *context, RuntimeSession *session,
                                   int argc, char **argv, int *exit_status)
 {
     CJITState *cjit = state_from_context(context);
-    (void)session;
-    *exit_status = cjit_exec(cjit, argc, argv);
+    int found;
+    int (*entrypoint)(int, char **);
+    CJITResult result;
+
+    if (!cjit->done_setup) {
+        return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1, "No source code found");
+    }
+    if (cjit->done_exec) {
+        return cjit_result_error(CJIT_RESULT_EXEC_ERROR, 1, "CJIT already executed once");
+    }
+
+    found = resolve_libraries(cjit);
+    for (int i = 0; i < found; ++i) {
+        char *resolved_path = string_list_get(cjit->reallibs, i);
+        if (resolved_path) {
+            tcc_add_file((TCCState *)session->compiler_handle, resolved_path);
+        }
+    }
+
+    result = relocate(context, session);
+    if (!result.ok) {
+        return result;
+    }
+    result = resolve_symbol(context, session, cjit->entry ? cjit->entry : "main",
+                            (void **)&entrypoint);
+    if (!result.ok) {
+        return result;
+    }
+
+    *exit_status = cjit_platform_exec(cjit, entrypoint, argc, argv);
     return cjit_result_make((*exit_status == 0) ? CJIT_RESULT_OK : CJIT_RESULT_EXEC_ERROR,
                             *exit_status, (*exit_status == 0), NULL);
 }
