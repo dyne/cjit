@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
 		  cjit_add_library(CJIT, opt.arg);
 	  } else if (c == 'C') { // cflags compiler options
 		  if(CJIT->verbose)_err("arg cflags: %s",opt.arg);
-		  cjit_set_tcc_options(CJIT->TCC, opt.arg);
+		  cjit_set_tcc_options(CJIT, opt.arg);
 	  } else if (c == 'I') { // include paths in cflags
 		  if(CJIT->verbose)_err("arg inc: %s",opt.arg);
 		  cjit_add_include_path(CJIT, opt.arg);
