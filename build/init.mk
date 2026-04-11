@@ -30,6 +30,7 @@ SOURCES := src/file.o src/cjit.o \
 		   src/adapters/fs/local_asset.o \
 		   src/adapters/platform/library_resolver_posix.o \
            src/adapters/platform/library_resolver_windows.o \
+           src/adapters/platform/runtime_platform.o \
            src/elflinker.o src/winlinker.o \
            src/main.o src/assets.o \
            lib/muntarfs/muntarfs_runtime.o \
