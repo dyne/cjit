@@ -26,6 +26,7 @@ ldadd := lib/tinycc/libtcc.a -lshlwapi
 
 tinycc_config += --targetos=WIN32 --config-backtrace=no
 
+SOURCES := $(filter-out src/adapters/platform/library_resolver_posix.o,$(SOURCES))
 SOURCES += src/win-compat.o  \
 	src/embed_tinycc_win32.o \
 	src/embed_win32ports.o

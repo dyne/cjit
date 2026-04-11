@@ -22,6 +22,7 @@ ldflags += -static-libgcc
 tinycc_config += --targetos=WIN32 --config-backtrace=no --enable-cross
 tinycc_config += --ar=${ar}
 
+SOURCES := $(filter-out src/adapters/platform/library_resolver_posix.o,$(SOURCES))
 SOURCES += src/win-compat.o  \
 	src/embed_tinycc_win32.o \
 	src/embed_win32ports.o
