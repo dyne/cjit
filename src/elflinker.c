@@ -21,7 +21,7 @@
 
 // interpret a subset of GNU ldscripts to handle dummy .so files
 
-#include <platforms.h>
+#include "adapters/platform/build_platform.h"
 #if defined(POSIX)
 #define MAX_PATH 512
 #include <cjit.h>

@@ -1,6 +1,6 @@
-// Platform detection
-#ifndef __PLATFORMS_H__
-#define __PLATFORMS_H__
+// Build and host platform detection.
+#ifndef __BUILD_PLATFORM_H__
+#define __BUILD_PLATFORM_H__
 
 // deactivate warnings about re-definitions
 #pragma GCC system_header
