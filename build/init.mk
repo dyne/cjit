@@ -32,7 +32,6 @@ SOURCES := src/file.o src/cjit.o \
 		   src/adapters/platform/library_resolver_posix.o \
            src/adapters/platform/library_resolver_windows.o \
            src/adapters/platform/runtime_platform.o \
-           src/winlinker.o \
            src/main.o src/assets.o \
            lib/muntarfs/muntarfs_runtime.o \
            lib/muntarfs/muntar.o lib/muntarfs/tinflate.o lib/muntarfs/tinfgzip.o \
