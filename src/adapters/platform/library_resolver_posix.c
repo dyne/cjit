@@ -2,7 +2,7 @@
  *  Taken from ELF file handling in TCC
  *
  *  Copyright (c) 2001-2004 Fabrice Bellard
- *  Copyright (c) 2024-2025 Dyne.org
+ *  Copyright (c) 2024-2026 Dyne.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
