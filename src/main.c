@@ -26,7 +26,7 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include <ketopt.h>
+#include "adapters/cli/ketopt.h"
 #include <muntarfs.h>
 #include <app/execute_source.h>
 #include <app/compile_object.h>
