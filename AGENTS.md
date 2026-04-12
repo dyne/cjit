@@ -23,13 +23,15 @@ Main files:
 - [src/cjit.c](/home/jrml/devel/cjit/src/cjit.c): runtime lifecycle, TinyCC setup, source ingestion, linking, execution
 - [src/cjit.h](/home/jrml/devel/cjit/src/cjit.h): `CJITState` and public runtime functions
 - [src/file.c](/home/jrml/devel/cjit/src/file.c): file/stdin/path helpers
+- [src/support/cwalk.c](/home/jrml/devel/cjit/src/support/cwalk.c): low-level path manipulation support used by filesystem and platform adapters
+- [src/adapters/cli/ketopt.h](/home/jrml/devel/cjit/src/adapters/cli/ketopt.h): local CLI option parsing dependency
 - [src/adapters/platform/build_platform.h](/home/jrml/devel/cjit/src/adapters/platform/build_platform.h): compile-time host and target platform definitions used by core and platform adapters
+- [src/adapters/platform/library_resolver_posix.c](/home/jrml/devel/cjit/src/adapters/platform/library_resolver_posix.c): POSIX library resolution and GNU ld script handling
+- [src/adapters/platform/library_resolver_windows.c](/home/jrml/devel/cjit/src/adapters/platform/library_resolver_windows.c): Windows DLL resolution
 - [lib/muntarfs/muntarfs.h](/home/jrml/devel/cjit/lib/muntarfs/muntarfs.h): bundle extraction surface used by CJIT
 - [lib/muntarfs/muntar.c](/home/jrml/devel/cjit/lib/muntarfs/muntar.c): tar extraction and archive reader
 - [lib/muntarfs/tinflate.c](/home/jrml/devel/cjit/lib/muntarfs/tinflate.c): low-level deflate implementation
 - [lib/muntarfs/tinfgzip.c](/home/jrml/devel/cjit/lib/muntarfs/tinfgzip.c): gzip wrapper over the inflater
-- [src/elflinker.c](/home/jrml/devel/cjit/src/elflinker.c): POSIX library resolution
-- [src/winlinker.c](/home/jrml/devel/cjit/src/winlinker.c): Windows library resolution
 - [src/win-compat.c](/home/jrml/devel/cjit/src/win-compat.c): Windows compatibility helpers
 
 Important current behavior:
@@ -171,8 +173,8 @@ Target destination:
 
 Current start point:
 
-- [src/elflinker.c](/home/jrml/devel/cjit/src/elflinker.c)
-- [src/winlinker.c](/home/jrml/devel/cjit/src/winlinker.c)
+- [src/adapters/platform/library_resolver_posix.c](/home/jrml/devel/cjit/src/adapters/platform/library_resolver_posix.c)
+- [src/adapters/platform/library_resolver_windows.c](/home/jrml/devel/cjit/src/adapters/platform/library_resolver_windows.c)
 
 Target destination:
 
