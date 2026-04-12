@@ -84,6 +84,7 @@ char *load_stdin() {
 #else
 	char *code = NULL;
 	char *line = NULL;
+	size_t used = 0;
 	size_t len = 0;
 	ssize_t rd;
 	fflush(stdout);
@@ -94,15 +95,21 @@ char *load_stdin() {
 			free(line);
 			break;
 		}
-		code = realloc(code, (code?strlen(code):0) + len + 1);
+		code = realloc(code, used + rd + 1);
 		if (!code) {
 			fail("malloc error");
 			free(line);
 			return NULL;
 		}
-		strcat(code, line);
+		if (used == 0) {
+			code[0] = 0x0;
+		}
+		memcpy(code + used, line, rd);
+		used += rd;
+		code[used] = 0x0;
 		free(line);
 		line = NULL;
+		len = 0;
 	}
 	return(code);
 #endif
