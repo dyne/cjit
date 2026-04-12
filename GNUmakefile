@@ -100,7 +100,7 @@ check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@./test/bats/bin/bats test/muntar.bats
 
 check-unit: ## 🧪 Run small direct C tests for pure support logic
-	@$(CC) -Isrc -o test/source_files_unit.bin test/source_files_unit.c src/support/source_files.c src/cwalk.c
+	@$(CC) -Isrc -o test/source_files_unit.bin test/source_files_unit.c src/support/source_files.c src/support/cwalk.c
 	@./test/source_files_unit.bin
 
 
