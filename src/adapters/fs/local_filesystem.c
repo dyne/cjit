@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "cwalk.h"
+#include "support/cwalk.h"
 
 #include "cjit.h"
 

@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "cwalk.h"
+#include "support/cwalk.h"
 
 int cjit_classify_source_path(const char *path)
 {

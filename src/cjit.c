@@ -19,7 +19,7 @@
 
 #include <cjit.h>
 #include <libtcc.h>
-#include <cwalk.h>
+#include "support/cwalk.h"
 #include <elflinker.h>
 #include <adapters/compiler/tinycc_adapter.h>
 #include <adapters/platform/runtime_platform.h>

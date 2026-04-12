@@ -6,7 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "cwalk.h"
+#include "support/cwalk.h"
 #include "elflinker.h"
 #include "libtcc.h"
 #include "support/string_list.h"
