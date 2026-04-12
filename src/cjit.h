@@ -20,7 +20,7 @@
 #ifndef _CJIT_H_
 #define _CJIT_H_
 
-#include <platforms.h>
+#include "adapters/platform/build_platform.h"
 #include <stdbool.h>
 #include "domain/error.h"
 
