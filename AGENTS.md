@@ -23,6 +23,7 @@ Main files:
 - [src/cjit.c](/home/jrml/devel/cjit/src/cjit.c): runtime lifecycle, TinyCC setup, source ingestion, linking, execution
 - [src/cjit.h](/home/jrml/devel/cjit/src/cjit.h): `CJITState` and public runtime functions
 - [src/file.c](/home/jrml/devel/cjit/src/file.c): file/stdin/path helpers
+- [src/adapters/platform/build_platform.h](/home/jrml/devel/cjit/src/adapters/platform/build_platform.h): compile-time host and target platform definitions used by core and platform adapters
 - [lib/muntarfs/muntarfs.h](/home/jrml/devel/cjit/lib/muntarfs/muntarfs.h): bundle extraction surface used by CJIT
 - [lib/muntarfs/muntar.c](/home/jrml/devel/cjit/lib/muntarfs/muntar.c): tar extraction and archive reader
 - [lib/muntarfs/tinflate.c](/home/jrml/devel/cjit/lib/muntarfs/tinflate.c): low-level deflate implementation
