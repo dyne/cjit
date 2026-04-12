@@ -227,13 +227,13 @@ jobs:
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx RELEASE=1
-          mv cjit.command cjit-Darwin-${{ env.ARCH }}
+          mv cjit.command cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
       - name: Upload artifact apple-osx
         uses: actions/upload-artifact@v4
         with:
-          name: release-osx-${{ env.ARCH }}
+          name: release-osx-${{ matrix.os }}-${{ env.ARCH }}
           path: |
-            cjit-Darwin-${{ env.ARCH }}
+            cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
 
   binary-release:
     name: 📢 Public release
