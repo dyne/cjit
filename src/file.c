@@ -18,7 +18,7 @@
  */
 
 #include <cjit.h>
-#include <cwalk.h>
+#include "support/cwalk.h"
 
 #include <stdio.h>
 #include <stdlib.h>

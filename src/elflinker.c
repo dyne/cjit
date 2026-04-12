@@ -25,7 +25,7 @@
 #if defined(POSIX)
 #define MAX_PATH 512
 #include <cjit.h>
-#include <cwalk.h>
+#include "support/cwalk.h"
 #include <elflinker.h>
 #include <support/string_list.h>
 

@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
-#include <cwalk.h>
+#include "support/cwalk.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>

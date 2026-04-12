@@ -7,7 +7,7 @@
 #include "adapters/platform/library_resolver_windows.h"
 #include "adapters/platform/runtime_platform.h"
 #include "cjit.h"
-#include "cwalk.h"
+#include "support/cwalk.h"
 #include "libtcc.h"
 #include "support/source_files.h"
 #include "support/string_list.h"

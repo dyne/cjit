@@ -19,7 +19,7 @@ src = files(
   '../src/elflinker.c',
   '../src/winlinker.c',
   '../src/main.c',
-  '../src/cwalk.c',
+  '../src/support/cwalk.c',
   '../src/array.c',
   '../src/support/source_files.c',
   '../src/support/string_list.c',
