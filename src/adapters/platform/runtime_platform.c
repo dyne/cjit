@@ -7,7 +7,6 @@
 #include <unistd.h>
 
 #include "support/cwalk.h"
-#include "elflinker.h"
 #include "libtcc.h"
 #include "support/string_list.h"
 #include "adapters/platform/library_resolver_posix.h"

@@ -16,7 +16,6 @@ message('Building project version: @0@'.format(meson.project_version()))
 src = files(
   '../src/cjit.c',
   '../src/file.c',
-  '../src/elflinker.c',
   '../src/winlinker.c',
   '../src/main.c',
   '../src/support/cwalk.c',
