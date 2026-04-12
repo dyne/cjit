@@ -1,7 +1,7 @@
 /*
  * Library path resolver from lib names on Windows systems
  *
- *  Copyright (c) 2024-2025 Dyne.org
+ *  Copyright (c) 2024-2026 Dyne.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

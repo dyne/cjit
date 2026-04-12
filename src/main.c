@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
 	  }
   }
   if(!CJIT->quiet)
-	_err("cjit version %s (c) 2024-2025 Dyne.org foundation",&VERSION[1]);
+	_err("cjit version %s (c) 2024-2026 Dyne.org foundation",&VERSION[1]);
 
   {
 	  ParsedRoute parsed = parse_cli_route(CJIT, argc, clean_argv, opt.ind, arg_separator,
