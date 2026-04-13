@@ -344,6 +344,6 @@ clean:
 	rm -f *-cc *-gcc *-tcc *.exe hello libtcc_test vla_test tcctest[1234]
 	rm -f asm-c-connect asm-c-connect-sep
 	rm -f ex? tcc_g weaktest.*.txt *.def *.pdb *.obj libtcc_test_mt
-	@$(MAKE) -C tests2 $@
-	@$(MAKE) -C pp $@
+	@"$(MAKE)" -C tests2 $@
+	@"$(MAKE)" -C pp $@
 

@@ -496,8 +496,8 @@ clean:
 	@rm -f tcc *-tcc tcc_p tcc_c
 	@rm -f tags ETAGS *.o *.a *.so* *.out *.log lib*.def *.exe *.dll
 	@rm -f a.out *.dylib *_.h *.pod *.tcov
-	@$(MAKE) -s -C lib $@
-	@$(MAKE) -s -C tests $@
+	@"$(MAKE)" -s -C lib $@
+	@"$(MAKE)" -s -C tests $@
 
 distclean: clean
 	@rm -vf config.h config.mak config.texi
