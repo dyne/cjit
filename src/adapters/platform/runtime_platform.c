@@ -62,7 +62,7 @@ void cjit_platform_setup_runtime(CJITState *cjit)
 /**
  * Writes the process id file used by the file watcher integration.
  */
-static int write_pid_file(CJITState *cjit, pid_t pid)
+static int write_pid_file(CJITState *cjit, long pid)
 {
     FILE *fd;
 
@@ -77,7 +77,7 @@ static int write_pid_file(CJITState *cjit, pid_t pid)
         return -1;
     }
 
-    fprintf(fd, "%d\n", pid);
+    fprintf(fd, "%ld\n", pid);
     fclose(fd);
     return 0;
 }
@@ -86,7 +86,7 @@ int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
                        int argc, char **argv)
 {
 #if defined(WINDOWS)
-    if (write_pid_file(cjit, getpid()) < 0) {
+    if (write_pid_file(cjit, (long)GetCurrentProcessId()) < 0) {
         return -1;
     }
     cjit->done_exec = true;
@@ -102,7 +102,7 @@ int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
         exit(res);
     }
 
-    if (write_pid_file(cjit, pid) < 0) {
+    if (write_pid_file(cjit, (long)pid) < 0) {
         return -1;
     }
 
