@@ -54,6 +54,11 @@ win-native: ## 🪟 Build cjit.exe for WIN64 on Windows Server
 	@rm -f .build_done*
 	date | tee .build_done_win
 
+win-arm: ## 🪟 Build cjit.exe for ARM64 on Windows Server
+	$(MAKE) -f build/win-arm.mk embed-win cjit.exe cjit-ar.exe
+	@rm -f .build_done*
+	date | tee .build_done_win
+
 apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
 	$(MAKE) -f build/osx.mk embed-posix cjit.command
 	@rm -f .build_done*

@@ -109,6 +109,19 @@ jobs:
         run: |
           make check-ci
 
+  win-arm64-test:
+    name: 🪟 Windows arm64 test
+    needs: [reuse, c-lint]
+    runs-on: "windows-11-arm"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native windows exe for ARM64
+        run: |
+          make win-arm
+      - name: Run tests
+        run: |
+          make check-ci
+
   osx-native-test:
     name: 🍎 OSX native test
     needs: [reuse, c-lint]
