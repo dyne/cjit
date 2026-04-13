@@ -1,3 +1,7 @@
+#if !defined(_WIN32)
+#define _XOPEN_SOURCE 700
+#endif
+
 #include "adapters/fs/local_filesystem.h"
 
 #include <stdbool.h>
