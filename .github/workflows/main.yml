@@ -100,15 +100,28 @@ jobs:
         run: |
           make check-ci
 
-  win-native-test:
-    name: 🪟 Windows native test
+  win-mingw-test:
+    name: 🪟 Windows MinGW test
     needs: [reuse, c-lint]
     runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v4
-      - name: Build native windows exe for x86_64
+      - name: Build windows exe for x86_64 with MinGW
         run: |
-          make win-native
+          make win-mingw
+      - name: Run tests
+        run: |
+          make check-ci
+
+  win-msvc-test:
+    name: 🪟 Windows MSVC test
+    needs: [reuse, c-lint]
+    runs-on: "windows-latest"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build windows exe for x86_64 with MSVC
+        run: |
+          make win-msvc
       - name: Run tests
         run: |
           make check-ci
@@ -128,7 +141,7 @@ jobs:
 
   semantic-release:
     name: 🤖 Semantic release
-    needs: [linux-test, osx-native-test, win-native-test]
+    needs: [linux-test, osx-native-test, win-mingw-test, win-msvc-test]
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
@@ -179,8 +192,8 @@ jobs:
           path: |
             cjit-x86_64-${{ matrix.os }}
 
-  win-native-release:
-    name: 🪟 Windows native binary release build
+  win-mingw-release:
+    name: 🪟 Windows MinGW binary release build
     needs: [semantic-release]
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: "windows-latest"
@@ -188,9 +201,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build native windows exe for x86_64
+      - name: Build windows exe for x86_64 with MinGW
         run: |
-          make win-native RELEASE=1
+          make win-mingw RELEASE=1
           cp cjit-ar.exe ar.exe
       - name: Build GNU make native windows exe
         run: |
@@ -210,7 +223,7 @@ jobs:
       - name: Upload artifact windows-amd64
         uses: actions/upload-artifact@v4
         with:
-          name: release-win-native-x86_64
+          name: release-win-mingw-x86_64
           path: |
             cjit.exe
             CJIT_install.exe
@@ -241,7 +254,7 @@ jobs:
 
   binary-release:
     name: 📢 Public release
-    needs: [semantic-release, osx-native-release, linux-release, win-native-release]
+    needs: [semantic-release, osx-native-release, linux-release, win-mingw-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -292,12 +305,12 @@ jobs:
           update_release_body: true
           files: |
             cjit-bin/release-osx-native/*
-            cjit-bin/release-win-native-x86_64/*
+            cjit-bin/release-win-mingw-x86_64/*
             cjit-bin/release-shared-linux-x86_64/*
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
-    needs: [binary-release, semantic-release, osx-native-release, linux-release, win-native-release]
+    needs: [binary-release, semantic-release, osx-native-release, linux-release, win-mingw-release]
     runs-on: ubuntu-latest
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:

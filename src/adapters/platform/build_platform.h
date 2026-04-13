@@ -2,8 +2,10 @@
 #ifndef __BUILD_PLATFORM_H__
 #define __BUILD_PLATFORM_H__
 
-// deactivate warnings about re-definitions
+// deactivate warnings about re-definitions when supported by the compiler
+#if defined(__GNUC__)
 #pragma GCC system_header
+#endif
 
 #if defined(_WIN32) || defined(__COSMOPOLITAN__)
 #define WINDOWS
@@ -64,9 +66,27 @@
 #    ifndef WIN32_LEAN_AND_MEAN
 #        define WIN32_LEAN_AND_MEAN
 #    endif
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+typedef int pid_t;
+#endif
 #include <windows.h>
 #include <shlwapi.h>
 #include <rpc.h>
+#if defined(_MSC_VER)
+#include <direct.h>
+#include <io.h>
+#define close _close
+#define getcwd _getcwd
+#define getpid _getpid
+#define isatty _isatty
+#define mkdir(path, mode) _mkdir(path)
+#define open _open
+#define read _read
+#define write _write
+#define fileno _fileno
+#endif
 #pragma comment(lib, "rpcrt4.lib")
 #pragma comment(lib, "shlwapi.lib")
 #else
@@ -100,14 +120,14 @@
 #if !defined(TCC_TARGET_I386) && !defined(TCC_TARGET_ARM) && \
     !defined(TCC_TARGET_ARM64) && !defined(TCC_TARGET_C67) && \
     !defined(TCC_TARGET_X86_64) && !defined(TCC_TARGET_RISCV64)
-# if defined __x86_64__
+# if defined(__x86_64__) || defined(_M_X64)
 #  define TCC_TARGET_X86_64
-# elif defined __arm__
+# elif defined(__arm__) || defined(_M_ARM)
 #  define TCC_TARGET_ARM
 #  define TCC_ARM_EABI
 #  define TCC_ARM_VFP
 #  define TCC_ARM_HARDFLOAT
-# elif defined __aarch64__
+# elif defined(__aarch64__) || defined(_M_ARM64)
 #  define TCC_TARGET_ARM64
 # elif defined __riscv
 #  define TCC_TARGET_RISCV64
@@ -125,13 +145,13 @@
 /* only native compiler supports -run */
 #if defined _WIN32 == defined TCC_TARGET_PE \
     && defined __APPLE__ == defined TCC_TARGET_MACHO
-# if defined __i386__ && defined TCC_TARGET_I386
+# if (defined(__i386__) || defined(_M_IX86)) && defined TCC_TARGET_I386
 #  define TCC_IS_NATIVE
-# elif defined __x86_64__ && defined TCC_TARGET_X86_64
+# elif (defined(__x86_64__) || defined(_M_X64)) && defined TCC_TARGET_X86_64
 #  define TCC_IS_NATIVE
-# elif defined __arm__ && defined TCC_TARGET_ARM
+# elif (defined(__arm__) || defined(_M_ARM)) && defined TCC_TARGET_ARM
 #  define TCC_IS_NATIVE
-# elif defined __aarch64__ && defined TCC_TARGET_ARM64
+# elif (defined(__aarch64__) || defined(_M_ARM64)) && defined TCC_TARGET_ARM64
 #  define TCC_IS_NATIVE
 # elif defined __riscv && defined __LP64__ && defined TCC_TARGET_RISCV64
 #  define TCC_IS_NATIVE
