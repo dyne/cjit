@@ -138,7 +138,7 @@ Create the `donut.c` file using the artful code below:
 
 
 ```c
-    cat << EOF > donut.c
+cat << EOF > donut.c
                  i,j,k,x,y,o,N;
              main(){float z[1760],a
           #define R(t,x,y) f=x;x-=t*y\
@@ -159,7 +159,7 @@ Create the `donut.c` file using the artful code below:
             " donut.c! \x1b[23A"));}}
               /*no math lib needed
                  .@a1k0n 2021.*/
-    EOF
+EOF
 ```
 
 
