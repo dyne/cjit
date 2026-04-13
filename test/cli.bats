@@ -94,7 +94,8 @@ load bats_setup
 
 @test "Execute source avoids legacy temp-file collision when TMPDIR is set" {
     skip_if_systcc_execute_is_unavailable
-    version="$(git -C "${R}" describe --tags | cut -d- -f1)"
+    version="$(git -C "${R}" describe --tags 2>/dev/null || git -C "${R}" rev-parse --short HEAD 2>/dev/null || printf dev)"
+    version="$(printf '%s' "${version}" | cut -d- -f1)"
     legacy_path="/tmp/cjit-${version}"
     custom_tmp="${TMP}/custom-tmp"
     mkdir -p "${custom_tmp}"
