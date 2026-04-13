@@ -75,16 +75,17 @@ break > "%RSP%" || exit /b 1
 for /f "usebackq delims=" %%I in ("%SOURCE_LIST%") do >> "%RSP%" echo %%~I
 
 :cjit_link
->> "%RSP%" echo %ROOT%\lib\tinycc\libtcc.lib
 cl /nologo /O2 /W2 /MT /GS- ^
   /DCJIT_BUILD_WIN ^
+  /DTCC_TARGET_PE ^
+  /DTCC_TARGET_X86_64 ^
   /DPREFIX=\"%PREFIX%\" ^
   /DVERSION=\"%VERSION%\" ^
   /DCURRENT_YEAR=\"%CURRENT_YEAR%\" ^
   /I"%ROOT%\src" /I"%ROOT%\lib\tinycc" /I"%ROOT%\lib\muntarfs" ^
   /Fo"%ROOT%\build\win-msvc\\" ^
   /Fe"%ROOT%\cjit.exe" ^
-  @"%RSP%" /link /nologo advapi32.lib shlwapi.lib rpcrt4.lib || exit /b 1
+  @"%RSP%" "%ROOT%\lib\tinycc\libtcc.c" /link /nologo advapi32.lib shlwapi.lib rpcrt4.lib || exit /b 1
 exit /b 0
 
 :cjit_ar
@@ -92,12 +93,14 @@ if not exist "%ROOT%\build\win-msvc" mkdir "%ROOT%\build\win-msvc" || exit /b 1
 cl /nologo /O2 /W2 /MT /GS- ^
   /DCJIT_BUILD_WIN ^
   /DCJIT_AR_MAIN ^
+  /DTCC_TARGET_PE ^
+  /DTCC_TARGET_X86_64 ^
   /DPREFIX=\"%PREFIX%\" ^
   /DVERSION=\"%VERSION%\" ^
   /DCURRENT_YEAR=\"%CURRENT_YEAR%\" ^
   /I"%ROOT%\src" /I"%ROOT%\lib\tinycc" /I"%ROOT%\lib\muntarfs" ^
-  /Fo"%ROOT%\build\win-msvc\cjit-ar.obj" ^
+  /Fo"%ROOT%\build\win-msvc\\" ^
   /Fe"%ROOT%\cjit-ar.exe" ^
-  "%ROOT%\src\cjit-ar.c" "%ROOT%\lib\tinycc\libtcc.lib" ^
+  "%ROOT%\src\cjit-ar.c" "%ROOT%\lib\tinycc\libtcc.c" ^
   /link /nologo advapi32.lib shlwapi.lib rpcrt4.lib || exit /b 1
 exit /b 0
