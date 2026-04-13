@@ -9,9 +9,9 @@
 
 lib/tinycc/libtcc.a lib/tinycc/libtcc1.a:
 	cd lib/tinycc \
-		&& bash ./configure ${tinycc_config} ${extra_tinycc_config}
-	${MAKE} -C lib/tinycc libtcc.a
-	${MAKE} -C lib/tinycc libtcc1.a
+		&& ./configure ${tinycc_config} ${extra_tinycc_config}
+	"${MAKE}" -C lib/tinycc libtcc.a
+	"${MAKE}" -C lib/tinycc libtcc1.a
 
 # UNUSED EXPERIMENTS:
 lib/glfw/src/libglfw3.a:

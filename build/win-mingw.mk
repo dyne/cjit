@@ -6,7 +6,7 @@
 #   make libtcc.a libtcc1.a
 #
 # then run this directly:
-#   make -f build/win-native.mk
+#   make -f build/win-mingw.mk
 
 # use only SOURCES from init
 include build/init.mk
@@ -18,7 +18,8 @@ GENERATED_WIN_FILES := src/assets.c src/assets.h \
 SHELL := C:\Program Files\Git\bin\bash.exe
 
 # redefine compilation flags
-cc := gcc
+CC = gcc
+cc := $(CC)
 cflags := -O2 -fomit-frame-pointer -Isrc -Ilib/tinycc -Ilib/muntarfs
 cflags += -DCJIT_BUILD_WIN
 ldflags := -static-libgcc
