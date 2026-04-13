@@ -24,7 +24,9 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <ctype.h>
+#if !defined(WINDOWS)
 #include <unistd.h>
+#endif
 
 #include "adapters/cli/ketopt.h"
 #include <muntarfs.h>

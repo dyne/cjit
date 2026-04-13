@@ -30,7 +30,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
+#if !defined(WINDOWS)
 #include <unistd.h> // getpid/write
+#endif
 #include <fcntl.h> // open(2)
 #include <inttypes.h>
 #include <sys/stat.h> // fstat(2)

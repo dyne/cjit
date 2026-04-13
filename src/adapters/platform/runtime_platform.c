@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if !defined(WINDOWS)
 #include <unistd.h>
+#endif
 
 #include "support/cwalk.h"
 #include "libtcc.h"

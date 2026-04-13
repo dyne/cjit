@@ -27,10 +27,14 @@
 #include <errno.h>
 #include <time.h>
 #include <fcntl.h>
+#if !defined(WINDOWS)
 #include <unistd.h>
+#endif
 #include <inttypes.h>
 
+#if !defined(WINDOWS)
 #include <ftw.h> // _GNU_SOURCE
+#endif
 
 // Function to get the length of a file in bytes
 static long file_size(const char *filename) {

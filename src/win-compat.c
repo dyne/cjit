@@ -8,6 +8,11 @@
 #include <windows.h>
 #include <tchar.h>
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 // Define the usleep function for Windows
 void win_compat_usleep(unsigned int microseconds) {
     // Convert microseconds to milliseconds
