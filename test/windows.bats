@@ -38,8 +38,12 @@ load bats_setup
             ;;
     esac
     skip_if_systcc_execute_is_unavailable
+    dll_source="${R}/libtcc.dll"
+    [ -r "${dll_source}" ] || dll_source="/c/Windows/System32/kernel32.dll"
+    [ -r "${dll_source}" ] || dll_source="/c/Windows/SysWOW64/kernel32.dll"
+    [ -r "${dll_source}" ]
     mkdir -p "${TMP}/mq path"
-    cp "${R}/libtcc.dll" "${TMP}/mq path/mqm.dll"
+    cp "${dll_source}" "${TMP}/mq path/mqm.dll"
     run ${CJIT} --verb -L"${TMP}/mq path" -lmqm test/hello.c
     assert_success
     assert_output --partial 'Hello World!'
