@@ -28,3 +28,13 @@ load bats_setup
     assert_line --partial 'UTF BOM detected in file: test/hello-bom-utf16-le.c'
     assert_line --partial 'Encoding is not yet supported, execution aborted.'
 }
+
+@test "Windows library resolver searches -L paths" {
+    skip_if_systcc_execute_is_unavailable
+    mkdir -p "${TMP}/mq path"
+    cp "${R}/libtcc.dll" "${TMP}/mq path/mqm.dll"
+    run ${CJIT} --verb -L"${TMP}/mq path" -lmqm test/hello.c
+    assert_success
+    assert_output --partial 'Hello World!'
+    refute_output --partial 'Library not found: mqm.dll'
+}
