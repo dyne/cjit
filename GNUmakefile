@@ -49,10 +49,13 @@ win-wsl: ## 🪟 Build cjit.exe for WIN64 on an Ubuntu WSL VM using gcc-mingw-w6
 	@rm -f .build_done*
 	date | tee .build_done_win
 
-win-native: ## 🪟 Build cjit.exe for WIN64 on Windows Server
-	$(MAKE) -f build/win-native.mk embed-win cjit.exe cjit-ar.exe
+win-mingw: ## 🪟 Build cjit.exe for WIN64 on Windows using MinGW
+	"$(MAKE)" -f build/win-mingw.mk embed-win cjit.exe cjit-ar.exe
 	@rm -f .build_done*
 	date | tee .build_done_win
+
+win-msvc: ## 🪟 Build cjit.exe for WIN64 on Windows using MSVC
+	"$(MAKE)" -f build/win-msvc.mk win-msvc
 
 apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
 	$(MAKE) -f build/osx.mk embed-posix cjit.command
@@ -127,6 +130,6 @@ debian:
 clean: ## 🧹 Clean the source from all built objects
 	${MAKE} -C lib/tinycc clean distclean
 	${MAKE} -C src clean
-	@rm -f cjit cjit.exe cjit-ar.exe cjit.command
+	@rm -f cjit cjit.exe cjit-ar.exe cjit.command libtcc.dll
 	@rm -f test/source_files_unit test/source_files_unit.bin
 	@rm -rf meson
