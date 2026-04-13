@@ -108,6 +108,27 @@ load bats_setup
     [ -d "${custom_tmp}/cjit/${version}" ]
 }
 
+@test "Execute source refreshes incomplete cached runtime assets" {
+    skip_if_systcc_execute_is_unavailable
+    version="$(git -C "${R}" describe --tags 2>/dev/null || git -C "${R}" rev-parse --short HEAD 2>/dev/null || printf dev)"
+    version="$(printf '%s' "${version}" | cut -d- -f1)"
+    custom_tmp="${TMP}/repair-cache"
+    runtime_dir="${custom_tmp}/cjit/${version}"
+    mkdir -p "${custom_tmp}"
+
+    run env TMPDIR="${custom_tmp}" "${CJIT}" -q test/hello.c
+    assert_success
+    assert_output 'Hello World!'
+
+    : > "${runtime_dir}/include/stdarg.h"
+    [ ! -s "${runtime_dir}/include/stdarg.h" ]
+
+    run env TMPDIR="${custom_tmp}" "${CJIT}" -q test/hello.c
+    assert_success
+    assert_output 'Hello World!'
+    [ -s "${runtime_dir}/include/stdarg.h" ]
+}
+
 @test "Status mode works without source input" {
     run ${CJIT} -v
     assert_success

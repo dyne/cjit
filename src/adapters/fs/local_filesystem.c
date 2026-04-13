@@ -7,6 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <ftw.h>
+#include <unistd.h>
+#endif
 
 #include "support/cwalk.h"
 
@@ -40,6 +46,117 @@ static bool ensure_directory(const char *path)
     fail(path);
     return false;
 }
+
+/**
+ * Checks whether the cached embedded runtime contains the minimum files
+ * required to compile simple sources.
+ */
+static bool runtime_cache_is_complete(const char *root)
+{
+    struct stat info;
+    char path[MAX_PATH];
+    struct RuntimeCacheEntry {
+        const char *path;
+        off_t min_size;
+    };
+    const struct RuntimeCacheEntry required[] = {
+        { "libtcc1.a", 1024 },
+        { "include/stdarg.h", 64 },
+        { "include/stddef.h", 64 },
+        { "include/tccdefs.h", 1024 },
+    };
+    size_t i;
+
+#if defined(WINDOWS)
+    const struct RuntimeCacheEntry windows_required[] = {
+        { "tinycc_win32/stdio.h", 1024 },
+        { "tinycc_win32/_mingw.h", 256 },
+        { "win32ports/unistd.h", 256 },
+    };
+#endif
+
+    for (i = 0; i < sizeof(required) / sizeof(required[0]); ++i) {
+        cwk_path_join(root, required[i].path, path, sizeof(path));
+        if (stat(path, &info) != 0 || !(info.st_mode & S_IFREG) || info.st_size < required[i].min_size) {
+            return false;
+        }
+    }
+
+#if defined(WINDOWS)
+    for (i = 0; i < sizeof(windows_required) / sizeof(windows_required[0]); ++i) {
+        cwk_path_join(root, windows_required[i].path, path, sizeof(path));
+        if (stat(path, &info) != 0 || !(info.st_mode & S_IFREG) || info.st_size < windows_required[i].min_size) {
+            return false;
+        }
+    }
+#endif
+
+    return true;
+}
+
+#if defined(WINDOWS)
+/**
+ * Removes one cached runtime tree recursively so broken files do not survive
+ * a refresh attempt.
+ */
+static bool remove_tree(const char *path)
+{
+    WIN32_FIND_DATA find_data;
+    HANDLE handle;
+    char pattern[MAX_PATH];
+    char child[MAX_PATH];
+
+    cwk_path_join(path, "*", pattern, sizeof(pattern));
+    handle = FindFirstFile(pattern, &find_data);
+    if (handle != INVALID_HANDLE_VALUE) {
+        do {
+            if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0) {
+                continue;
+            }
+            cwk_path_join(path, find_data.cFileName, child, sizeof(child));
+            if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                if (!remove_tree(child)) {
+                    FindClose(handle);
+                    return false;
+                }
+            } else if (DeleteFile(child) == 0) {
+                fail(child);
+                FindClose(handle);
+                return false;
+            }
+        } while (FindNextFile(handle, &find_data) != 0);
+        FindClose(handle);
+    }
+
+    if (RemoveDirectory(path) == 0) {
+        fail(path);
+        return false;
+    }
+    return true;
+}
+#else
+static int remove_tree_entry(const char *fpath, const struct stat *sb,
+                             int typeflag, struct FTW *ftwbuf)
+{
+    (void)sb;
+    (void)typeflag;
+    (void)ftwbuf;
+    return remove(fpath);
+}
+
+/**
+ * Removes one cached runtime tree recursively so broken files do not survive
+ * a refresh attempt.
+ */
+static bool remove_tree(const char *path)
+{
+    if (nftw(path, remove_tree_entry, 16, FTW_DEPTH | FTW_PHYS) != 0) {
+        fail(path);
+        return false;
+    }
+    return true;
+}
+#endif
 
 /**
  * Creates or reuses the runtime temp directory and records whether it was
@@ -103,7 +220,13 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
         if (stat(temp_dir, &info) != 0) {
             cjit->fresh = true;
         } else if (info.st_mode & S_IFDIR) {
-            cjit->fresh = false;
+            cjit->fresh = !runtime_cache_is_complete(temp_dir);
+            if (cjit->fresh) {
+                if (!remove_tree(temp_dir) || !ensure_directory(temp_dir)) {
+                    free(temp_dir);
+                    return false;
+                }
+            }
         } else {
             _err("Temp dir is a file, cannot overwrite: %s", temp_dir);
             free(temp_dir);
