@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,27 @@
 extern char *load_stdin();
 extern char *new_abspath(const char *path);
 extern bool write_to_file(const char *path, const char *filename, const char *buf, unsigned int len);
+
+/**
+ * Creates one directory level when it is missing and rejects file collisions.
+ */
+static bool ensure_directory(const char *path)
+{
+    struct stat info;
+
+    if (stat(path, &info) == 0) {
+        if (info.st_mode & S_IFDIR) {
+            return true;
+        }
+        _err("Temp dir is a file, cannot overwrite: %s", path);
+        return false;
+    }
+    if (mkdir(path, 0755) == 0 || errno == EEXIST) {
+        return true;
+    }
+    fail(path);
+    return false;
+}
 
 /**
  * Creates or reuses the runtime temp directory and records whether it was
@@ -71,19 +93,33 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
             return false;
         }
 #else
+        const char *tmp_root = getenv("TMPDIR");
+        char cache_root[MAX_PATH];
         struct stat info;
 
-        snprintf(temp_dir, 259, "/tmp/cjit-%s", VERSION);
+        if (!tmp_root || tmp_root[0] == '\0') {
+            tmp_root = "/tmp";
+        }
+        cwk_path_join(tmp_root, "cjit", cache_root, sizeof(cache_root));
+        if (!ensure_directory(cache_root)) {
+            free(temp_dir);
+            return false;
+        }
+
+        cwk_path_join(cache_root, VERSION, temp_dir, MAX_PATH);
         if (stat(temp_dir, &info) != 0) {
             cjit->fresh = true;
         } else if (info.st_mode & S_IFDIR) {
             cjit->fresh = false;
         } else {
             _err("Temp dir is a file, cannot overwrite: %s", temp_dir);
+            free(temp_dir);
             return false;
         }
-        if (cjit->fresh) {
-            mkdir(temp_dir, 0755);
+        if (cjit->fresh && mkdir(temp_dir, 0755) != 0) {
+            fail(temp_dir);
+            free(temp_dir);
+            return false;
         }
 #endif
     }

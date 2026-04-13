@@ -92,6 +92,21 @@ load bats_setup
     [ "$status" -eq 7 ]
 }
 
+@test "Execute source avoids legacy temp-file collision when TMPDIR is set" {
+    skip_if_systcc_execute_is_unavailable
+    version="$(git -C "${R}" describe --tags | cut -d- -f1)"
+    legacy_path="/tmp/cjit-${version}"
+    custom_tmp="${TMP}/custom-tmp"
+    mkdir -p "${custom_tmp}"
+    rm -rf "${legacy_path}"
+    printf '%s\n' 'block legacy flat temp path' > "${legacy_path}"
+    run env TMPDIR="${custom_tmp}" "${CJIT}" -q test/hello.c
+    rm -f "${legacy_path}"
+    assert_success
+    assert_output 'Hello World!'
+    [ -d "${custom_tmp}/cjit/${version}" ]
+}
+
 @test "Status mode works without source input" {
     run ${CJIT} -v
     assert_success
