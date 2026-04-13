@@ -203,7 +203,7 @@ jobs:
           fetch-depth: 0
       - name: Build windows exe for x86_64 with MinGW
         run: |
-          make win-mingw RELEASE=1
+          make win-msvc RELEASE=1
           cp cjit-ar.exe ar.exe
       - name: Build GNU make native windows exe
         run: |
