@@ -30,10 +30,7 @@ check-vsdevcmd:
 
 tinycc-msvc: check-vsdevcmd
 	@. build/vsdevcmd-env.sh && \
-	/c/Windows/System32/cmd.exe /c "set \"PATH=%SystemRoot%\System32;%SystemRoot%;%SystemRoot%\System32\Wbem;%SystemRoot%\System32\WindowsPowerShell\v1.0\;%PATH%\" && call \"$$VSDEVCMD_WIN\" -arch=x64 -host_arch=x64 >nul && cd /d \"$(CURDIR_WIN)\lib\tinycc\win32\" && build-tcc.bat -clean && build-tcc.bat -c cl -t 64"
-	@cp lib/tinycc/win32/lib/libtcc1.a lib/tinycc/libtcc1.a
-	@cp lib/tinycc/win32/libtcc.lib lib/tinycc/libtcc.lib
-	@cp lib/tinycc/win32/libtcc.dll libtcc.dll
+	/c/Windows/System32/cmd.exe /c "set \"PATH=%SystemRoot%\System32;%SystemRoot%;%SystemRoot%\System32\Wbem;%SystemRoot%\System32\WindowsPowerShell\v1.0\;%PATH%\" && call \"$$VSDEVCMD_WIN\" -arch=x64 -host_arch=x64 >nul && cd /d \"$(CURDIR_WIN)\lib\tinycc\win32\" && build-tcc.bat -clean && build-tcc.bat -c cl -t 64 && if not exist lib\libtcc1.a exit /b 1 && if not exist libtcc.lib exit /b 1 && if not exist libtcc.dll exit /b 1 && copy /Y lib\libtcc1.a ..\libtcc1.a >nul && copy /Y libtcc.lib ..\libtcc.lib >nul && copy /Y libtcc.dll \"$(CURDIR_WIN)\libtcc.dll\" >nul"
 
 embed-win-msvc: tinycc-msvc
 	$(info Embedding assets for Windows build)
