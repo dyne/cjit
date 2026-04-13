@@ -1,17 +1,21 @@
 name: cjit
 on:
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
     branches:
       - main
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!**/*.md'
+      - '!.github/workflows/docs-pages.yml'
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
     branches:
       - main
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!**/*.md'
+      - '!.github/workflows/docs-pages.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
