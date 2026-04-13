@@ -30,6 +30,13 @@ load bats_setup
 }
 
 @test "Windows library resolver searches -L paths" {
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            ;;
+        *)
+            skip "Windows library resolver test only applies on Windows"
+            ;;
+    esac
     skip_if_systcc_execute_is_unavailable
     mkdir -p "${TMP}/mq path"
     cp "${R}/libtcc.dll" "${TMP}/mq path/mqm.dll"
