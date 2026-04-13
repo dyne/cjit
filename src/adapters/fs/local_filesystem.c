@@ -30,7 +30,11 @@ static bool ensure_directory(const char *path)
         _err("Temp dir is a file, cannot overwrite: %s", path);
         return false;
     }
+#if defined(WINDOWS)
+    if (CreateDirectory(path, NULL) != 0 || GetLastError() == ERROR_ALREADY_EXISTS) {
+#else
     if (mkdir(path, 0755) == 0 || errno == EEXIST) {
+#endif
         return true;
     }
     fail(path);
@@ -69,34 +73,23 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
 #endif
     } else {
         temp_dir = malloc(MAX_PATH + 1);
-#if defined(WINDOWS)
-        char temp_path[MAX_PATH];
-        char dirname[64];
-
-        snprintf(dirname, 63, "CJIT-%s", VERSION);
-        if (GetTempPath(MAX_PATH, temp_path) == 0) {
-            _err("Failed to get temporary path");
-            return false;
-        }
-        cwk_path_join(temp_path, dirname, temp_dir, MAX_PATH);
-        DWORD attributes = GetFileAttributes(temp_dir);
-        if (attributes == INVALID_FILE_ATTRIBUTES) {
-            cjit->fresh = true;
-        } else if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
-            cjit->fresh = false;
-        } else {
-            _err("Temp dir is a file, cannot overwrite: %s", temp_dir);
-            return false;
-        }
-        if (cjit->fresh && CreateDirectory(temp_dir, NULL) == 0) {
-            _err("Failed to create temporary dir: %s", temp_dir);
-            return false;
-        }
-#else
         const char *tmp_root = getenv("TMPDIR");
         char cache_root[MAX_PATH];
         struct stat info;
 
+#if defined(WINDOWS)
+        char temp_path[MAX_PATH];
+
+        if (!tmp_root || tmp_root[0] == '\0') {
+            tmp_root = getenv("TEMP");
+        }
+        if (!tmp_root || tmp_root[0] == '\0') {
+            tmp_root = getenv("TMP");
+        }
+        if ((!tmp_root || tmp_root[0] == '\0') && GetTempPath(MAX_PATH, temp_path) != 0) {
+            tmp_root = temp_path;
+        }
+#endif
         if (!tmp_root || tmp_root[0] == '\0') {
             tmp_root = "/tmp";
         }
@@ -116,12 +109,10 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
             free(temp_dir);
             return false;
         }
-        if (cjit->fresh && mkdir(temp_dir, 0755) != 0) {
-            fail(temp_dir);
+        if (cjit->fresh && !ensure_directory(temp_dir)) {
             free(temp_dir);
             return false;
         }
-#endif
     }
 
     cjit->tmpdir = malloc(strlen(temp_dir) + 1);
