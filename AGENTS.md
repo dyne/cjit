@@ -213,7 +213,8 @@ make linux CC=clang
 make debug-asan
 make debug-gdb
 make apple-osx
-make win-native
+make win-mingw
+make win-msvc
 make win-wsl
 make meson
 ```
