@@ -1,12 +1,15 @@
 [![CJIT logo](https://repository-images.githubusercontent.com/864503934/7d36d2ce-bbd6-4adf-863b-3e37b35216e1)](https://dyne.org/cjit)
 
-CJIT is a C interpreter based on tinyCC that can be used as
-replacement to the GNU C Compiler on x86 and ARM platforms and it can
-call functions from any installed library on Linux, Windows, and
-MacOSX.
+CJIT is a TinyCC-powered C runner and lightweight compiler frontend.
 
-CJIT can also be used as a runtime interpreter to execute C code like
-a script and it is distributed as a small, all-in-one executable.
+It can:
+
+- compile and execute one or more C inputs directly from memory
+- compile one source file to an object
+- build an executable without running it
+
+CJIT is designed for fast iteration, scripting-style execution, and
+small deployment footprints.
 
 Homepage at [Dyne.org/CJIT](https://dyne.org/cjit).
 
@@ -53,6 +56,14 @@ Inspect the runtime configuration:
 ```bash
 ./cjit -v
 ```
+
+## What CJIT Is Not
+
+CJIT is not a tracing or adaptive JIT in the VM sense. It does not
+interpret first and optimize hot paths later.
+
+CJIT uses TinyCC to compile C quickly, often in memory, and can
+execute the resulting code immediately.
 
 ### 📦 Download the demo
 
