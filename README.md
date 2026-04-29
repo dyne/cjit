@@ -82,7 +82,7 @@ The CJIT demo package comes with running examples
 
 ## Manpage
 
-When installed on UNIX systems, CJIT(1) has a manpage! try `man cjit` after installing.
+When installed on UNIX systems, CJIT(1) has a manpage! Try `man cjit` after installing.
 
 It is also visible [online at dyne.org/docs/cjit](https://dyne.org/docs/cjit/manpage).
 
