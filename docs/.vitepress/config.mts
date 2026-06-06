@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitepress'
 
-const base = process.env.BASE_PATH ?? '/'
+const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1]
+const isGitHubActions = process.env.GITHUB_ACTIONS === 'true'
+const isUserSite = repositoryName?.endsWith('.github.io')
+const githubPagesBase = isGitHubActions && repositoryName && !isUserSite
+  ? `/${repositoryName}/`
+  : '/'
+const base = process.env.BASE_PATH ?? githubPagesBase
 
 export default defineConfig({
   title: 'CJIT',
