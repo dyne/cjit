@@ -1,0 +1,169 @@
+.TH cjit 1 "April 2026" "CJIT" "User Commands"
+.SH NAME
+CJIT - Just-In-Time interpreter for C
+
+.SH SYNOPSIS
+
+cjit [options] <files> [-- app arguments]
+
+[options]
+are prefixed by single or double dash and may require an argument
+
+<files>
+can be one or more paths to any source (.c), object (.o) or libs (dll, dylib, .so)
+
+[-- app args]
+all arguments following a double dash are passed as-is to the running application
+
+.SH DESCRIPTION
+.B CJIT
+is a lightweight C interpreter that lets you run C code
+instantly, without needing to build it first. In addition to
+just-in-time execution, it can do everything a C compiler does,
+including call functions from any installed library, and generate
+executables. It is also designed to be a drop-in replacement for gcc(1)
+and clang(1) for instance using CC=cjit as environment setting.
+
+.SH ROUTES
+
+The current CLI is easiest to understand as a small set of routes:
+
+.IP "execute-source"
+Default route. Provide one or more source, object, or shared-library inputs and CJIT compiles and runs the program entrypoint in memory.
+
+.IP "compile-object"
+Use \fB-c\fR with exactly one source file to compile to an object file and stop.
+
+.IP "build-executable"
+Use \fB-o\fR with one or more source files to build an executable file and stop.
+
+.IP "print-status"
+Use \fB-v\fR to print the current runtime/compiler configuration, including library paths and resolved libraries.
+
+.IP "extract-assets"
+Use \fB--xass\fR to extract the embedded runtime assets required by bundled TinyCC builds.
+
+.IP "extract-archive"
+Use \fB--xtgz\fR to unpack a tar.gz archive to the current directory.
+
+.SH EXAMPLES
+
+.IP "Run one source file"
+\fBcjit hello.c\fR
+
+.IP "Compile one source file to an object"
+\fBcjit -c hello.c\fR
+
+.IP "Build an executable without running it"
+\fBcjit -o hello hello.c\fR
+
+.IP "Pass application arguments"
+\fBcjit app.c -- --name cjit --verbose\fR
+
+.IP "Read code from standard input on POSIX"
+\fBprintf 'int main(){return 0;}' | cjit\fR
+
+.IP "Inspect runtime status"
+\fBcjit -v\fR
+
+.IP "Extract embedded assets"
+\fBcjit --xass /tmp/cjit-assets\fR
+
+.IP "Extract a tar.gz archive"
+\fBcjit --xtgz bundle.tar.gz\fR
+
+.SH OPTIONS
+
+.IP "-h"
+Displays a summary of the command-line options available with `cjit`. It is useful for users who need a quick reference on how to use the tool. This manual is meant to complete that knowledge with more in-depth information.
+
+.IP "-v"
+Prints runtime and compiler status information. This includes build and target platform information, configured library paths, requested libraries, and resolved library files. It is the current status route for CJIT.
+
+.IP "-q"
+Suppresses all non-essential output, providing a quieter operation. Only critical errors are displayed. This option is turned on by default when CJIT is launched inside a script (no tty).
+
+.IP "-C \fI<--various -C --flags>\fR"
+Use this option to specify custom flags for the interpreter or compiler. If not set, `cjit` uses the flags defined in the environment variable `CFLAGS`.
+
+.IP "-c"
+Only compiles a single provided source file, without executing it, to produce an object file. This route accepts exactly one source file. The resulting object file uses the source basename with a `.o` extension unless a new name is specified using \fI-o\fR.
+
+.IP "-o \fI<filename>\fR"
+Specifies an output filename. When included in a command line it switches CJIT to executable build mode and compiles the provided source files into an executable without running it.
+
+.IP "-D \fIkey[=value]\fR"
+Defines a "macro" key (and optionally its value) for the preprocessor, just like a \fI#define\fR directive would do when included inside the source. You can specify a simple symbol or use `key=value` to define a macro with a specific value.
+
+.IP "-I \fI<path>\fR"
+Adds a directory path to the list of paths searched for header files. This is particularly useful if your project includes headers that are not in the standard system directories, for more information see the \fIPATHS\fR section.
+
+.IP "-l \fI<name>\fR>"
+Links a specific shared library. On Windows the name is that of a .DLL file without its extension. On UNIX systems (GNU/Linux and BSD) one needs to provide the name of the library without the `lib` prefix (e.g., use `-lssl` for `libssl.so`).
+
+.IP "-L \fI<path>\fR"
+Add a directory path to the library search paths. This is helpful when your project depends on libraries that are located in non-standard directories, for more information see the \fIPATHS\fR section.
+
+.IP "-e \fI<function>\fR"
+Specifies a different entry function than the default `main` function. It is useful if your program has multiple potential entry points, of you want to try a different one ... at your own risk.
+
+.IP "-p \fI<path>\fR"
+Writes the process ID of the executing program to the specified file. This is useful for managing and monitoring the running process.
+
+.IP "--verb"
+Enables verbose logging, which provides more detailed information about the actions CJIT is performing. It's useful for debugging and understanding the compilation and execution process.
+
+.IP "--xass \fI[path]\fR"
+Extract runtime assets required by CJIT to run bundled TinyCC programs. If a path is specified, the assets are extracted there; otherwise, they are extracted to the default runtime directory, which is \fIAppData\\Local\\Temp\\CJIT-vN.N.N\fR on Windows and \fI/tmp/cjit-vN.N.N\fR on POSIX systems.
+
+.IP "--xtgz \fI<path>\fR"
+Extracts all files from a specified \fIUSTAR\fR format tar.gz archive into the current directory. This is used by the demo bootstrap and can also be used directly to unpack bundled assets.
+
+.SH NOTES
+
+.IP "Standard input"
+On POSIX systems, if no source files are given and standard input is not a tty, CJIT reads source code from stdin and executes it. Windows does not support the no-file stdin fallback route.
+
+.IP "-- separator"
+All arguments after a double dash are passed unchanged to the executed program rather than interpreted as CJIT options.
+
+.SH AUTHOR
+
+This manual is Copyright (c) 2025-2026 by the Dyne.org foundation
+
+Written by Denis Roio <\fIhttps://jaromil.dyne.org\fR>
+
+.SH LICENSING
+
+.B CJIT
+is licensed under the GNU General Public License version 3 (GPLv3) or any later version published by the Free Software Foundation.
+.B The GPLv3 grants you 4 freedoms:
+.br
+.B - Use:
+.br
+Just like anyone else, you may use this software for any purpose.
+.br
+.B - Study and Modify:
+.br
+You may study how CJIT works, and modify it to make it do what you wish.
+.br
+.B - Distribute:
+.br
+You may redistribute copies of CJIT so that others can benefit from it.
+.br
+.B - Distribute Modified Versions:
+.br
+You may distribute your modifications if you grant others the same freedom.
+
+This is a human-readable summary of (and not a substitute for) the license. For the full text of the GPLv3 visit \fIhttps://www.gnu.org/licenses/gpl-3.0.html\fR. Components included in CJIT are copyright and licensed by their respective vendors, and all are compatible with the GPLv3: a list of component licenses is provided in CJIT's sourcecode inside the LICENSES/ folder and detailed by the REUSE.toml file.
+
+This manpage is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0) or any later version. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
+
+.SH AVAILABILITY
+
+The most recent version of CJIT sourcecode and up to date
+documentation is made available from its website on
+\fIhttps://dyne.org/cjit\fR.
+
+.SH SEE ALSO
+.BR tcc (1),
