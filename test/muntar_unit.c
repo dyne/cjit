@@ -112,6 +112,10 @@ static void test_gzip(void)
     memcpy(input, good, sizeof(good)); input[sizeof(input) - 8] ^= 1; length = sizeof(output);
     CHECK(tinf_gzip_uncompress(output, &length, input, sizeof(input)) != TINF_OK);
     CHECK(muntarfs_extract_targz_to_path("/tmp", input, sizeof(input)) != MTAR_ESUCCESS);
+    memcpy(input, good, sizeof(good));
+    input[sizeof(input) - 4] = 0xff; input[sizeof(input) - 3] = 0xff;
+    input[sizeof(input) - 2] = 0xff; input[sizeof(input) - 1] = 0x7f;
+    CHECK(muntargz_to_path("/tmp", input, sizeof(input)) == TINF_BUF_ERROR);
 }
 
 static void test_tar_and_paths(void)
@@ -151,6 +155,14 @@ static void test_tar_and_paths(void)
     length = tar_one(tar, "../canary", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
     CHECK(access(canary, F_OK) != 0);
+    length = tar_one(tar, "./canary", MTAR_TREG, data, sizeof(data) - 1);
+    CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
+    length = tar_one(tar, "nested//canary", MTAR_TREG, data, sizeof(data) - 1);
+    CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
+    length = tar_one(tar, "C:/canary", MTAR_TREG, data, sizeof(data) - 1);
+    CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
+    length = tar_one(tar, "nested\\canary", MTAR_TREG, data, sizeof(data) - 1);
+    CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
 #if !defined(CJIT_TEST_WINDOWS)
     CHECK(make_fixture_root(outside, sizeof(outside), "cjit-muntar-outside"));
     snprintf(link, sizeof(link), "%s/linked", root);
@@ -167,6 +179,11 @@ static void test_tar_and_paths(void)
     length = tar_one(tar, "safe.txt", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(muntar_to_path(root, tar, length) == MTAR_ESUCCESS);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EWRITEFAIL);
+    snprintf(canary, sizeof(canary), "%s/occupied", root);
+    CHECK(mkdir(canary, 0700) == 0);
+    length = tar_one(tar, "occupied", MTAR_TREG, data, sizeof(data) - 1);
+    CHECK(muntar_to_path(root, tar, length) == MTAR_EWRITEFAIL);
+    CHECK(rmdir(canary) == 0);
     length = tar_one(tar, "link", MTAR_TSYM, data, 0);
     CHECK(muntar_to_path(root, tar, length) == MTAR_ESUCCESS);
     snprintf(canary, sizeof(canary), "%s/safe.txt", root);

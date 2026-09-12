@@ -29,6 +29,7 @@
 #include <limits.h>
 
 #include <muntar.h>
+#include <muntarfs.h>
 
 static int mtar_read_header(mtar_t *tar, mtar_header_t *h);
 
@@ -229,7 +230,8 @@ static int append_safe_component(char *out, size_t capacity, size_t *length,
 				 const char *component)
 {
 	const char *p = component;
-	if (!component || component[0] == '/' || component[0] == '\\' || strchr(component, '\\'))
+	if (!component || component[0] == '/' || component[0] == '\\' ||
+	    strchr(component, '\\') || strchr(component, ':'))
 		return MTAR_EINVALIDMODE;
 	while (*p) {
 		const char *end = strchr(p, '/');
@@ -350,8 +352,20 @@ int muntargz_to_path(const char *path, const uint8_t *buf,
 			__func__);
 		return(-1);
 	}
+	if (len < 18) return TINF_DATA_ERROR;
+	/* Gzip records its uncompressed size in the trailer. Refuse bombs before
+	 * allocating the geometric retry buffer. */
+	{
+		unsigned int expected_size = (unsigned int)buf[len - 4]
+			| ((unsigned int)buf[len - 3] << 8)
+			| ((unsigned int)buf[len - 2] << 16)
+			| ((unsigned int)buf[len - 1] << 24);
+		if (expected_size > MUNTARFS_MAX_DECOMPRESSED_SIZE) return TINF_BUF_ERROR;
+	}
 	if (len > UINT_MAX / DECOMPRESSED_SIZE_RATIO) return TINF_BUF_ERROR;
 	destlen = len * DECOMPRESSED_SIZE_RATIO;
+	if (destlen > MUNTARFS_MAX_DECOMPRESSED_SIZE)
+		destlen = MUNTARFS_MAX_DECOMPRESSED_SIZE;
 	for(attempts = 0; attempts < 8; attempts++) {
 		unsigned int outlen = destlen;
 		int res;
@@ -372,8 +386,11 @@ int muntargz_to_path(const char *path, const uint8_t *buf,
 			fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
 			return(res);
 		}
-		if (destlen > UINT_MAX / 2) return TINF_BUF_ERROR;
+		if (destlen >= MUNTARFS_MAX_DECOMPRESSED_SIZE || destlen > UINT_MAX / 2)
+			return TINF_BUF_ERROR;
 		destlen *= 2;
+		if (destlen > MUNTARFS_MAX_DECOMPRESSED_SIZE)
+			destlen = MUNTARFS_MAX_DECOMPRESSED_SIZE;
 	}
 	fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
 	return(TINF_BUF_ERROR);

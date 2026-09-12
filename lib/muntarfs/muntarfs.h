@@ -22,6 +22,9 @@
 
 #include <stdint.h>
 
+/* Conservative extraction budget for one compressed bundle. */
+#define MUNTARFS_MAX_DECOMPRESSED_SIZE (32U * 1024U * 1024U)
+
 /**
  * Extract a tar bundle into the destination directory.
  *
