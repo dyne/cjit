@@ -4,6 +4,7 @@
 #include "cjit.h"
 #include "domain/requests.h"
 #include "domain/responses.h"
+#include "app/slice_dependencies.h"
 
 /**
  * Execute the current request using the existing CJIT runtime.
@@ -13,5 +14,8 @@
  * runtime execution sequencing.
  */
 ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request);
+ExecuteResponse execute_source_with_dependencies(CJITState *cjit,
+                                                 const ExecuteRequest *request,
+                                                 const SliceDependencies *dependencies);
 
 #endif

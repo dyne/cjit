@@ -2,14 +2,11 @@
 
 #include <stdint.h>
 
-#include "adapters/fs/local_asset.h"
-#include "cjit.h"
-
-ExtractArchiveResponse extract_archive_route(const ExtractArchiveRequest *request)
+ExtractArchiveResponse extract_archive_with_dependencies(const ExtractArchiveRequest *request,
+                                                         const SliceDependencies *dependencies)
 {
     ExtractArchiveResponse response;
-    AssetPort assets = local_asset_port;
-    assets.context = NULL;
+    AssetPort assets = dependencies->assets;
     if (!assets.extract_archive_to_path(assets.context, request->archive_path, ".").ok) {
         response.result = cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
                                             "Failed to extract archive");

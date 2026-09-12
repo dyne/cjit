@@ -2,7 +2,6 @@
 
 #include <stddef.h>
 
-#include "adapters/compiler/tinycc_adapter.h"
 
 static BuildExecutableResponse make_build_response(CJITResultCode code, int exit_status,
                                                    bool ok, const char *message,
@@ -14,16 +13,17 @@ static BuildExecutableResponse make_build_response(CJITResultCode code, int exit
     return response;
 }
 
-BuildExecutableResponse build_executable(CJITState *cjit, const BuildExecutableRequest *request)
+BuildExecutableResponse build_executable_with_dependencies(CJITState *cjit,
+                                                           const BuildExecutableRequest *request,
+                                                           const SliceDependencies *dependencies)
 {
     int i;
     BuildExecutableResponse response;
     RuntimeSession session;
-    CompilerPort compiler = tinycc_compiler_port;
+    CompilerPort compiler = dependencies->compiler;
     if (request->options.print_status) {
-        cjit_status(cjit);
+        dependencies->print_status(dependencies->status_context);
     }
-    compiler.context = cjit;
     compiler.begin_session(compiler.context, &session);
 
     for (i = 0; i < request->source_count; ++i) {
