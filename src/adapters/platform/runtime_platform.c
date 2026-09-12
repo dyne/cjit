@@ -86,10 +86,10 @@ int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
                        int argc, char **argv)
 {
 #if defined(WINDOWS)
+    cjit->done_exec = true;
     if (write_pid_file(cjit, (long)GetCurrentProcessId()) < 0) {
         return -1;
     }
-    cjit->done_exec = true;
     return entrypoint(argc, argv);
 #else
     int res = 1;
