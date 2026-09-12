@@ -22,50 +22,66 @@
 
 #include "adapters/platform/build_platform.h"
 
-#if defined(WINDOWS)
-
 #include <stdio.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #include "cjit.h"
 #include "support/string_list.h"
 
-#define debug(fmt, par) if (cjit->verbose) _err(fmt, par)
+static bool has_dll_extension(const char *name)
+{
+    size_t length = strlen(name);
+    const char *extension;
 
-static int windows_resolve_libs(CJITState *cjit)
+    if (length < 4) {
+        return false;
+    }
+    extension = name + length - 4;
+    return extension[0] == '.' &&
+           (extension[1] == 'd' || extension[1] == 'D') &&
+           (extension[2] == 'l' || extension[2] == 'L') &&
+           (extension[3] == 'l' || extension[3] == 'L');
+}
+
+int windows_resolve_library_lists(const StringList *libraries,
+                                  const StringList *library_paths,
+                                  StringList *resolved)
 {
     char tryfile[PATH_MAX];
-    int i;
-    int ii;
-    int libnames_num;
-    int libpaths_num;
-    bool found;
-    char *lname;
-    char *lpath;
-    struct stat st;
+    int library_index;
+    int path_index;
 
-    libpaths_num = (int)string_list_count(cjit->libpaths);
-    libnames_num = (int)string_list_count(cjit->libs);
-    for (i = 0; i < libnames_num; i++) {
-        found = false;
-        lname = string_list_get(cjit->libs, i);
-        for (ii = 0; ii < libpaths_num; ii++) {
-            lpath = string_list_get(cjit->libpaths, ii);
-            snprintf(tryfile, PATH_MAX - 2, "%s/%s.dll", lpath, lname);
-            debug("resolve_libs try: %s", tryfile);
-            if (stat(tryfile, &st) == 0) {
-                string_list_add(cjit->reallibs, tryfile);
-                debug("library found: %s", tryfile);
+    for (library_index = 0;
+         library_index < (int)string_list_count(libraries);
+         library_index++) {
+        const char *name = string_list_get(libraries, library_index);
+        bool found = false;
+        bool has_extension = has_dll_extension(name);
+
+        for (path_index = 0;
+             path_index < (int)string_list_count(library_paths);
+             path_index++) {
+            const char *path = string_list_get(library_paths, path_index);
+            struct stat st;
+
+            snprintf(tryfile, sizeof(tryfile), "%s/%s%s", path, name,
+                     has_extension ? "" : ".dll");
+            if (stat(tryfile, &st) == 0 && S_ISREG(st.st_mode)) {
+                string_list_add(resolved, tryfile);
                 found = true;
                 break;
             }
         }
         if (!found) {
-            _err("Library not found: %s.dll", lname);
+            _err("Library not found: %s%s", name,
+                 has_extension ? "" : ".dll");
         }
     }
-    return (int)string_list_count(cjit->reallibs);
+    return (int)string_list_count(resolved);
 }
+
+#if defined(WINDOWS)
 
 static CJITResult resolve_impl(void *context,
                                const LibraryResolverRequest *request,
@@ -75,8 +91,10 @@ static CJITResult resolve_impl(void *context,
 
     cjit = (CJITState *)context;
     (void)request;
-    response->resolved_count = windows_resolve_libs(cjit);
-    response->resolved_paths = NULL;
+    response->resolved_count = windows_resolve_library_lists(request->libraries,
+                                                             request->search_paths,
+                                                             cjit->reallibs);
+    response->resolved_paths = cjit->reallibs;
     return cjit_result_ok();
 }
 

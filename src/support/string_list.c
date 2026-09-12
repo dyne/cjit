@@ -56,3 +56,20 @@ char *string_list_get(const StringList *list, size_t index)
     }
     return (char *)XArray_GetData(list->items, index);
 }
+
+int string_list_contains(const StringList *list, const char *value)
+{
+    size_t index;
+
+    if (!list || !value) {
+        return 0;
+    }
+    for (index = 0; index < string_list_count(list); index++) {
+        char *item = string_list_get(list, index);
+
+        if (item && strcmp(item, value) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}

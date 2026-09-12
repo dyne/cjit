@@ -3,14 +3,16 @@
 
 #include "domain/error.h"
 
+typedef struct StringList StringList;
+
 /**
  * Input collection for library resolution.
  */
 typedef struct LibraryResolverRequest {
     int library_count;
-    const char **libraries;
+    const StringList *libraries;
     int search_path_count;
-    const char **search_paths;
+    const StringList *search_paths;
 } LibraryResolverRequest;
 
 /**
@@ -18,7 +20,8 @@ typedef struct LibraryResolverRequest {
  */
 typedef struct LibraryResolverResponse {
     int resolved_count;
-    const char **resolved_paths;
+    /* Borrowed from the resolver context; the context owns the list. */
+    const StringList *resolved_paths;
 } LibraryResolverResponse;
 
 /**
