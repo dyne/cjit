@@ -181,7 +181,8 @@ UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin \
 	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin \
 	test/app_slices_unit.bin test/string_list_unit.bin test/file_unit.bin \
 	test/runtime_cache_unit.bin test/cjit_lifecycle_unit.bin \
-	test/library_resolver_unit.bin test/muntar_unit.bin test/runtime_platform_unit.bin
+	test/library_resolver_unit.bin test/muntar_unit.bin test/runtime_platform_unit.bin \
+	test/compiler_adapter_unit.bin
 
 test/source_files_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
 test/source_files_edge_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
@@ -195,6 +196,8 @@ test/runtime_cache_unit.bin: UNIT_SOURCES := src/adapters/fs/local_filesystem.c 
 test/runtime_cache_unit.bin: CFLAGS += -DVERSION=\"test-runtime\"
 test/cjit_lifecycle_unit.bin: UNIT_SOURCES := src/cjit.c src/support/string_list.c src/array.c src/support/source_files.c src/support/cwalk.c
 test/cjit_lifecycle_unit.bin: CFLAGS += -DSHAREDTCC -DVERSION=\"unit\" -Ilib/tinycc
+test/compiler_adapter_unit.bin: UNIT_SOURCES := src/adapters/compiler/tinycc_adapter.c src/support/string_list.c src/support/source_files.c src/support/cwalk.c src/array.c
+test/compiler_adapter_unit.bin: CFLAGS += -Ilib/tinycc
 test/library_resolver_unit.bin: UNIT_SOURCES := src/adapters/platform/library_resolver_posix.c src/adapters/platform/library_resolver_windows.c src/support/string_list.c src/array.c src/support/cwalk.c
 test/muntar_unit.bin: UNIT_SOURCES := lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c lib/muntarfs/muntarfs_runtime.c
 test/runtime_platform_unit.bin: UNIT_SOURCES := src/adapters/platform/runtime_platform.c src/support/cwalk.c
