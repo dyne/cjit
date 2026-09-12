@@ -23,7 +23,7 @@ ifdef ASAN
 	cflags += ${ASAN_FLAGS} -DMEM_DEBUG
 	cflags += ${cflags_includes} ${cflags_gnu} -DKILO_SUPPORTED
 	cflags += -DCJIT_BUILD_LINUX
-	ldflags := ${ASAN_FLAGS} -static-libasan
+	ldflags := ${ASAN_FLAGS}
 endif
 
 ifdef GDB

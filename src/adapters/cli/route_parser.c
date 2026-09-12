@@ -18,7 +18,7 @@ int cli_parse_define_value(char *definition)
     }
     for (index = 0; definition[index] != '\0'; ++index) {
         unsigned char character = (unsigned char)definition[index];
-        if (index >= CLI_DEFINE_MAX_LENGTH || (!isalnum(character) && character != '_' && character != '=')) {
+        if (index >= CLI_DEFINE_MAX_LENGTH) {
             return -1;
         }
         if (character == '=') {
@@ -27,6 +27,8 @@ int cli_parse_define_value(char *definition)
             }
             found_equal = true;
             equal_index = index;
+        } else if (!found_equal && !isalnum(character) && character != '_') {
+            return -1;
         }
     }
     if (!found_equal) {

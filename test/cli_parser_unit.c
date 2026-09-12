@@ -60,6 +60,8 @@ int main(void)
 
     expect_define("SYMBOL", 0, "SYMBOL", NULL);
     expect_define("KEY=VALUE", 4, "KEY", "VALUE");
+    expect_define("CONFIG_TRIPLET=\"x86_64-linux-gnu\"", 15,
+                  "CONFIG_TRIPLET", "\"x86_64-linux-gnu\"");
     expect_define("=VALUE", 1, "", "VALUE");
     expect_define("KEY=", 4, "KEY", "");
     expect_define("KEY=VALUE=AGAIN", -1, "KEY=VALUE=AGAIN", NULL);

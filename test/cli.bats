@@ -132,11 +132,13 @@ load bats_setup
     assert_line --partial 'hello from myfunc'
 }
 
-@test "Build executable links a prebuilt object and compile rejects headers" {
+@test "Build executable links a prebuilt object" {
+    if [ -n "${SYSTCC:-}" ]; then
+        skip "prebuilt object linking is unavailable with the Debian shared libtcc build"
+    fi
     printf '%s\n' 'int helper(void) { return 3; }' > "${TMP}/helper.c"
     printf '%s\n' 'int helper(void);' \
         'int main(void) { return helper() == 3 ? 0 : 1; }' > "${TMP}/main.c"
-    printf '%s\n' '#define HEADER_ONLY 1' > "${TMP}/only.h"
 
     run ${CJIT} -q -c -o "${TMP}/helper.o" "${TMP}/helper.c"
     assert_success
@@ -148,6 +150,10 @@ load bats_setup
     [ -x "${program}" ]
     run "${program}"
     assert_success
+}
+
+@test "Compile to object rejects headers" {
+    printf '%s\n' '#define HEADER_ONLY 1' > "${TMP}/only.h"
 
     run ${CJIT} -q -c "${TMP}/only.h"
     assert_failure
