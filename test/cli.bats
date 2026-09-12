@@ -30,9 +30,13 @@ load bats_setup
     set +e
     test -z $SYSTCC && {
         set -e
-        run ${CJIT} -c test/hello.c
+        cp "${T}/hello.c" "${TMP}/hello.c"
+        pushd "${TMP}" >/dev/null
+        run "${CJIT}" -c hello.c
         assert_success
-        run ${CJIT} hello.o
+        [ -f "${TMP}/hello.o" ]
+        run "${CJIT}" hello.o
+        popd >/dev/null
         assert_success
         assert_output 'Hello World!'
     }
@@ -41,19 +45,21 @@ load bats_setup
     set +e
     test -z $SYSTCC && {
         set -e
-        run ${CJIT} -o world.o -c test/hello.c
+        object="${TMP}/world object.o"
+        run "${CJIT}" -o "${object}" -c test/hello.c
         assert_success
-        run ${CJIT} world.o
+        run "${CJIT}" "${object}"
         assert_success
         assert_output 'Hello World!'
     }
 }
 
 @test "Compile and link to executable and run" {
-      run ${CJIT} -o world test/hello.c
+      executable="${TMP}/world with space"
+      run "${CJIT}" -o "${executable}" test/hello.c
       assert_success
-      chmod +x ./world
-      run ./world
+      chmod +x "${executable}"
+      run "${executable}"
       assert_success
       assert_output 'Hello World!'
 }

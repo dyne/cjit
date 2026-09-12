@@ -12,8 +12,10 @@ cflags_gnu := -DLIBC_GNU -D_GNU_SOURCE
 cflags_stack_protect := -fno-omit-frame-pointer -fstack-protector-strong -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 
 CFLAGS ?= -O2 ${cflags_stack_protect}
+LDFLAGS ?=
 
 cflags := ${CFLAGS} ${cflags_includes}
+ldflags := ${LDFLAGS}
 
 SOURCES := src/file.o src/cjit.o \
            src/support/source_files.o \

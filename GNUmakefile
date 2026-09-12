@@ -77,6 +77,8 @@ debug-gdb: ## 🔬 Build using the address sanitizer to detect memory leaks
 	date | tee .build_done_linux
 
 debug-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
+	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' -o -name '*.gcda' -o -name '*.gcno' \) -delete
+	@$(MAKE) -C lib/tinycc clean distclean
 	$(MAKE) -f build/linux.mk embed-posix cjit ASAN=1
 	date | tee .build_done_linux
 
@@ -102,9 +104,58 @@ check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@./test/bats/bin/bats test/windows.bats
 	@./test/bats/bin/bats test/muntar.bats
 
-check-unit: ## 🧪 Run small direct C tests for pure support logic
-	@$(CC) -Isrc -o test/source_files_unit.bin test/source_files_unit.c src/support/source_files.c src/support/cwalk.c
-	@./test/source_files_unit.bin
+COVERAGE_FLAGS := --coverage -O0 -g
+COVERAGE_SOURCES := src/file.c src/cjit.c src/cjit-ar.c src/main.c src/support/source_files.c \
+	src/support/string_list.c src/array.c src/app/execute_source.c \
+	src/app/compile_object.c src/app/build_executable.c src/app/print_status.c \
+	src/app/extract_assets.c src/app/extract_archive.c src/adapters/cli/route_parser.c \
+	src/adapters/cli/render_response.c src/adapters/compiler/tinycc_adapter.c \
+	src/adapters/fs/local_filesystem.c src/adapters/fs/local_asset.c \
+	src/adapters/platform/library_resolver_posix.c \
+	src/adapters/platform/library_resolver_windows.c src/adapters/platform/runtime_platform.c \
+	lib/muntarfs/muntarfs_runtime.c lib/muntarfs/muntar.c lib/muntarfs/tinflate.c \
+	lib/muntarfs/tinfgzip.c
+
+ifeq ($(findstring clang,$(shell $(CC) --version 2>/dev/null | head -1)),clang)
+COVERAGE_TOOL ?= llvm-cov gcov
+else
+COVERAGE_TOOL ?= gcov
+endif
+
+coverage: ## 📊 Build, test, and summarize maintained-source coverage (no threshold)
+	@$(MAKE) coverage-clean
+	@$(MAKE) clean
+	@$(MAKE) linux
+	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
+	@$(MAKE) -f build/linux.mk embed-posix cjit CFLAGS="$(COVERAGE_FLAGS)" LDFLAGS="$(COVERAGE_FLAGS)"
+	@$(MAKE) check-ci
+	@$(MAKE) coverage-report
+	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
+	@$(MAKE) coverage-clean
+
+coverage-report: ## 📊 Print line coverage for maintained sources only
+	@for source_file in $(COVERAGE_SOURCES); do \
+		coverage_output="$$($(COVERAGE_TOOL) -n "$$source_file")" || exit $$?; \
+		printf '%s\n' "$$coverage_output" | awk -v source="File '$$source_file'" \
+			'$$0 == source { show = 1 } /^File / && $$0 != source { show = 0 } show && (/^File / || /^Lines executed:/) { print; if (/^Lines executed:/) show = 0 }'; \
+	done
+
+coverage-clean: ## 🧹 Remove compiler-native coverage profiles
+	@find src lib/muntarfs lib/tinycc -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
+
+UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin
+
+test/source_files_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
+test/source_files_edge_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
+
+$(UNIT_BINS): test/%_unit.bin: test/%_unit.c $(UNIT_SOURCES)
+	$(CC) -Isrc -o $@ $< $(UNIT_SOURCES)
+
+check-unit: $(UNIT_BINS) ## 🧪 Run small direct C tests for pure support logic
+	@for test_binary in $(UNIT_BINS); do \
+		printf 'UNIT %s\n' "$$test_binary"; \
+		"./$$test_binary" || exit $$?; \
+	done
 
 
 _: ##
@@ -130,6 +181,7 @@ debian:
 clean: ## 🧹 Clean the source from all built objects
 	"${MAKE}" -C lib/tinycc clean distclean
 	"${MAKE}" -C src clean
+	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
 	@rm -f cjit cjit.exe cjit-ar.exe cjit.command libtcc.dll
-	@rm -f test/source_files_unit test/source_files_unit.bin
+	@rm -f $(UNIT_BINS) test/source_files_unit
 	@rm -rf meson
