@@ -86,7 +86,7 @@ static void test_tar_and_paths(void)
     mtar_t parsed;
     const mtar_header_t *entry;
     char root[] = "/tmp/cjit-muntar-unit-XXXXXX";
-    char canary[512];
+    char canary[512], outside[] = "/tmp/cjit-muntar-outside-XXXXXX", link[512];
     size_t length = tar_one(tar, "nested/file.txt", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(mtar_load(&parsed, "valid", tar, length) == MTAR_ESUCCESS);
     CHECK(mtar_header(&parsed, &entry) == MTAR_ESUCCESS && entry->size == 2);
@@ -113,6 +113,15 @@ static void test_tar_and_paths(void)
     length = tar_one(tar, "../canary", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
     CHECK(access(canary, F_OK) != 0);
+    CHECK(mkdtemp(outside) != NULL);
+    snprintf(link, sizeof(link), "%s/linked", root);
+    CHECK(symlink(outside, link) == 0);
+    length = tar_one(tar, "linked/escaped.txt", MTAR_TREG, data, sizeof(data) - 1);
+    CHECK(muntar_to_path(root, tar, length) == MTAR_EWRITEFAIL);
+    snprintf(canary, sizeof(canary), "%s/escaped.txt", outside);
+    CHECK(access(canary, F_OK) != 0);
+    unlink(link);
+    rmdir(outside);
     length = tar_one(tar, "/absolute", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
     length = tar_one(tar, "safe.txt", MTAR_TREG, data, sizeof(data) - 1);

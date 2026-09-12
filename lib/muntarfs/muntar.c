@@ -176,7 +176,9 @@ static int make_directory(const char *path)
 #if defined(_WIN32) || defined(WINDOWS)
 	{
 		DWORD attributes = GetFileAttributes(path);
-		return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY)
+		return attributes != INVALID_FILE_ATTRIBUTES &&
+			!(attributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
+			(attributes & FILE_ATTRIBUTE_DIRECTORY)
 			? MTAR_ESUCCESS : MTAR_EWRITEFAIL;
 	}
 #else
@@ -186,6 +188,39 @@ static int make_directory(const char *path)
 			? MTAR_ESUCCESS : MTAR_EWRITEFAIL;
 	}
 #endif
+}
+
+/* Refuse to traverse an existing symbolic link or Windows reparse point. */
+static int path_contains_link(const char *path, int include_leaf)
+{
+	char checked[1024];
+	size_t length = strlen(path);
+	size_t i;
+
+	if (length >= sizeof(checked)) return 1;
+	strcpy(checked, path);
+	for (i = 1; i <= length; i++) {
+		int boundary = checked[i] == '/' || checked[i] == '\\' || checked[i] == '\0';
+		char saved;
+		if (!boundary || (!include_leaf && i == length)) continue;
+		if (i == 2 && checked[1] == ':') continue;
+		saved = checked[i];
+		checked[i] = '\0';
+#if defined(_WIN32) || defined(WINDOWS)
+		{
+			DWORD attributes = GetFileAttributes(checked);
+			if (attributes != INVALID_FILE_ATTRIBUTES &&
+			    (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) return 1;
+		}
+#else
+		{
+			struct stat status;
+			if (lstat(checked, &status) == 0 && S_ISLNK(status.st_mode)) return 1;
+		}
+#endif
+		checked[i] = saved;
+	}
+	return 0;
 }
 
 /* Archive entry names are untrusted.  Keep every output below destination. */
@@ -236,14 +271,16 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 	res = mtar_load(&tar, path, buf, len);
 	if(res != MTAR_ESUCCESS) return(MTAR_EOPENFAIL);
 	// first create extract dir if doesn't exist
-	if (make_directory(tpath) != MTAR_ESUCCESS) return MTAR_EWRITEFAIL;
+	if (path_contains_link(tpath, 1) || make_directory(tpath) != MTAR_ESUCCESS)
+		return MTAR_EWRITEFAIL;
 	while(!mtar_eof(&tar)) {
 		// then create every other subdir
 		if (mtar_header(&tar, &header) != MTAR_ESUCCESS) return MTAR_EREADFAIL;
 		switch(header->type) {
 		case MTAR_TDIR:
 			if (entry_path(tpath, sizeof(tpath), path, header) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
-			if (make_directory(tpath) != MTAR_ESUCCESS) return MTAR_EWRITEFAIL;
+			if (path_contains_link(tpath, 1) || make_directory(tpath) != MTAR_ESUCCESS)
+				return MTAR_EWRITEFAIL;
 			break;
 		}
 		res = mtar_next(&tar);
@@ -256,6 +293,7 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 		switch(header->type) {
 		case MTAR_TREG:
 			if (entry_path(tpath, sizeof(tpath), path, header) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+			if (path_contains_link(tpath, 0)) return MTAR_EWRITEFAIL;
 			/* Do not silently replace a file supplied by an earlier entry. */
 			{
 				FILE *existing = fopen(tpath, "rb");
@@ -279,8 +317,11 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 				perror("Reason: ");
 				return(MTAR_EWRITEFAIL);
 			}
-			if (fwrite(&tar.buffer[tar.iterator.cursor], 1, header->size, fp) != header->size || fclose(fp) != 0)
-				return MTAR_EWRITEFAIL;
+			{
+				size_t written = fwrite(&tar.buffer[tar.iterator.cursor], 1, header->size, fp);
+				int close_result = fclose(fp);
+				if (written != header->size || close_result != 0) return MTAR_EWRITEFAIL;
+			}
 			break;
 		}
 		res = mtar_next(&tar);
