@@ -152,8 +152,10 @@ jobs:
         run: |
           make win-mingw
       - name: Run tests
+        env:
+          CJIT_REQUIRED_PLATFORM: windows
         run: |
-          CJIT_REQUIRED_PLATFORM=windows make check-ci
+          make check-ci
 
   win-msvc-test:
     name: 🪟 Windows MSVC test
@@ -165,8 +167,10 @@ jobs:
         run: |
           make win-msvc
       - name: Run tests
+        env:
+          CJIT_REQUIRED_PLATFORM: windows
         run: |
-          CJIT_REQUIRED_PLATFORM=windows make check-ci
+          make check-ci
 
   osx-native-test:
     name: 🍎 OSX native test

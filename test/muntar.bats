@@ -3,6 +3,9 @@ setup() {
     T="$BATS_TEST_DIRNAME"
     TMP="$BATS_TEST_TMPDIR"
     R=`pwd`
+    CJIT="${R}/cjit"
+    [ -x "${CJIT}" ] || CJIT="${R}/cjit.exe"
+    [ -x "${CJIT}" ] || CJIT="${R}/cjit.command"
     load "$T"/test_helper/bats_support/load
     load "$T"/test_helper/bats_assert/load
     load "$T"/test_helper/bats_file/load
@@ -171,14 +174,14 @@ EOF
 @test "CLI archive extraction rejects corrupt archive without output" {
     printf 'not a gzip archive' > ${TMP}/corrupt.tgz
     mkdir ${TMP}/out
-    run ${R}/cjit --xtgz ${TMP}/corrupt.tgz
+    run ${CJIT} --xtgz ${TMP}/corrupt.tgz
     assert_failure
     assert_output --partial 'Failed to extract archive'
     assert_equal "$(find ${TMP}/out -mindepth 1 -print -quit)" ""
 }
 
 @test "CLI archive extraction reports a missing input file" {
-    run ${R}/cjit --xtgz ${TMP}/missing.tgz
+    run ${CJIT} --xtgz ${TMP}/missing.tgz
     assert_failure
     assert_output --partial 'Failed to extract archive'
 }

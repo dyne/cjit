@@ -29,6 +29,12 @@
 #include "cjit.h"
 #include "support/string_list.h"
 
+#if defined(_MSC_VER)
+#define CJIT_S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
+#else
+#define CJIT_S_ISREG(mode) S_ISREG(mode)
+#endif
+
 static bool has_dll_extension(const char *name)
 {
     size_t length = strlen(name);
@@ -67,7 +73,7 @@ int windows_resolve_library_lists(const StringList *libraries,
 
             snprintf(tryfile, sizeof(tryfile), "%s/%s%s", path, name,
                      has_extension ? "" : ".dll");
-            if (stat(tryfile, &st) == 0 && S_ISREG(st.st_mode)) {
+            if (stat(tryfile, &st) == 0 && CJIT_S_ISREG(st.st_mode)) {
                 string_list_add(resolved, tryfile);
                 found = true;
                 break;
