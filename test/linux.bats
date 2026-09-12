@@ -5,7 +5,8 @@ load bats_setup
 }
 
 @test "Linker resolution of libm simple gnu ld script" {
-    cat << EOF > ldscript_test.c
+    source_file="${TMP}/ldscript_test.c"
+    cat << EOF > "${source_file}"
 #include <stdio.h>
 #include <math.h>
 int solve_quadratic(double a, double b, double c) {
@@ -31,14 +32,16 @@ int main() {
     return solve_quadratic(a, b, c);
 }
 EOF
-    run ${CJIT} -DVERSION=debug ldscript_test.c -lm
+    run "${CJIT}" -DVERSION=debug "${source_file}" -lm
     assert_success
     assert_output 'Roots: 2.00 and 1.00'
 }
 
 @test "Linker resolution of openssl" {
-    echo "Hello World!" | base64 > ${TMP}/hello.b64
-cat << EOF > base64_hello.c
+    base64_file="${TMP}/hello.b64"
+    source_file="${TMP}/base64_hello.c"
+    echo "Hello World!" | base64 > "${base64_file}"
+cat << EOF > "${source_file}"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,8 +93,8 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 EOF
-    run ${CJIT} -DVERSION=debug base64_hello.c -lssl \
-                    -- `cat ${TMP}/hello.b64`
+    encoded=$(cat "${base64_file}")
+    run "${CJIT}" -DVERSION=debug "${source_file}" -lssl -- "${encoded}"
     assert_success
     assert_output 'Hello World!'
 }
@@ -103,15 +106,15 @@ EOF
 }
 
 @test "Linker resolution of ncurses (ldscript+symlinks)" {
-
-    cat << EOF > ncurses.c
+    source_file="${TMP}/ncurses.c"
+    cat << EOF > "${source_file}"
 #include <ncurses.h>
 int main() {
         fprintf(stderr,"Terminal name: %s",termname());
         return 0;
 }
 EOF
-    run ${CJIT} -DVERSION=debug ncurses.c -lncurses
+    run "${CJIT}" -DVERSION=debug "${source_file}" -lncurses
     assert_success
     assert_output --partial 'Terminal name'
 }
