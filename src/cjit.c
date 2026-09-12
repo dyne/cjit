@@ -72,6 +72,9 @@ static int resolve_libraries(CJITState *cjit) {
 CJITState* cjit_new() {
 	CJITState *cjit = NULL;
 	cjit = malloc(sizeof(CJITState));
+	if (!cjit) {
+		return NULL;
+	}
 	memset(cjit,0x0,sizeof(CJITState));
 	// quiet is by default on when cjit's output is redirected
 	// errors will still be printed on stderr
@@ -93,10 +96,15 @@ CJITState* cjit_new() {
 	cjit->libs     = string_list_new();
 	cjit->libpaths = string_list_new();
 	cjit->reallibs = string_list_new();
+	if (!cjit->sources || !cjit->libs || !cjit->libpaths || !cjit->reallibs) {
+		cjit_free(cjit);
+		return NULL;
+	}
 	return(cjit);
 }
 
 void cjit_free(CJITState *cjit) {
+	if (!cjit) return;
 	if(cjit->tmpdir) free(cjit->tmpdir);
 	if(cjit->write_pid) free(cjit->write_pid);
 	if(cjit->entry) free(cjit->entry);
@@ -110,6 +118,9 @@ void cjit_free(CJITState *cjit) {
 }
 
 CJITResult cjit_prepare(CJITState *cjit) {
+	if (!cjit || !cjit->TCC) {
+		return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1, "Missing CJIT state");
+	}
 	// set output in memory for just in time execution
 	if(cjit->done_setup) {
 		return cjit_result_ok();
@@ -251,6 +262,9 @@ static int detect_bom(const char *filename,size_t *filesize) {
 CJITResult cjit_add_buffer_result(CJITState *cjit, const char *buffer) {
 	int res;
 	CJITResult result;
+	if (!buffer) {
+		return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1, "Missing source buffer");
+	}
 	result = cjit_prepare(cjit);
 	if (!result.ok) {
 		return result;
@@ -271,7 +285,11 @@ bool cjit_add_buffer(CJITState *cjit, const char *buffer) {
 CJITResult cjit_add_source_result(CJITState *cjit, const char *path) {
 	CJITResult result;
 	size_t length;
-	int res = detect_bom(path,&length);
+	int res;
+	if (!path) {
+		return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1, "Missing source path");
+	}
+	res = detect_bom(path,&length);
 	result = cjit_prepare(cjit);
 	if (!result.ok) {
 		return result;
@@ -350,7 +368,11 @@ bool cjit_add_source(CJITState *cjit, const char *path) {
 
 CJITResult cjit_add_file_result(CJITState *cjit, const char *path) {
 	CJITResult result;
-	int is_source = cjit_classify_source_path(path);
+	int is_source;
+	if (!path) {
+		return cjit_result_error(CJIT_RESULT_INVALID_REQUEST, 1, "Missing source path");
+	}
+	is_source = cjit_classify_source_path(path);
 	result = cjit_prepare(cjit);
 	if (!result.ok) {
 		return result;
