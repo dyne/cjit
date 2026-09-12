@@ -29,6 +29,35 @@ load bats_setup
     assert_output --partial 'Invalid char used in -D define symbol'
 }
 
+@test "Reject missing and syntactically invalid source inputs" {
+    run ${CJIT} -q "${TMP}/does-not-exist.c"
+    assert_failure
+    assert_line --partial 'Error loading source input'
+
+    printf '%s\n' 'int main(void) { this is not valid C; }' > "${TMP}/invalid.c"
+    run ${CJIT} -q "${TMP}/invalid.c"
+    assert_failure
+    assert_line --partial 'Error loading source input'
+}
+
+@test "Reject a source without the requested entry symbol" {
+    skip_if_systcc_execute_is_unavailable
+    printf '%s\n' 'int not_main(void) { return 0; }' > "${TMP}/no-main.c"
+    run ${CJIT} -q "${TMP}/no-main.c"
+    assert_failure
+    assert_line --partial 'Entrypoint symbol not found'
+}
+
+@test "Reject unknown and missing-valued CLI options" {
+    run ${CJIT} -q --not-a-real-option
+    assert_failure
+    assert_line --partial 'unknown opt:'
+
+    run ${CJIT} -q -I
+    assert_failure
+    assert_line --partial 'missing arg:'
+}
+
 ## This and the following test fail when using Debian's libtcc1 for
 ## execution, maybe because object files aren't supported , as it
 ## fails in tcc_add_file() calls inside cjit_add_file()
@@ -68,6 +97,53 @@ load bats_setup
       run "${executable}"
       assert_success
       assert_output 'Hello World!'
+}
+
+@test "Compile outputs honor nested and missing destination directories" {
+    mkdir -p "${TMP}/outputs/with space"
+    executable="${TMP}/outputs/with space/program"
+    run ${CJIT} -q -o "${executable}" test/hello.c
+    assert_success
+    [ -f "${executable}" ]
+
+    missing="${TMP}/missing-parent/program"
+    run ${CJIT} -q -o "${missing}" test/hello.c
+    assert_failure
+    assert_line --partial 'Error in linker compiling to file'
+    [ ! -e "${missing}" ]
+}
+
+@test "Build executable links multiple source inputs" {
+    executable="${TMP}/multifile-program"
+    run ${CJIT} -q -o "${executable}" test/multifile/*.c
+    assert_success
+    [ -x "${executable}" ]
+    run "${executable}"
+    assert_success
+    assert_line --partial 'hello from myfunc'
+}
+
+@test "Build executable links a prebuilt object and compile rejects headers" {
+    printf '%s\n' 'int helper(void) { return 3; }' > "${TMP}/helper.c"
+    printf '%s\n' 'int helper(void);' \
+        'int main(void) { return helper() == 3 ? 0 : 1; }' > "${TMP}/main.c"
+    printf '%s\n' '#define HEADER_ONLY 1' > "${TMP}/only.h"
+
+    run ${CJIT} -q -c -o "${TMP}/helper.o" "${TMP}/helper.c"
+    assert_success
+    [ -s "${TMP}/helper.o" ]
+
+    program="${TMP}/object-linked-program"
+    run ${CJIT} -q -o "${program}" "${TMP}/main.c" "${TMP}/helper.o"
+    assert_success
+    [ -x "${program}" ]
+    run "${program}"
+    assert_success
+
+    run ${CJIT} -q -c "${TMP}/only.h"
+    assert_failure
+    assert_line --partial 'Compile to object failed'
+    [ ! -e "${TMP}/only.o" ]
 }
 
 @test "Execute multiple files" {
@@ -148,6 +224,33 @@ load bats_setup
     assert_line --partial 'Target platform:'
 }
 
+@test "Help and CFLAGS environment input have observable contracts" {
+    run ${CJIT} --help
+    assert_success
+    assert_line --partial 'Synopsis: cjit'
+
+    skip_if_systcc_execute_is_unavailable
+    run env CFLAGS=-DALLOWED "${CJIT}" -q test/cflags.c
+    assert_success
+    assert_line 'CFLAGS: -DALLOWED'
+    assert_line 'Success.'
+}
+
+@test "Include paths and PID files affect only the requested execution" {
+    skip_if_systcc_execute_is_unavailable
+    mkdir -p "${TMP}/include"
+    printf '%s\n' '#define MESSAGE "include path works"' > "${TMP}/include/message.h"
+    printf '%s\n' '#include <stdio.h>' '#include "message.h"' \
+        'int main(void) { puts(MESSAGE); return 0; }' > "${TMP}/include-test.c"
+
+    pid_file="${TMP}/cjit.pid"
+    run ${CJIT} -q -I "${TMP}/include" -p "${pid_file}" "${TMP}/include-test.c"
+    assert_success
+    assert_output 'include path works'
+    [ -s "${pid_file}" ]
+    [[ "$(cat "${pid_file}")" =~ ^[0-9]+$ ]]
+}
+
 @test "Compile to object rejects multiple source files" {
     run ${CJIT} -c test/hello.c test/cflags.c
     assert_failure
@@ -158,6 +261,14 @@ load bats_setup
     run ${CJIT} -v -c test/hello.c
     assert_success
     assert_line --partial 'Build system:'
+}
+
+@test "Build route wins over status when an output path is requested" {
+    executable="${TMP}/status-build-program"
+    run ${CJIT} -v -o "${executable}" test/hello.c
+    assert_success
+    assert_line --partial 'Build system:'
+    [ -f "${executable}" ]
 }
 
 @test "Compile driver ignores make dependency flags" {
@@ -193,6 +304,17 @@ load bats_setup
     [ -d "${output}" ]
 }
 
+@test "Asset extraction takes precedence over trailing source input" {
+    if [ -n "${SYSTCC:-}" ]; then
+        skip "embedded runtime assets are unavailable with shared libtcc builds"
+    fi
+    destination="${TMP}/assets-priority"
+    run ${CJIT} --xass="${destination}" test/hello.c
+    assert_success
+    [ -d "${destination}" ]
+    [ -f "${destination}/include/stdarg.h" ]
+}
+
 @test "Extract archive route" {
     mkdir -p "${TMP}/bundle-src"
     printf '%s\n' 'bundle ok' > "${TMP}/bundle-src/hello.txt"
@@ -204,4 +326,17 @@ load bats_setup
     popd >/dev/null
     assert_success
     [ -f "${TMP}/bundle-out/bundle/hello.txt" ]
+}
+
+@test "Archive extraction takes precedence over trailing source input" {
+    mkdir -p "${TMP}/priority-src"
+    printf '%s\n' 'priority ok' > "${TMP}/priority-src/marker.txt"
+    run ${R}/lib/muntarfs/muntarfs-pack.sh "${TMP}/priority-src" "${TMP}/priority" priority
+    assert_success
+    mkdir -p "${TMP}/priority-out"
+    pushd "${TMP}/priority-out" >/dev/null
+    run ${CJIT} --xtgz "${TMP}/priority.tar.gz" test/hello.c
+    popd >/dev/null
+    assert_success
+    [ -f "${TMP}/priority-out/priority/marker.txt" ]
 }
