@@ -11,6 +11,10 @@ int cjit_classify_source_path(const char *path)
     size_t extension_length;
     bool is_source;
 
+    if (!path || !*path) {
+        return 0;
+    }
+
     is_source = cwk_path_get_extension(path, (const char **)&extension, &extension_length);
     if (!is_source) {
         return 0;

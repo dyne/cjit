@@ -55,7 +55,7 @@ static bool ensure_directory(const char *path)
  * Checks whether the cached embedded runtime contains the minimum files
  * required to compile simple sources.
  */
-static bool runtime_cache_is_complete(const char *root)
+bool cjit_runtime_cache_is_complete(const char *root)
 {
     struct stat info;
     char path[MAX_PATH];
@@ -70,6 +70,10 @@ static bool runtime_cache_is_complete(const char *root)
         { "include/tccdefs.h", 1024 },
     };
     size_t i;
+
+    if (!root || !*root) {
+        return false;
+    }
 
 #if defined(WINDOWS)
     const struct RuntimeCacheEntry windows_required[] = {
@@ -170,12 +174,20 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
 {
     char *temp_dir;
 
+    if (!cjit) {
+        return false;
+    }
+
     if (optional_path) {
         temp_dir = malloc(strlen(optional_path) + 512);
+        if (!temp_dir) {
+            return false;
+        }
         cwk_path_normalize(optional_path, temp_dir, strlen(optional_path) + 511);
 #if defined(WINDOWS)
         if (CreateDirectory(temp_dir, NULL) == 0) {
             _err("Failed to create temporary dir: %s", temp_dir);
+            free(temp_dir);
             return false;
         }
 #else
@@ -186,14 +198,22 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
             cjit->fresh = false;
         } else {
             _err("Cannot overwrite runtime include dir: %s", temp_dir);
+            free(temp_dir);
             return false;
         }
         if (cjit->fresh) {
-            mkdir(temp_dir, 0755);
+            if (mkdir(temp_dir, 0755) != 0) {
+                fail(temp_dir);
+                free(temp_dir);
+                return false;
+            }
         }
 #endif
     } else {
         temp_dir = malloc(MAX_PATH + 1);
+        if (!temp_dir) {
+            return false;
+        }
         const char *tmp_root = getenv("TMPDIR");
         char cache_root[MAX_PATH];
         struct stat info;
@@ -224,7 +244,7 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
         if (stat(temp_dir, &info) != 0) {
             cjit->fresh = true;
         } else if (info.st_mode & S_IFDIR) {
-            cjit->fresh = !runtime_cache_is_complete(temp_dir);
+            cjit->fresh = !cjit_runtime_cache_is_complete(temp_dir);
             if (cjit->fresh) {
                 if (!remove_tree(temp_dir) || !ensure_directory(temp_dir)) {
                     free(temp_dir);

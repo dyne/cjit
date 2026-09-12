@@ -38,7 +38,7 @@ int string_list_add(StringList *list, const char *value)
     if (!list || !value) {
         return 0;
     }
-    return XArray_AddData(list->items, (void *)value, strlen(value) + 1) == XARRAY_SUCCESS;
+    return XArray_AddData(list->items, (void *)value, strlen(value) + 1) != XARRAY_FAILURE;
 }
 
 size_t string_list_count(const StringList *list)

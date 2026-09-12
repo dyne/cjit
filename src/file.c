@@ -50,10 +50,18 @@ static long file_size(const char *filename) {
 }
 
 char* file_load(const char *filename, unsigned int *len) {
-    size_t length = file_size(filename);
-    if (length < 1) {
+    long file_length;
+    size_t length;
+
+    if (!filename || !len) {
         return NULL;
     }
+
+    file_length = file_size(filename);
+    if (file_length < 1) {
+        return NULL;
+    }
+    length = (size_t)file_length;
 
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
@@ -70,8 +78,10 @@ char* file_load(const char *filename, unsigned int *len) {
 
     // _err("Loading source file %s",filename);
 
-    if(fread(contents, 1, length, file)<length) {
-		fail(file);
+    if(fread(contents, 1, length, file) < length) {
+		fail(filename);
+		free(contents);
+		fclose(file);
 		return NULL;
 	}
 
@@ -123,6 +133,9 @@ char *new_abspath(const char *path) {
 	char tpath[MAX_PATH];
 	char *res = NULL;
 	size_t len;
+	if(!path || !*path) {
+		return NULL;
+	}
 	if(path[0]=='.' && path[1]==0x0) {
 		// argument is just .
 		if( getcwd(tpath,MAX_PATH) ) {
@@ -165,6 +178,9 @@ bool write_to_file(const char *path, const char *filename, const char *buf, unsi
 	FILE *fd;
 	size_t written;
 	char fullpath[MAX_PATH];
+	if (!path || !filename || (!buf && len != 0)) {
+		return false;
+	}
 	cwk_path_join(path,filename,fullpath,MAX_PATH);
 	fd = fopen(fullpath,"wb");
 	if(!fd) {

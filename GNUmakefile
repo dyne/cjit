@@ -145,7 +145,8 @@ coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 
 UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin \
 	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin \
-	test/app_slices_unit.bin
+	test/app_slices_unit.bin test/string_list_unit.bin test/file_unit.bin \
+	test/runtime_cache_unit.bin test/cjit_lifecycle_unit.bin
 
 test/source_files_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
 test/source_files_edge_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
@@ -153,6 +154,12 @@ test/cli_parser_unit.bin: UNIT_SOURCES := src/adapters/cli/route_parser.c
 test/cli_route_unit.bin: UNIT_SOURCES := src/adapters/cli/route_parser.c
 test/cli_render_unit.bin: UNIT_SOURCES := src/adapters/cli/render_response.c
 test/app_slices_unit.bin: UNIT_SOURCES := src/app/execute_source.c src/app/compile_object.c src/app/build_executable.c src/app/print_status.c src/app/extract_assets.c src/app/extract_archive.c
+test/string_list_unit.bin: UNIT_SOURCES := src/support/string_list.c src/array.c
+test/file_unit.bin: UNIT_SOURCES := src/file.c src/support/cwalk.c
+test/runtime_cache_unit.bin: UNIT_SOURCES := src/adapters/fs/local_filesystem.c src/support/cwalk.c
+test/runtime_cache_unit.bin: CFLAGS += -DVERSION=\"test-runtime\"
+test/cjit_lifecycle_unit.bin: UNIT_SOURCES := src/cjit.c src/support/string_list.c src/array.c src/support/source_files.c src/support/cwalk.c
+test/cjit_lifecycle_unit.bin: CFLAGS += -DSHAREDTCC -DVERSION=\"unit\" -Ilib/tinycc
 
 $(UNIT_BINS): test/%_unit.bin: test/%_unit.c $(UNIT_SOURCES)
 	$(CC) $(CFLAGS) -Isrc -o $@ $< $(UNIT_SOURCES)
