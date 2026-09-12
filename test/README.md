@@ -49,7 +49,7 @@ measurement. The command then removes its instrumented objects so a normal
 build cannot reuse them. `make coverage-clean` removes profiles on demand;
 `make coverage` invokes it after reporting.
 Coverage is an initial measurement with no threshold; CI uploads
-`coverage/maintained.txt` so a ratchet can be chosen from measured data rather
+the validated `coverage/` report directory (including `maintained.txt`) so a ratchet can be chosen from measured data rather
 than invented. `make debug-asan` builds an AddressSanitizer/LeakSanitizer binary
 with undefined-behavior checks; run `make check-unit` and the closest Bats suite
 against that binary before wider sanitizer validation.
