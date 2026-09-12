@@ -14,9 +14,11 @@ change.
 
 `make check-ci` runs the unit, CLI, applicable platform, Windows-gated, and
 archive/component suites. `make check` additionally runs the Linux dmon suite
-when `.build_done_linux` is present. The initial baseline was 34 Bats cases on
-Linux with one Windows-only case skipped; case counts are observations, not a
-permanent contract.
+when `.build_done_linux` is present. Every Bats invocation prints a
+`BATS_SUITE` line with executed and skipped counts. CI sets
+`CJIT_REQUIRED_PLATFORM=linux` or `windows` for the job that owns that platform;
+an owned suite with zero executed cases fails the job. The dedicated Linux dmon
+job keeps that host-specific smoke test out of the fast `check-ci` gate.
 
 ## Test data and platform rules
 
@@ -28,6 +30,10 @@ permanent contract.
 - Linux-only and dmon tests run only after the corresponding platform build
   marker exists. Windows tests self-skip on other hosts. Shared-libtcc builds
   skip in-memory execution and embedded-assets cases that they cannot support.
+- `CJIT_REQUIRED_PLATFORM` is a CI-only audit switch: set it to `linux` or
+  `windows` only where that target is actually built and runnable. Do not use it
+  for cross-build or shared-libtcc smoke jobs, where a platform suite is not an
+  owned contract.
 - Prefer synthetic fixtures for deterministic parser/resolver behavior. Keep a
   host-dependent check only as an explicitly labeled smoke test.
 
@@ -42,6 +48,15 @@ target (it is currently compiled only by the muntar component harness), and
 measurement. The command then removes its instrumented objects so a normal
 build cannot reuse them. `make coverage-clean` removes profiles on demand;
 `make coverage` invokes it after reporting.
-Coverage is an initial measurement with no threshold. `make debug-asan` builds
-an AddressSanitizer binary; run `make check-unit` and the closest Bats suite
+Coverage is an initial measurement with no threshold; CI uploads
+`coverage/maintained.txt` so a ratchet can be chosen from measured data rather
+than invented. `make debug-asan` builds an AddressSanitizer/LeakSanitizer binary
+with undefined-behavior checks; run `make check-unit` and the closest Bats suite
 against that binary before wider sanitizer validation.
+
+The Linux report is not a cross-platform scorecard: the Windows resolver is
+compiled for interface coverage but has no executable Windows branch on Linux.
+Its observable behavior is owned by the Windows jobs. Remaining low-coverage
+paths are chiefly host permission, missing-system-library, and process-failure
+branches; keep those as explicit platform or smoke coverage rather than making
+the deterministic Linux baseline depend on a particular host setup.

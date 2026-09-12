@@ -1,10 +1,7 @@
 load bats_setup
 
 @test "Windows rejects no-file and explicit stdin execution" {
-    case "$(uname -s)" in
-        MINGW*|MSYS*|CYGWIN*) ;;
-        *) skip "Windows stdin contract only applies on Windows" ;;
-    esac
+    skip_if_not_windows
 
     run bash -lc "printf '%s\\n' 'int main(void) { return 0; }' | '${CJIT}' -q"
     assert_failure
@@ -18,19 +15,14 @@ load bats_setup
 @test "Timeb.h inclusion for clock() in Windows" {
 # see https://www.reddit.com/r/C_Programming/comments/1h1g4gc/comment/lzc9fta/
 # /sys/timeb.h:132: error: include file 'sec_api/sys/timeb_s.h' not found
+    skip_if_not_windows
     skip_if_systcc_execute_is_unavailable
     run ${CJIT} test/win_timeb.c
     assert_success
 }
 
 @test "Windows library resolver searches -L paths" {
-    case "$(uname -s)" in
-        MINGW*|MSYS*|CYGWIN*)
-            ;;
-        *)
-            skip "Windows library resolver test only applies on Windows"
-            ;;
-    esac
+    skip_if_not_windows
     skip_if_systcc_execute_is_unavailable
     dll_source="${R}/libtcc.dll"
     [ -r "${dll_source}" ] || dll_source="/c/Windows/System32/kernel32.dll"

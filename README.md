@@ -7,6 +7,8 @@ It can:
 - compile and execute one or more C inputs directly from memory
 - compile one source file to an object
 - build an executable without running it
+- inspect runtime configuration and extract bundled runtime assets
+- extract tar.gz archives, or use `cjit-ar`/`cjit -ar` for archive operations
 
 CJIT is designed for fast iteration, scripting-style execution, and
 small deployment footprints.
@@ -56,6 +58,31 @@ Inspect the runtime configuration:
 ```bash
 ./cjit -v
 ```
+
+Extract bundled runtime assets or a tar.gz archive:
+
+```bash
+./cjit --xass /tmp/cjit-assets
+./cjit --xtgz bundle.tar.gz
+```
+
+## Build and test
+
+The bundled Linux build used by maintainers is:
+
+```bash
+make linux CC=clang
+make check
+```
+
+`make check-ci` omits the Linux `dmon` smoke test; `make check` includes it for
+a Linux target. `make check-unit` runs deterministic C units, while the Bats
+suites exercise public CLI and platform behavior. A system-libtcc build uses
+`make meson` and requires the distribution `tcc`, `libtcc-dev`, Meson, and
+Ninja packages; it cannot execute the in-memory and embedded-asset routes that
+the bundled build supports. `make coverage CC=clang` writes the maintained Linux
+coverage summary to `coverage/maintained.txt`, and `make debug-asan CC=clang`
+builds the sanitizer variant.
 
 ## What CJIT Is Not
 

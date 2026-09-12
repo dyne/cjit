@@ -36,3 +36,10 @@ skip_if_windows_stdin_is_unsupported() {
 			;;
 	esac
 }
+
+skip_if_not_windows() {
+	case "$(uname -s)" in
+		MINGW*|MSYS*|CYGWIN*) ;;
+		*) skip "Windows platform contract only applies on Windows" ;;
+	esac
+}

@@ -197,7 +197,7 @@ Start at the smallest relevant surface:
 | POSIX libraries/ld scripts | `src/adapters/platform/library_resolver_posix.c` | `test/linux.bats` |
 | Windows DLLs/compatibility | Windows resolver, runtime platform, `src/win-compat.c` | `test/windows.bats` |
 | Embedded assets/tar.gz | local asset adapter, `lib/muntarfs/` | `test/cli.bats`, `test/muntar.bats` |
-| Archive tool | `src/cjit-ar.c` | no dedicated regression test yet |
+| Archive tool | `src/cjit-ar.c` | `test/archive_tool.bats` |
 | Pure source classification | `src/support/source_files.c` | `test/source_files_unit.c` |
 
 ## Generated and Vendored Files
@@ -257,11 +257,14 @@ make check                # complete local suite, including dmon on Linux
 ```
 
 Run the closest Bats file while iterating, then `make check` before finishing a
-runtime or CLI change. `test/windows.bats` is always invoked but gates its
-Windows-only case at runtime. Linux library and dmon tests require
-`.build_done_linux`. CI builds/tests bundled Linux, system-libtcc Debian,
-MinGW, MSVC, and macOS; Linux CI also rebuilds with `CC=cjit` and reruns the CI
-suite.
+runtime or CLI change. Every Bats suite reports executed/skipped counts through
+`test/run_bats_suite.sh`. CI uses `CJIT_REQUIRED_PLATFORM=linux` or `windows`
+to make a zero-execution owned platform suite fail. Linux library and dmon tests
+require `.build_done_linux`; dmon has a separate stable Linux CI job. CI also
+builds/tests bundled Linux, system-libtcc Debian, MinGW, MSVC, and macOS; Linux
+CI rebuilds with `CC=cjit` and reruns the CI suite. The Linux coverage job
+uploads `coverage/maintained.txt`; it is an informational baseline until a
+reviewed threshold is adopted.
 
 The direct unit convention, test-layer selection, fixture isolation rules, and
 instrumented-run commands are documented in `test/README.md`. Most other tests
