@@ -185,10 +185,21 @@ bool cjit_mkdtemp(CJITState *cjit, const char *optional_path)
         }
         cwk_path_normalize(optional_path, temp_dir, strlen(optional_path) + 511);
 #if defined(WINDOWS)
-        if (CreateDirectory(temp_dir, NULL) == 0) {
-            _err("Failed to create temporary dir: %s", temp_dir);
-            free(temp_dir);
-            return false;
+        if (CreateDirectory(temp_dir, NULL) != 0) {
+            cjit->fresh = true;
+        } else {
+            DWORD create_error = GetLastError();
+            DWORD attributes = GetFileAttributes(temp_dir);
+
+            if (create_error == ERROR_ALREADY_EXISTS &&
+                attributes != INVALID_FILE_ATTRIBUTES &&
+                (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+                cjit->fresh = false;
+            } else {
+                _err("Failed to create temporary dir: %s", temp_dir);
+                free(temp_dir);
+                return false;
+            }
         }
 #else
         struct stat info;
