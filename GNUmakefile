@@ -146,13 +146,16 @@ COVERAGE_SOURCES := src/file.c src/cjit.c src/cjit-ar.c src/main.c src/support/s
 	lib/muntarfs/tinfgzip.c
 
 ifeq ($(findstring clang,$(shell $(CC) --version 2>/dev/null | head -1)),clang)
-COVERAGE_TOOL ?= llvm-cov gcov
+COVERAGE_TOOL ?= llvm-cov
+COVERAGE_TOOL_ARGS ?= gcov
 else
 COVERAGE_TOOL ?= gcov
+COVERAGE_TOOL_ARGS ?=
 endif
 
 coverage: ## 📊 Build, test, and summarize maintained-source coverage (no threshold)
 	@$(MAKE) coverage-clean
+	@rm -rf coverage
 	@$(MAKE) clean
 	@$(MAKE) linux
 	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
@@ -164,15 +167,15 @@ coverage: ## 📊 Build, test, and summarize maintained-source coverage (no thre
 	@$(MAKE) coverage-clean
 
 coverage-report: ## 📊 Print line coverage for maintained sources only
-	@mkdir -p coverage
-	@{ for source_file in $(COVERAGE_SOURCES); do \
-		coverage_output="$$($(COVERAGE_TOOL) -n "$$source_file")" || exit $$?; \
-		printf '%s\n' "$$coverage_output" | awk -v source="File '$$source_file'" \
-			'$$0 == source { show = 1 } /^File / && $$0 != source { show = 0 } show && (/^File / || /^Lines executed:/) { print; if (/^Lines executed:/) show = 0 }'; \
-	done; } | tee coverage/maintained.txt
+	@COVERAGE_TOOL="$(COVERAGE_TOOL)" COVERAGE_TOOL_ARGS="$(COVERAGE_TOOL_ARGS)" \
+		./test/coverage_report.sh coverage/maintained.txt $(COVERAGE_SOURCES)
+
+check-coverage-report: ## 🧪 Verify coverage report failure contracts
+	@./test/coverage_report_test.sh
 
 coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 	@find src lib/muntarfs lib/tinycc -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
+	@rm -f cjit-ar-cjit-ar.gcda cjit-ar-cjit-ar.gcno
 
 UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin \
 	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin \

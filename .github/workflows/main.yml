@@ -105,11 +105,16 @@ jobs:
       - name: Measure maintained-source coverage
         run: |
           make coverage CC=clang
+      - name: Validate maintained coverage report
+        run: |
+          test -s coverage/maintained.txt
+          grep -Eq "^File '(src|lib/muntarfs)/" coverage/maintained.txt
+          grep -Eq '^Lines executed:([0-9]+\.)?[0-9]+% of [1-9][0-9]*$' coverage/maintained.txt
       - name: Upload maintained coverage report
         uses: actions/upload-artifact@v4
         with:
           name: linux-maintained-coverage
-          path: coverage/maintained.txt
+          path: coverage/
           if-no-files-found: error
 
   linux-dmon:
