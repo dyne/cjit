@@ -18,12 +18,13 @@ call :load_vs || exit /b 1
 if /I "%ACTION%"=="tinycc" goto :tinycc
 if /I "%ACTION%"=="cjit" goto :cjit
 if /I "%ACTION%"=="cjit-ar" goto :cjit_ar
+if /I "%ACTION%"=="units" goto :units
 
 echo Unknown action: %ACTION% 1>&2
 exit /b 1
 
 :usage
-echo usage: build\win-msvc.cmd ^<tinycc^|cjit^|cjit-ar^> root [source-list] 1>&2
+echo usage: build\win-msvc.cmd ^<tinycc^|cjit^|cjit-ar^|units^> root [source-list] 1>&2
 exit /b 1
 
 :find_vsdevcmd
@@ -103,4 +104,12 @@ cl /nologo /O2 /W2 /MT /GS- ^
   /Fe"%ROOT%\cjit-ar.exe" ^
   "%ROOT%\src\cjit-ar.c" "%ROOT%\lib\tinycc\libtcc.c" ^
   /link /nologo advapi32.lib shlwapi.lib rpcrt4.lib || exit /b 1
+exit /b 0
+
+:units
+if not exist "%ROOT%\build\win-msvc" mkdir "%ROOT%\build\win-msvc" || exit /b 1
+cl /nologo /W4 /WX /MT /DCJIT_BUILD_WIN /I"%ROOT%\src" /I"%ROOT%\lib\muntarfs" /Fe"%ROOT%\build\win-msvc\file_unit.exe" "%ROOT%\test\file_unit.c" "%ROOT%\src\file.c" "%ROOT%\src\support\cwalk.c" /link /nologo shlwapi.lib || exit /b 1
+"%ROOT%\build\win-msvc\file_unit.exe" || exit /b 1
+cl /nologo /W4 /WX /MT /DCJIT_BUILD_WIN /DVERSION=\"test-runtime\" /I"%ROOT%\src" /I"%ROOT%\lib\muntarfs" /Fe"%ROOT%\build\win-msvc\runtime_cache_unit.exe" "%ROOT%\test\runtime_cache_unit.c" "%ROOT%\src\adapters\fs\local_filesystem.c" "%ROOT%\src\support\cwalk.c" /link /nologo shlwapi.lib || exit /b 1
+"%ROOT%\build\win-msvc\runtime_cache_unit.exe" || exit /b 1
 exit /b 0

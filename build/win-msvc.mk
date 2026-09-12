@@ -54,3 +54,6 @@ cjit-ar.exe: tinycc-msvc
 win-msvc: cjit.exe cjit-ar.exe
 	@rm -f .build_done*
 	date | tee .build_done_win_msvc
+
+check-unit-msvc:
+	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action units -Root "$(CURDIR_WIN)"
