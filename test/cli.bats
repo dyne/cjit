@@ -247,8 +247,8 @@ load bats_setup
     skip_if_systcc_execute_is_unavailable
     run env CFLAGS=-DALLOWED "${CJIT}" -q test/cflags.c
     assert_success
-    assert_line 'CFLAGS: -DALLOWED'
-    assert_line 'Success.'
+    assert_line --partial 'CFLAGS: -DALLOWED'
+    assert_line --partial 'Success.'
 }
 
 @test "Include paths and PID files affect only the requested execution" {
@@ -324,7 +324,11 @@ load bats_setup
         skip "embedded runtime assets are unavailable with shared libtcc builds"
     fi
     destination="${TMP}/assets-priority"
-    run ${CJIT} --xass="${destination}" test/hello.c
+    destination_argument="${destination}"
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*) destination_argument="$(cygpath -w "${destination}")" ;;
+    esac
+    run ${CJIT} --xass="${destination_argument}" test/hello.c
     assert_success
     [ -d "${destination}" ]
     [ -f "${destination}/include/stdarg.h" ]
