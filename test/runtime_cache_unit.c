@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(WINDOWS)
+#if !defined(_WIN32) && !defined(__MINGW32__)
 #include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -57,7 +57,7 @@ static void expect(int condition, const char *message)
     }
 }
 
-#if !defined(WINDOWS)
+#if !defined(_WIN32) && !defined(__MINGW32__) && !defined(WINDOWS)
 static void make_directory(const char *path)
 {
     expect(mkdir(path, 0700) == 0, "directory fixture is created");

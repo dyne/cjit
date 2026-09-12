@@ -6,10 +6,19 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if defined(_WIN32) || defined(__MINGW32__)
+#include <direct.h>
+#include <process.h>
+#endif
+
 #include "adapters/platform/library_resolver_posix.h"
 #include "adapters/platform/library_resolver_windows.h"
 #include "cjit.h"
 #include "support/string_list.h"
+
+#if defined(_WIN32) || defined(__MINGW32__) || defined(WINDOWS)
+#define CJIT_TEST_WINDOWS
+#endif
 
 static int failures;
 
@@ -79,6 +88,41 @@ static void write_file(const char *path, const char *contents)
     fclose(file);
 }
 
+static int make_directory(const char *path)
+{
+#if defined(CJIT_TEST_WINDOWS)
+    return _mkdir(path);
+#else
+    return mkdir(path, 0700);
+#endif
+}
+
+static int make_fixture_root(char *root, size_t size)
+{
+#if defined(CJIT_TEST_WINDOWS)
+    const char *temporary_directory = getenv("TEMP");
+
+    if (!temporary_directory || !temporary_directory[0]) {
+        temporary_directory = ".";
+    }
+    snprintf(root, size, "%s/cjit-resolver-unit-%ld",
+             temporary_directory, (long)_getpid());
+    return make_directory(root) == 0;
+#else
+    snprintf(root, size, "/tmp/cjit-resolver-unit-XXXXXX");
+    return mkdtemp(root) != NULL;
+#endif
+}
+
+static int remove_directory(const char *path)
+{
+#if defined(CJIT_TEST_WINDOWS)
+    return _rmdir(path);
+#else
+    return rmdir(path);
+#endif
+}
+
 static void expect_list(const StringList *list, size_t count,
                         const char *first, const char *second)
 {
@@ -95,19 +139,27 @@ static void expect_list(const StringList *list, size_t count,
 
 int main(void)
 {
-    char root[] = "/tmp/cjit-resolver-unit-XXXXXX";
+    char root[512];
+#if !defined(CJIT_TEST_WINDOWS)
     char conf_dir[512], include_dir[512], conf[512], child[512];
-    char libraries_dir[512], first_dir[512], second_dir[512];
-    char alpha[512], beta[512], link[512], script[512], broken[512], priority[512], mixed[512];
-    StringList *paths = string_list_new();
-    StringList *libraries = string_list_new();
-    StringList *resolved = string_list_new();
+    char libraries_dir[512], alpha[512], beta[512], link[512], script[512], broken[512];
+#endif
+    char first_dir[512], second_dir[512], priority[512], mixed[512];
+    StringList *paths;
+    StringList *libraries;
+    StringList *resolved;
 
-    expect(mkdtemp(root) != NULL, "creates isolated resolver fixture root");
+    expect(make_fixture_root(root, sizeof(root)),
+           "creates isolated resolver fixture root");
+
+#if !defined(CJIT_TEST_WINDOWS)
+    paths = string_list_new();
+    libraries = string_list_new();
+    resolved = string_list_new();
     path_join(conf_dir, sizeof(conf_dir), root, "conf");
     path_join(include_dir, sizeof(include_dir), conf_dir, "parts");
-    mkdir(conf_dir, 0700);
-    mkdir(include_dir, 0700);
+    make_directory(conf_dir);
+    make_directory(include_dir);
     path_join(conf, sizeof(conf), conf_dir, "ld.so.conf");
     path_join(child, sizeof(child), include_dir, "20-extra.conf");
     write_file(child, " /fixture/third\n/fixture/first\n");
@@ -128,7 +180,7 @@ int main(void)
 
     paths = string_list_new();
     path_join(libraries_dir, sizeof(libraries_dir), root, "libraries");
-    mkdir(libraries_dir, 0700);
+    make_directory(libraries_dir);
     path_join(alpha, sizeof(alpha), libraries_dir, "libalpha.so");
     path_join(beta, sizeof(beta), libraries_dir, "libbeta.so");
     path_join(link, sizeof(link), libraries_dir, "liblink.so");
@@ -188,15 +240,15 @@ int main(void)
     }
     string_list_free(&libraries);
     string_list_free(&resolved);
+#endif
 
     libraries = string_list_new();
     resolved = string_list_new();
-    string_list_free(&paths);
     paths = string_list_new();
     path_join(first_dir, sizeof(first_dir), root, "first dir");
     path_join(second_dir, sizeof(second_dir), root, "second dir");
-    mkdir(first_dir, 0700);
-    mkdir(second_dir, 0700);
+    make_directory(first_dir);
+    make_directory(second_dir);
     path_join(priority, sizeof(priority), first_dir, "priority.dll");
     path_join(mixed, sizeof(mixed), second_dir, "MiXeD.DLL");
     write_file(priority, "dll");
@@ -213,9 +265,14 @@ int main(void)
     string_list_free(&paths);
     string_list_free(&libraries);
     string_list_free(&resolved);
-    unlink(alpha); unlink(beta); unlink(link); unlink(script); unlink(broken); unlink(priority); unlink(mixed);
-    unlink(child); unlink(conf);
-    rmdir(first_dir); rmdir(second_dir); rmdir(libraries_dir); rmdir(include_dir);
-    rmdir(conf_dir); rmdir(root);
+    remove(priority); remove(mixed);
+    remove_directory(first_dir); remove_directory(second_dir);
+#if !defined(CJIT_TEST_WINDOWS)
+    remove(alpha); remove(beta); remove(link); remove(script); remove(broken);
+    remove(child); remove(conf);
+    remove_directory(libraries_dir); remove_directory(include_dir);
+    remove_directory(conf_dir);
+#endif
+    remove_directory(root);
     return failures != 0;
 }

@@ -194,7 +194,7 @@ test/cjit_lifecycle_unit.bin: UNIT_SOURCES := src/cjit.c src/support/string_list
 test/cjit_lifecycle_unit.bin: CFLAGS += -DSHAREDTCC -DVERSION=\"unit\" -Ilib/tinycc
 test/library_resolver_unit.bin: UNIT_SOURCES := src/adapters/platform/library_resolver_posix.c src/adapters/platform/library_resolver_windows.c src/support/string_list.c src/array.c src/support/cwalk.c
 test/muntar_unit.bin: UNIT_SOURCES := lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c lib/muntarfs/muntarfs_runtime.c
-test/runtime_platform_unit.bin: UNIT_SOURCES := src/adapters/platform/runtime_platform.c
+test/runtime_platform_unit.bin: UNIT_SOURCES := src/adapters/platform/runtime_platform.c src/support/cwalk.c
 test/runtime_platform_unit.bin: CFLAGS += -Ilib/tinycc
 
 $(UNIT_BINS): test/%_unit.bin: test/%_unit.c $(UNIT_SOURCES)
