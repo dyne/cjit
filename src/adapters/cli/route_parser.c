@@ -1,6 +1,107 @@
 #include "adapters/cli/route_parser.h"
 
+#include <ctype.h>
 #include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define CLI_DEFINE_MAX_LENGTH 1024
+
+int cli_parse_define_value(char *definition)
+{
+    size_t index;
+    size_t equal_index = 0;
+    bool found_equal = false;
+
+    if (!definition) {
+        return -1;
+    }
+    for (index = 0; definition[index] != '\0'; ++index) {
+        unsigned char character = (unsigned char)definition[index];
+        if (index >= CLI_DEFINE_MAX_LENGTH || (!isalnum(character) && character != '_' && character != '=')) {
+            return -1;
+        }
+        if (character == '=') {
+            if (found_equal) {
+                return -1;
+            }
+            found_equal = true;
+            equal_index = index;
+        }
+    }
+    if (!found_equal) {
+        return 0;
+    }
+    definition[equal_index] = '\0';
+    return (int)equal_index + 1;
+}
+
+static bool cli_ignored_pattern_matches(const char *argument, const char *pattern,
+                                        bool *takes_next_value)
+{
+    size_t length = strlen(pattern);
+
+    *takes_next_value = false;
+    if (length == 0) {
+        return false;
+    }
+    if (pattern[length - 1] != ':') {
+        return strcmp(argument, pattern) == 0;
+    }
+    --length;
+    if (strncmp(argument, pattern, length) != 0) {
+        return false;
+    }
+    if (argument[length] == '\0') {
+        *takes_next_value = true;
+        return true;
+    }
+    return isalnum((unsigned char)argument[length]);
+}
+
+char **cli_remove_ignored_arguments(int *argc, char **argv,
+                                    const char *const *patterns,
+                                    int pattern_count)
+{
+    int source_count;
+    int output_count = 0;
+    bool after_separator = false;
+    char **filtered;
+
+    if (!argc || !argv || *argc < 1 || !patterns || pattern_count < 0) {
+        return NULL;
+    }
+    source_count = *argc;
+    filtered = malloc(((size_t)source_count + 1) * sizeof(*filtered));
+    if (!filtered) {
+        return NULL;
+    }
+    for (int index = 0; index < source_count; ++index) {
+        bool remove = false;
+        bool takes_next_value = false;
+        if (index > 0 && !after_separator) {
+            for (int pattern_index = 0; pattern_index < pattern_count; ++pattern_index) {
+                if (cli_ignored_pattern_matches(argv[index], patterns[pattern_index], &takes_next_value)) {
+                    remove = true;
+                    break;
+                }
+            }
+        }
+        if (remove) {
+            if (takes_next_value && index + 1 < source_count) {
+                ++index;
+            }
+            continue;
+        }
+        filtered[output_count++] = argv[index];
+        if (strcmp(argv[index], "--") == 0) {
+            after_separator = true;
+        }
+    }
+    filtered[output_count] = NULL;
+    *argc = output_count;
+    return filtered;
+}
 
 /**
  * Copies the CLI-owned common options into a route request payload.

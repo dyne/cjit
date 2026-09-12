@@ -50,39 +50,8 @@ extern char *load_stdin();
 extern int cjit_ar(CJITState *CJIT, int argc, char **argv);
 #endif
 
-// defined below
-static char** remove_args(int* argc,  char** argv,
-						  const char** to_remove, int remove_count);
 static int handle_archive_mode(CJITState *cjit, int argc, char **argv);
 static int handle_conftest_mode(CJITState *cjit, const char *source_path);
-
-#define MAX_ARG_STRING 1024
-static int parse_value(char *str) {
-  int i = 0;
-  int value_pos = 0;
-  bool equal_found = false;
-  while (str[i] != '\0') {
-    if (equal_found && str[i] == '=') {
-      return -1; // can't include equal twice
-    }
-    if (str[i] == '=') {
-      str[i]=0x0;
-      value_pos = i + 1;
-      equal_found = true;
-      continue;
-    }
-    if (!isalnum(str[i]) && str[i] != '_') {
-      return -1; // Invalid character found
-    }
-    i++;
-    if(i>MAX_ARG_STRING) {
-      return -1; // string too long
-    }
-  }
-  if(equal_found)
-    return(value_pos);
-  else return(0);
-}
 
 const char cli_help[] =
 	"CJIT %s by Dyne.org\n"
@@ -152,7 +121,12 @@ int main(int argc, char **argv) {
 
   // clean up argv from ignored args and update argc
   int ignored_count = sizeof(ignored_args) / sizeof(ignored_args[0]);
-  char** clean_argv = remove_args(&argc, argv, ignored_args, ignored_count);
+  char** clean_argv = cli_remove_ignored_arguments(&argc, argv, ignored_args, ignored_count);
+  if (!clean_argv) {
+      _err("Unable to filter compiler-driver arguments");
+      cjit_free(CJIT);
+      exit(1);
+  }
 
   // get the extra cflags from the CFLAGS env variable
   // they are overridden by explicit command-line options
@@ -185,7 +159,7 @@ int main(int argc, char **argv) {
 		  CJIT->verbose = true;
 	  } else if (c == 'D') { // define
 		  int _res;
-		  _res = parse_value(opt.arg);
+		  _res = cli_parse_define_value(opt.arg);
 		  if(_res==0) { // -Dsym (no key=value)
 			  cjit_define_symbol(CJIT, opt.arg, NULL);
 		  } else if(_res>0) { // -Dkey=value
@@ -330,76 +304,11 @@ int main(int argc, char **argv) {
   }
   }
   endgame:
-  // release buffer instantiated by remove_args
+  // release the argv vector instantiated by cli_remove_ignored_arguments
   free(clean_argv);
   // free TCC
   cjit_free(CJIT);
   exit(res);
-}
-
-char** remove_args(int* argc, char** argv,
-				   const char** to_remove, int remove_count) {
-    if (*argc == 0 || argv == NULL
-		|| to_remove == NULL || remove_count == 0) {
-        return argv;
-    }
-    bool* keep = calloc(*argc, sizeof(bool));
-    if (!keep) return NULL;
-    // First pass: mark all arguments to keep (initially all true)
-    for (int i = 0; i < *argc; i++) {
-        keep[i] = true;
-    }
-    int new_argc = *argc;
-    // Second pass: process removal patterns
-    for (int i = 0; i < *argc; i++) {
-        if (!keep[i]) continue;  // Already marked for removal
-        for (int j = 0; j < remove_count; j++) {
-            const char* arg = argv[i];
-            const char* pattern = to_remove[j];
-            size_t pattern_len = strlen(pattern);
-            // Case 1: Exact match
-            if (strcmp(arg, pattern) == 0) {
-                keep[i] = false;
-                new_argc--;
-                break;
-            }
-            // Case 2: Colon-terminated pattern (e.g., "option:")
-            if (pattern[pattern_len - 1] == ':') {
-                // Check if current argument starts with the pattern (without colon)
-                if (strncmp(arg, pattern, pattern_len - 1) == 0) {
-                    // Check if it's in the form "option:value"
-                    if (isalnum(arg[pattern_len-1])) {
-                        keep[i] = false;  // Remove the whole "option:value"
-                        new_argc--;
-                        break;
-                    }
-                    // OR if it's in the form "option value" (next argument)
-                    else if (i + 1 < *argc && arg[pattern_len - 1] == '\0') {
-                        keep[i] = false;    // Remove the option
-                        keep[i + 1] = false; // Remove the value
-                        new_argc -= 2;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    // Allocate new argv array
-    char** new_argv = malloc((new_argc + 1) * sizeof(char*));
-    if (!new_argv) {
-        free(keep);
-        return NULL;
-    }
-    // Copy kept arguments to new argv
-    for (int i = 0, j = 0; i < *argc; i++) {
-        if (keep[i]) {
-            new_argv[j++] = argv[i];
-        }
-    }
-    new_argv[new_argc] = NULL;  // NULL-terminate
-    free(keep);
-    *argc = new_argc;
-    return new_argv;
 }
 
 /**

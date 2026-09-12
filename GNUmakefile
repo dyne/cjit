@@ -143,13 +143,17 @@ coverage-report: ## 📊 Print line coverage for maintained sources only
 coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 	@find src lib/muntarfs lib/tinycc -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
 
-UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin
+UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin \
+	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin
 
 test/source_files_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
 test/source_files_edge_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
+test/cli_parser_unit.bin: UNIT_SOURCES := src/adapters/cli/route_parser.c
+test/cli_route_unit.bin: UNIT_SOURCES := src/adapters/cli/route_parser.c
+test/cli_render_unit.bin: UNIT_SOURCES := src/adapters/cli/render_response.c
 
 $(UNIT_BINS): test/%_unit.bin: test/%_unit.c $(UNIT_SOURCES)
-	$(CC) -Isrc -o $@ $< $(UNIT_SOURCES)
+	$(CC) $(CFLAGS) -Isrc -o $@ $< $(UNIT_SOURCES)
 
 check-unit: $(UNIT_BINS) ## 🧪 Run small direct C tests for pure support logic
 	@for test_binary in $(UNIT_BINS); do \

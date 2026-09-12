@@ -27,6 +27,24 @@ typedef struct ParsedRoute {
     const char *archive_path;
 } ParsedRoute;
 
+/*
+ * Validates a -D argument and, on success, splits its optional single '=' in
+ * place.  The input remains unchanged on failure.  A return value of zero is
+ * a symbol-only definition, a positive value is the value offset, and -1 is
+ * invalid.  Callers retain ownership of definition.
+ */
+int cli_parse_define_value(char *definition);
+
+/*
+ * Returns a newly allocated, NULL-terminated argv vector containing borrowed
+ * argument pointers.  argv[0] and all arguments following "--" are retained.
+ * On success *argc is updated; the caller frees only the returned vector.
+ */
+char **cli_remove_ignored_arguments(int *argc, char **argv,
+                                    const char *const *patterns,
+                                    int pattern_count);
+
+/* ParsedRoute and all request builders borrow pointers from argv and cjit. */
 ParsedRoute parse_cli_route(CJITState *cjit, int argc, char **argv,
                             int opt_ind, int arg_separator,
                             CliRoute forced_route, const char *forced_path);
