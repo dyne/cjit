@@ -1,6 +1,8 @@
 cjit
+cjit-ar
 *.o
 *.d
+test/*.bin
 src/assets.*
 src/embed_*
 .build_done*
@@ -10,3 +12,4 @@ cjit.rc
 cjit_source
 pristine
 cjit-demo*
+coverage/

@@ -73,7 +73,7 @@ jobs:
           make linux CC=clang
       - name: Run tests
         run: |
-          make check-ci
+          CJIT_REQUIRED_PLATFORM=linux make check-ci
       - name: Use cjit to compile cjit
         run: |
           sudo make install
@@ -81,7 +81,49 @@ jobs:
           make linux CC=cjit
       - name: Run tests with self-hosted cjit
         run: |
-          make check-ci
+          CJIT_REQUIRED_PLATFORM=linux make check-ci
+
+  linux-sanitizer:
+    name: 🐧 Linux sanitizer test
+    needs: [reuse, c-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build AddressSanitizer and UndefinedBehavior checks
+        run: |
+          make debug-asan CC=clang
+      - name: Run sanitizer suite
+        run: |
+          CJIT_REQUIRED_PLATFORM=linux make check-ci
+
+  linux-coverage:
+    name: 🐧 Linux coverage baseline
+    needs: [reuse, c-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure maintained-source coverage
+        run: |
+          make coverage CC=clang
+      - name: Upload maintained coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-maintained-coverage
+          path: coverage/maintained.txt
+          if-no-files-found: error
+
+  linux-dmon:
+    name: 🐧 Linux dmon smoke test
+    needs: [reuse, c-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Linux target
+        run: |
+          make linux CC=clang
+      - name: Run dmon suite
+        run: |
+          CJIT_REQUIRED_PLATFORM=linux make run-dmon-suite
 
   debian-test:
     name: 🐧 Debian (tcc shlib) test
@@ -111,7 +153,7 @@ jobs:
           make win-mingw
       - name: Run tests
         run: |
-          make check-ci
+          CJIT_REQUIRED_PLATFORM=windows make check-ci
 
   win-msvc-test:
     name: 🪟 Windows MSVC test
@@ -124,7 +166,7 @@ jobs:
           make win-msvc
       - name: Run tests
         run: |
-          make check-ci
+          CJIT_REQUIRED_PLATFORM=windows make check-ci
 
   osx-native-test:
     name: 🍎 OSX native test
@@ -141,7 +183,7 @@ jobs:
 
   semantic-release:
     name: 🤖 Semantic release
-    needs: [linux-test, osx-native-test, win-mingw-test, win-msvc-test]
+    needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, osx-native-test, win-mingw-test, win-msvc-test]
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}

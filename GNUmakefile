@@ -93,24 +93,35 @@ self-host: ## 💎 Build a CJIT that builts itself (embed its source)
 _: ##
 ------: ## __ Testing targets
 
+define RUN_BATS
+	@./test/run_bats_suite.sh $(1) $(2)
+endef
+
 check: ## 🧪 Run all tests using the currently built binary ./cjit
 	@$(MAKE) check-unit
-	@./test/bats/bin/bats test/cli.bats
-	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
-	@./test/bats/bin/bats test/windows.bats
-	@./test/bats/bin/bats test/muntar.bats
-	@./test/bats/bin/bats test/archive_tool.bats
-	@./test/bats/bin/bats test/compatibility_modes.bats
-	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/dmon.bats; fi
+	$(call RUN_BATS,test/cli.bats,1)
+	@if [ -r .build_done_linux ]; then $(MAKE) run-linux-suite; fi
+	$(call RUN_BATS,test/windows.bats,$(if $(filter windows,$(CJIT_REQUIRED_PLATFORM)),1,0))
+	$(call RUN_BATS,test/muntar.bats,1)
+	$(call RUN_BATS,test/archive_tool.bats,1)
+	$(call RUN_BATS,test/compatibility_modes.bats,1)
+	@if [ -r .build_done_linux ]; then $(MAKE) run-dmon-suite; fi
 
 check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@$(MAKE) check-unit
-	@./test/bats/bin/bats test/cli.bats
-	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
-	@./test/bats/bin/bats test/windows.bats
-	@./test/bats/bin/bats test/muntar.bats
-	@./test/bats/bin/bats test/archive_tool.bats
-	@./test/bats/bin/bats test/compatibility_modes.bats
+	$(call RUN_BATS,test/cli.bats,1)
+	@if [ "$(CJIT_REQUIRED_PLATFORM)" = linux ] && [ ! -r .build_done_linux ]; then echo 'Linux platform suite requires a Linux target build marker' >&2; exit 1; fi
+	@if [ -r .build_done_linux ]; then $(MAKE) run-linux-suite; fi
+	$(call RUN_BATS,test/windows.bats,$(if $(filter windows,$(CJIT_REQUIRED_PLATFORM)),1,0))
+	$(call RUN_BATS,test/muntar.bats,1)
+	$(call RUN_BATS,test/archive_tool.bats,1)
+	$(call RUN_BATS,test/compatibility_modes.bats,1)
+
+run-linux-suite:
+	$(call RUN_BATS,test/linux.bats,$(if $(filter linux,$(CJIT_REQUIRED_PLATFORM)),1,0))
+
+run-dmon-suite:
+	$(call RUN_BATS,test/dmon.bats,$(if $(filter linux,$(CJIT_REQUIRED_PLATFORM)),1,0))
 
 COVERAGE_FLAGS := --coverage -O0 -g
 COVERAGE_SOURCES := src/file.c src/cjit.c src/cjit-ar.c src/main.c src/support/source_files.c \
@@ -142,11 +153,12 @@ coverage: ## 📊 Build, test, and summarize maintained-source coverage (no thre
 	@$(MAKE) coverage-clean
 
 coverage-report: ## 📊 Print line coverage for maintained sources only
-	@for source_file in $(COVERAGE_SOURCES); do \
+	@mkdir -p coverage
+	@{ for source_file in $(COVERAGE_SOURCES); do \
 		coverage_output="$$($(COVERAGE_TOOL) -n "$$source_file")" || exit $$?; \
 		printf '%s\n' "$$coverage_output" | awk -v source="File '$$source_file'" \
 			'$$0 == source { show = 1 } /^File / && $$0 != source { show = 0 } show && (/^File / || /^Lines executed:/) { print; if (/^Lines executed:/) show = 0 }'; \
-	done
+	done; } | tee coverage/maintained.txt
 
 coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 	@find src lib/muntarfs lib/tinycc -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
@@ -210,4 +222,4 @@ clean: ## 🧹 Clean the source from all built objects
 	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
 	@rm -f cjit cjit.exe cjit-ar.exe cjit.command libtcc.dll
 	@rm -f $(UNIT_BINS) test/source_files_unit
-	@rm -rf meson
+	@rm -rf meson coverage

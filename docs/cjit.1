@@ -46,6 +46,9 @@ Use \fB--xass\fR to extract the embedded runtime assets required by bundled Tiny
 .IP "extract-archive"
 Use \fB--xtgz\fR to unpack a tar.gz archive to the current directory.
 
+.IP "archive-tool"
+Use the companion \fBcjit-ar\fR executable, or the \fBcjit -ar\fR compatibility mode, for archive operations.
+
 .SH EXAMPLES
 
 .IP "Run one source file"
@@ -123,6 +126,9 @@ Extracts all files from a specified \fIUSTAR\fR format tar.gz archive into the c
 
 .IP "Standard input"
 On POSIX systems, if no source files are given and standard input is not a tty, CJIT reads source code from stdin and executes it. Windows does not support the no-file stdin fallback route.
+
+.IP "Build variants"
+The bundled TinyCC build supports embedded assets and in-memory execution. A distribution shared-libtcc build may not support those routes; use its runtime status output and package documentation to determine the available features.
 
 .IP "-- separator"
 All arguments after a double dash are passed unchanged to the executed program rather than interpreted as CJIT options.
