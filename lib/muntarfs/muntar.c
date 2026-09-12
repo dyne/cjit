@@ -191,7 +191,8 @@ static int make_directory(const char *path)
 }
 
 /* Refuse to traverse an existing symbolic link or Windows reparse point. */
-static int path_contains_link(const char *path, int include_leaf)
+static int path_contains_link(const char *path, size_t trusted_prefix_length,
+			      int include_leaf)
 {
 	char checked[1024];
 	size_t length = strlen(path);
@@ -199,7 +200,7 @@ static int path_contains_link(const char *path, int include_leaf)
 
 	if (length >= sizeof(checked)) return 1;
 	strcpy(checked, path);
-	for (i = 1; i <= length; i++) {
+	for (i = trusted_prefix_length; i <= length; i++) {
 		int boundary = checked[i] == '/' || checked[i] == '\\' || checked[i] == '\0';
 		char saved;
 		if (!boundary || (!include_leaf && i == length)) continue;
@@ -271,7 +272,7 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 	res = mtar_load(&tar, path, buf, len);
 	if(res != MTAR_ESUCCESS) return(MTAR_EOPENFAIL);
 	// first create extract dir if doesn't exist
-	if (path_contains_link(tpath, 1) || make_directory(tpath) != MTAR_ESUCCESS)
+	if (make_directory(tpath) != MTAR_ESUCCESS)
 		return MTAR_EWRITEFAIL;
 	while(!mtar_eof(&tar)) {
 		// then create every other subdir
@@ -279,7 +280,7 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 		switch(header->type) {
 		case MTAR_TDIR:
 			if (entry_path(tpath, sizeof(tpath), path, header) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
-			if (path_contains_link(tpath, 1) || make_directory(tpath) != MTAR_ESUCCESS)
+			if (path_contains_link(tpath, pathlen, 1) || make_directory(tpath) != MTAR_ESUCCESS)
 				return MTAR_EWRITEFAIL;
 			break;
 		}
@@ -293,7 +294,7 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 		switch(header->type) {
 		case MTAR_TREG:
 			if (entry_path(tpath, sizeof(tpath), path, header) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
-			if (path_contains_link(tpath, 0)) return MTAR_EWRITEFAIL;
+			if (path_contains_link(tpath, pathlen, 0)) return MTAR_EWRITEFAIL;
 			/* Do not silently replace a file supplied by an earlier entry. */
 			{
 				FILE *existing = fopen(tpath, "rb");
