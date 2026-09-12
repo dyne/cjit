@@ -27,6 +27,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdint.h>
 
 
 //#define ARMAG  "!<arch>\n"
@@ -63,6 +66,30 @@ static int ar_usage(int ret) {
     fprintf(stderr, "usage: cjit-ar [crstvx] lib [files]\n");
     fprintf(stderr, "create library ([abdiopN] not supported).\n");
     return ret;
+}
+
+static int ar_member_size(const ArHdr *header, size_t *size)
+{
+    char field[sizeof(header->ar_size) + 1];
+    char *end;
+    long parsed;
+
+    memcpy(field, header->ar_size, sizeof(header->ar_size));
+    field[sizeof(header->ar_size)] = '\0';
+    errno = 0;
+    parsed = strtol(field, &end, 10);
+    if (errno == ERANGE || end == field || parsed < 0) return 0;
+    while (*end == ' ') end++;
+    if (*end != '\0' || (unsigned long)parsed > SIZE_MAX) return 0;
+    *size = (size_t)parsed;
+    return 1;
+}
+
+static int ar_member_name_is_safe(const char *name)
+{
+    if (!name || !*name || strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        return 0;
+    return !strchr(name, '/') && !strchr(name, '\\');
 }
 
 int tcc_tool_ar(TCCState *s1, int argc, char **argv) {
@@ -133,15 +160,24 @@ int tcc_tool_ar(TCCState *s1, int argc, char **argv) {
             fprintf(stderr, "cjit-ar: can't open file %s\n", argv[i_lib]);
             goto finish;
         }
-        fread(stmp, 1, 8, fh);
-	if (memcmp(stmp,ARMAG,8))
+	if (fread(stmp, 1, 8, fh) != 8 || memcmp(stmp,ARMAG,8))
 	{
 no_ar:
             fprintf(stderr, "cjit-ar: not an ar archive %s\n", argv[i_lib]);
             goto finish;
 	}
-	while (fread(&arhdr, 1, sizeof(arhdr), fh) == sizeof(arhdr)) {
+	while (1) {
 	    char *p, *e;
+	    size_t member_size;
+	    size_t member_read;
+	    int next;
+
+	    member_read = fread(&arhdr, 1, sizeof(arhdr), fh);
+	    if (member_read == 0 && feof(fh)) break;
+	    if (member_read != sizeof(arhdr)) {
+		fprintf(stderr, "cjit-ar: truncated member header in %s\n", argv[i_lib]);
+		goto finish;
+	    }
 
 	    if (memcmp(arhdr.ar_fmag, ARFMAG, 2))
 		goto no_ar;
@@ -149,17 +185,41 @@ no_ar:
 	    for (e = p + sizeof arhdr.ar_name; e > p && e[-1] == ' ';)
 		e--;
 	    *e = '\0';
-	    arhdr.ar_size[sizeof arhdr.ar_size-1] = 0;
-	    fsize = atoi(arhdr.ar_size);
-	    buf = tcc_malloc(fsize + 1);
-	    fread(buf, fsize, 1, fh);
+	    if (!ar_member_size(&arhdr, &member_size)) {
+		fprintf(stderr, "cjit-ar: invalid member size in %s\n", argv[i_lib]);
+		goto finish;
+	    }
+	    buf = tcc_malloc(member_size ? member_size : 1);
+	    if (!buf) {
+		fprintf(stderr, "cjit-ar: out of memory reading %s\n", argv[i_lib]);
+		goto finish;
+	    }
+	    if (member_size && fread(buf, 1, member_size, fh) != member_size) {
+		fprintf(stderr, "cjit-ar: truncated member data in %s\n", argv[i_lib]);
+		tcc_free(buf);
+		goto finish;
+	    }
+	    if (member_size & 1) {
+		next = fgetc(fh);
+		if (next == EOF) {
+			fprintf(stderr, "cjit-ar: truncated member padding in %s\n", argv[i_lib]);
+			tcc_free(buf);
+			goto finish;
+		}
+	    }
 	    if (strcmp(arhdr.ar_name,"/") && strcmp(arhdr.ar_name,"/SYM64/")) {
 		if (e > p && e[-1] == '/')
 		    e[-1] = '\0';
+		if (!ar_member_name_is_safe(arhdr.ar_name)) {
+		    fprintf(stderr, "cjit-ar: unsupported member name %s\n", arhdr.ar_name);
+		    tcc_free(buf);
+		    goto finish;
+		}
 		/* tv not implemented */
 	        if (table || verbose)
 		    printf("%s%s\n", extract ? "x - " : "", arhdr.ar_name);
 		if (extract) {
+		    int write_failed;
 		    if ((fo = fopen(arhdr.ar_name, "wb")) == NULL)
 		    {
 			fprintf(stderr, "cjit-ar: can't create file %s\n",
@@ -167,8 +227,15 @@ no_ar:
 		        tcc_free(buf);
 			goto finish;
 		    }
-		    fwrite(buf, fsize, 1, fo);
-		    fclose(fo);
+		    write_failed = member_size && fwrite(buf, 1, member_size, fo) != member_size;
+		    if (fclose(fo) != 0) write_failed = 1;
+		    fo = NULL;
+		    if (write_failed) {
+			remove(arhdr.ar_name);
+			fprintf(stderr, "cjit-ar: can't write file %s\n", arhdr.ar_name);
+			tcc_free(buf);
+			goto finish;
+		    }
 		    /* ignore date/uid/gid/mode */
 		}
 	    }

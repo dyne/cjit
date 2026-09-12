@@ -71,3 +71,56 @@ make_object() {
     assert_failure
     assert_output --partial "can't open file"
 }
+
+write_ar_member() {
+    local archive="$1"
+    local member="$2"
+    local size="$3"
+    local contents="$4"
+    printf '%-16s%-12s%-6s%-6s%-8s%-10s`\n' "${member}" 0 0 0 100644 "${size}" >> "${archive}"
+    printf '%s' "${contents}" >> "${archive}"
+    if [[ "${size}" =~ ^[0-9]+$ ]] && [ $((size % 2)) -ne 0 ]; then
+        printf '\n' >> "${archive}"
+    fi
+}
+
+@test "cjit-ar rejects truncated and invalid archive members without extraction" {
+    truncated="${TMP}/truncated.a"
+    printf '!<arch>\n' > "${truncated}"
+    write_ar_member "${truncated}" "short.o/" 4 x
+    mkdir "${TMP}/truncated-out"
+    pushd "${TMP}/truncated-out" >/dev/null
+    run "${ARCHIVE_TOOL}" x "${truncated}"
+    popd >/dev/null
+    assert_failure
+    assert_output --partial 'truncated member data'
+    ! [ -e "${TMP}/truncated-out/short.o" ]
+
+    invalid="${TMP}/invalid-size.a"
+    printf '!<arch>\n' > "${invalid}"
+    write_ar_member "${invalid}" "bad.o/" nope x
+    run "${ARCHIVE_TOOL}" t "${invalid}"
+    assert_failure
+    assert_output --partial 'invalid member size'
+}
+
+@test "cjit-ar rejects unsafe member names and missing member padding" {
+    unsafe="${TMP}/unsafe.a"
+    printf '!<arch>\n' > "${unsafe}"
+    write_ar_member "${unsafe}" "../escape" 1 x
+    mkdir "${TMP}/unsafe-out"
+    pushd "${TMP}/unsafe-out" >/dev/null
+    run "${ARCHIVE_TOOL}" x "${unsafe}"
+    popd >/dev/null
+    assert_failure
+    assert_output --partial 'unsupported member name'
+    ! [ -e "${TMP}/escape" ]
+
+    no_padding="${TMP}/no-padding.a"
+    printf '!<arch>\n' > "${no_padding}"
+    printf '%-16s%-12s%-6s%-6s%-8s%-10s`\n' 'odd.o/' 0 0 0 100644 1 >> "${no_padding}"
+    printf x >> "${no_padding}"
+    run "${ARCHIVE_TOOL}" t "${no_padding}"
+    assert_failure
+    assert_output --partial 'truncated member padding'
+}
