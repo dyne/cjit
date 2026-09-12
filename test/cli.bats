@@ -23,6 +23,12 @@ load bats_setup
     assert_output --partial 'Please compile with -DALLOWED=1'
 }
 
+@test "Reject malformed pre-processor defines" {
+    run ${CJIT} -q -DKEY=VALUE=AGAIN test/hello.c
+    assert_failure
+    assert_output --partial 'Invalid char used in -D define symbol'
+}
+
 ## This and the following test fail when using Debian's libtcc1 for
 ## execution, maybe because object files aren't supported , as it
 ## fails in tcc_add_file() calls inside cjit_add_file()
@@ -158,6 +164,15 @@ load bats_setup
     run ${CJIT} -MMD -MP -MF ${TMP}/hello.d -c test/hello.c -o ${TMP}/hello.o
     assert_success
     [ -f "${TMP}/hello.o" ]
+}
+
+@test "Compile driver leaves dependency-looking application arguments after separator" {
+    skip_if_systcc_execute_is_unavailable
+    run ${CJIT} -q test/cargs.c -- -MMD -MF app.d
+    assert_success
+    assert_line --partial '1: -MMD'
+    assert_line --partial '2: -MF'
+    assert_line --partial '3: app.d'
 }
 
 @test "Argument separator preserves app flags" {
