@@ -32,4 +32,9 @@ size_t string_list_count(const StringList *list);
  */
 char *string_list_get(const StringList *list, size_t index);
 
+/**
+ * Return non-zero when the list already contains an exact string value.
+ */
+int string_list_contains(const StringList *list, const char *value);
+
 #endif

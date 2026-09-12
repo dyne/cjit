@@ -35,6 +35,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,20 +57,36 @@ typedef struct LDState {
 } LDState;
 
 // TinyCC internals used by the ldscript parser.
-extern void dynarray_add(void *ptab, int *nb_ptr, void *data);
-extern void dynarray_reset(void *pp, int *n);
-extern char *tcc_strdup(const char *str);
 extern char *pstrcpy(char *buf, size_t buf_size, const char *s);
 
 static int resolve_ldscript(LDState *state, char *path);
-static int find_library(CJITState *cjit, const char *path);
-static int posix_resolve_libs(CJITState *cjit);
+static int find_library(StringList *resolved, const StringList *library_paths,
+                        const char *path);
 static int ld_inp(LDState *state);
 static int ld_next(LDState *state, char *name, int name_size);
 static int ld_add_file(LDState *state, const char filename[]);
 static int ld_add_file_list(LDState *state, const char *cmd, int as_needed);
 
-bool read_ldsoconf(StringList *dest, char *path)
+static void trim(char *value)
+{
+    char *end;
+
+    while (*value == ' ' || *value == '\t') {
+        memmove(value, value + 1, strlen(value));
+    }
+    end = value + strlen(value);
+    while (end > value && (end[-1] == ' ' || end[-1] == '\t' ||
+                           end[-1] == '\r' || end[-1] == '\n')) {
+        *--end = '\0';
+    }
+}
+
+static bool add_ldso_path(StringList *dest, const char *path)
+{
+    return string_list_contains(dest, path) || string_list_add(dest, path);
+}
+
+bool read_ldsoconf(StringList *dest, const char *path)
 {
     FILE *file;
     char line[MAX_PATH];
@@ -81,16 +98,44 @@ bool read_ldsoconf(StringList *dest, char *path)
     }
 
     while (fgets(line, MAX_PATH, file) != NULL) {
-        size_t len;
+        char *comment;
 
+        comment = strchr(line, '#');
+        if (comment) {
+            *comment = '\0';
+        }
+        trim(line);
+        if (strncmp(line, "include", 7) == 0 &&
+            (line[7] == ' ' || line[7] == '\t')) {
+            glob_t matches;
+            int result;
+            size_t index;
+
+            trim(line + 7);
+            memset(&matches, 0, sizeof(matches));
+            result = glob(line + 7, 0, NULL, &matches);
+            if (result != 0 && result != GLOB_NOMATCH) {
+                globfree(&matches);
+                fclose(file);
+                return false;
+            }
+            for (index = 0; index < matches.gl_pathc; index++) {
+                if (!read_ldsoconf(dest, matches.gl_pathv[index])) {
+                    globfree(&matches);
+                    fclose(file);
+                    return false;
+                }
+            }
+            globfree(&matches);
+            continue;
+        }
         if (line[0] != '/') {
             continue;
         }
-        len = strlen(line);
-        if (len > 0 && line[len - 1] == '\n') {
-            line[len - 1] = 0x0;
+        if (!add_ldso_path(dest, line)) {
+            fclose(file);
+            return false;
         }
-        string_list_add(dest, line);
     }
     fclose(file);
     return true;
@@ -129,8 +174,10 @@ static CJITResult resolve_impl(void *context,
 
     cjit = (CJITState *)context;
     (void)request;
-    response->resolved_count = posix_resolve_libs(cjit);
-    response->resolved_paths = NULL;
+    response->resolved_count = posix_resolve_library_lists(request->libraries,
+                                                           request->search_paths,
+                                                           cjit->reallibs);
+    response->resolved_paths = cjit->reallibs;
     return cjit_result_ok();
 }
 
@@ -139,7 +186,9 @@ const LibraryResolverPort posix_library_resolver_port = {
     .resolve = resolve_impl
 };
 
-static int posix_resolve_libs(CJITState *cjit)
+int posix_resolve_library_lists(const StringList *libraries,
+                                const StringList *library_paths,
+                                StringList *resolved)
 {
     char tryfile[PATH_MAX];
     int found;
@@ -150,16 +199,16 @@ static int posix_resolve_libs(CJITState *cjit)
     char *lname;
     char *lpath;
 
-    libpaths_num = (int)string_list_count(cjit->libpaths);
-    libnames_num = (int)string_list_count(cjit->libs);
+    libpaths_num = (int)string_list_count(library_paths);
+    libnames_num = (int)string_list_count(libraries);
     found = -1;
     for (i = 0; i < libnames_num; i++) {
-        lname = string_list_get(cjit->libs, i);
+        lname = string_list_get(libraries, i);
         found = -1;
         for (ii = 0; ii < libpaths_num; ii++) {
-            lpath = string_list_get(cjit->libpaths, ii);
+            lpath = string_list_get(library_paths, ii);
             snprintf(tryfile, PATH_MAX - 2, "%s/lib%s.so", lpath, lname);
-            found = find_library(cjit, tryfile);
+            found = find_library(resolved, library_paths, tryfile);
             if (found == 0) {
                 break;
             }
@@ -168,7 +217,7 @@ static int posix_resolve_libs(CJITState *cjit)
             _err("Library not found: lib%s.so", lname);
         }
     }
-    return (int)string_list_count(cjit->reallibs);
+    return (int)string_list_count(resolved);
 }
 
 static char *new_solve_symlink(const char *path)
@@ -212,7 +261,8 @@ static char *new_solve_symlink(const char *path)
     return reallib;
 }
 
-static int find_library(CJITState *cjit, const char *path)
+static int find_library(StringList *resolved, const StringList *library_paths,
+                        const char *path)
 {
     FILE *fd;
     int ch;
@@ -222,6 +272,7 @@ static int find_library(CJITState *cjit, const char *path)
     char elf[4];
     char *reallib;
     LDState state;
+    StringList *script_resolved;
 
     reallib = new_solve_symlink(path);
     if (!reallib) {
@@ -256,14 +307,31 @@ static int find_library(CJITState *cjit, const char *path)
     }
     fclose(fd);
     if (is_ldscript) {
-        state.libs = cjit->reallibs;
-        state.libpaths = cjit->libpaths;
-        rr = resolve_ldscript(&state, reallib);
-        if (rr < 1) {
-            _err("Library not found: %s", reallib);
+        int resolved_index;
+
+        script_resolved = string_list_new();
+        if (!script_resolved) {
+            free(reallib);
+            return -3;
         }
+        state.libs = script_resolved;
+        state.libpaths = (StringList *)library_paths;
+        rr = resolve_ldscript(&state, reallib);
+        if (rr != 0) {
+            _err("Library not found: %s", reallib);
+            string_list_free(&script_resolved);
+            free(reallib);
+            return -3;
+        }
+        for (resolved_index = 0;
+             resolved_index < (int)string_list_count(script_resolved);
+             resolved_index++) {
+            string_list_add(resolved, string_list_get(script_resolved,
+                                                       resolved_index));
+        }
+        string_list_free(&script_resolved);
     } else {
-        string_list_add(cjit->reallibs, reallib);
+        string_list_add(resolved, reallib);
     }
     free(reallib);
     return 0;
@@ -369,7 +437,7 @@ static int ld_add_file(LDState *state, const char filename[])
     if (cwk_path_is_absolute(filename)) {
         if (lstat(filename, &statbuf) == -1) {
             fail(filename);
-            return 0;
+            return -1;
         }
         if (S_ISREG(statbuf.st_mode)) {
             strcpy(tryfile, filename);
@@ -379,12 +447,12 @@ static int ld_add_file(LDState *state, const char filename[])
             len = readlink(filename, tryfile, PATH_MAX - 1);
             if (len == -1) {
                 fail(filename);
-                return 0;
+                return -1;
             }
             tryfile[len] = 0x0;
         } else {
             _err("Library file not recognized: %s", filename);
-            return 0;
+            return -1;
         }
     } else {
         libpaths_num = (int)string_list_count(state->libpaths);
@@ -419,7 +487,7 @@ static int ld_add_file(LDState *state, const char filename[])
         }
     }
     string_list_add(state->libs, tryfile);
-    return 1;
+    return 0;
 }
 
 static int tcc_error_noabort(char *msg)
@@ -432,16 +500,9 @@ static int ld_add_file_list(LDState *state, const char *cmd, int as_needed)
 {
     char filename[MAX_PATH];
     char libname[MAX_PATH - 8];
-    char **libs;
-    int group;
-    int i;
-    int nblibs;
     int ret;
     int t;
 
-    group = !strcmp(cmd, "GROUP");
-    libs = NULL;
-    nblibs = 0;
     ret = 0;
     if (!as_needed) {
         state->new_undef_sym = 0;
@@ -485,29 +546,13 @@ static int ld_add_file_list(LDState *state, const char *cmd, int as_needed)
             if (ret) {
                 goto lib_parse_error;
             }
-            if (group) {
-                dynarray_add(&libs, &nblibs, tcc_strdup(filename));
-                if (libname[0] != '\0') {
-                    dynarray_add(&libs, &nblibs, tcc_strdup(libname));
-                }
-            }
         }
         t = ld_next(state, filename, sizeof(filename));
         if (t == ',') {
             t = ld_next(state, filename, sizeof(filename));
         }
     }
-    if (group && !as_needed) {
-        while (state->new_undef_sym) {
-            state->new_undef_sym = 0;
-            for (i = 0; i < nblibs; i++) {
-                ld_add_file(state, libs[i]);
-            }
-        }
-    }
-
 lib_parse_error:
-    dynarray_reset(&libs, &nblibs);
     return ret;
 }
 
@@ -571,11 +616,21 @@ static int resolve_ldscript(LDState *state, char *path)
 
 #else
 
-bool read_ldsoconf(StringList *dest, char *path)
+bool read_ldsoconf(StringList *dest, const char *path)
 {
     (void)dest;
     (void)path;
     return false;
+}
+
+int posix_resolve_library_lists(const StringList *libraries,
+                                const StringList *library_paths,
+                                StringList *resolved)
+{
+    (void)libraries;
+    (void)library_paths;
+    (void)resolved;
+    return 0;
 }
 
 bool read_ldsoconf_dir(StringList *dest, const char *directory)

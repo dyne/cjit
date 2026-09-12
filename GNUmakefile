@@ -146,7 +146,8 @@ coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin \
 	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin \
 	test/app_slices_unit.bin test/string_list_unit.bin test/file_unit.bin \
-	test/runtime_cache_unit.bin test/cjit_lifecycle_unit.bin
+	test/runtime_cache_unit.bin test/cjit_lifecycle_unit.bin \
+	test/library_resolver_unit.bin
 
 test/source_files_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
 test/source_files_edge_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
@@ -160,6 +161,7 @@ test/runtime_cache_unit.bin: UNIT_SOURCES := src/adapters/fs/local_filesystem.c 
 test/runtime_cache_unit.bin: CFLAGS += -DVERSION=\"test-runtime\"
 test/cjit_lifecycle_unit.bin: UNIT_SOURCES := src/cjit.c src/support/string_list.c src/array.c src/support/source_files.c src/support/cwalk.c
 test/cjit_lifecycle_unit.bin: CFLAGS += -DSHAREDTCC -DVERSION=\"unit\" -Ilib/tinycc
+test/library_resolver_unit.bin: UNIT_SOURCES := src/adapters/platform/library_resolver_posix.c src/adapters/platform/library_resolver_windows.c src/support/string_list.c src/array.c src/support/cwalk.c
 
 $(UNIT_BINS): test/%_unit.bin: test/%_unit.c $(UNIT_SOURCES)
 	$(CC) $(CFLAGS) -Isrc -o $@ $< $(UNIT_SOURCES)

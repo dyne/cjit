@@ -58,9 +58,9 @@ static int resolve_libraries(CJITState *cjit) {
 	LibraryResolverRequest request;
 	LibraryResolverResponse response;
 	request.library_count = (int)string_list_count(cjit->libs);
-	request.libraries = NULL;
+	request.libraries = cjit->libs;
 	request.search_path_count = (int)string_list_count(cjit->libpaths);
-	request.search_paths = NULL;
+	request.search_paths = cjit->libpaths;
 	resolver = cjit_platform_library_resolver();
 	resolver.context = cjit;
 	if (!resolver.resolve(resolver.context, &request, &response).ok) {

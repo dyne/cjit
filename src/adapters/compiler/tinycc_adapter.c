@@ -28,9 +28,9 @@ static int resolve_libraries(CJITState *cjit)
     LibraryResolverResponse response;
 
     request.library_count = (int)string_list_count(cjit->libs);
-    request.libraries = NULL;
+    request.libraries = cjit->libs;
     request.search_path_count = (int)string_list_count(cjit->libpaths);
-    request.search_paths = NULL;
+    request.search_paths = cjit->libpaths;
 #if defined(WINDOWS)
     resolver = windows_library_resolver_port;
 #else
