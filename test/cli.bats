@@ -29,6 +29,15 @@ load bats_setup
     assert_output --partial 'Invalid char used in -D define symbol'
 }
 
+@test "Reject UTF BOM source files on every platform" {
+    for source in test/hello-bom-utf8.c test/hello-bom-utf16-be.c test/hello-bom-utf16-le.c; do
+        run ${CJIT} -q "${source}"
+        assert_failure
+        assert_line --partial "UTF BOM detected in file: ${source}"
+        assert_line --partial 'Encoding is not yet supported, execution aborted.'
+    done
+}
+
 @test "Reject missing and syntactically invalid source inputs" {
     run ${CJIT} -q "${TMP}/does-not-exist.c"
     assert_failure
