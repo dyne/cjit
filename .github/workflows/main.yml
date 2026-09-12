@@ -176,6 +176,7 @@ jobs:
           CJIT_REQUIRED_PLATFORM: windows
         run: |
           make check-ci
+          make -f build/win-msvc.mk check-unit-msvc
 
   osx-native-test:
     name: 🍎 OSX native test

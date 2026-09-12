@@ -8,6 +8,8 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#else
+#include <windows.h>
 #endif
 
 #include "cjit.h"
@@ -128,8 +130,57 @@ int main(void)
     return failures != 0;
 }
 #else
+/* Windows deliberately omits load_stdin(): the public adapter contract rejects it. */
+static int checks;
+
+static void write_bytes(const char *path, const void *bytes, size_t length)
+{
+    FILE *file = fopen(path, "wb");
+    expect(file != NULL, "Windows fixture can be created");
+    if (file) {
+        expect(fwrite(bytes, 1, length, file) == length, "Windows fixture bytes are written");
+        fclose(file);
+    }
+}
+
 int main(void)
 {
-    return 0;
+    char temporary[MAX_PATH];
+    char fixture[MAX_PATH];
+    char output[MAX_PATH];
+    char missing[MAX_PATH];
+    char *contents;
+    char *absolute;
+    unsigned int length = 0;
+    static const char binary[] = { 'a', '\0', 'b' };
+
+    expect(GetTempPathA(sizeof(temporary), temporary) != 0, "Windows temporary root is available");
+    expect(GetTempFileNameA(temporary, "cjf", 0, fixture) != 0, "Windows temporary name is allocated");
+    DeleteFileA(fixture);
+    expect(CreateDirectoryA(fixture, NULL) != 0, "Windows temporary directory is created");
+    if (failures) return 1;
+    snprintf(output, sizeof(output), "%s\\output space.bin", fixture);
+    snprintf(missing, sizeof(missing), "%s\\missing.bin", fixture);
+    snprintf(temporary, sizeof(temporary), "%s\\input space.bin", fixture);
+    write_bytes(temporary, binary, sizeof(binary));
+    contents = file_load(temporary, &length);
+    expect(contents != NULL && length == sizeof(binary), "Windows binary file loads");
+    expect(contents && memcmp(contents, binary, sizeof(binary)) == 0, "Windows binary bytes are preserved");
+    free(contents);
+    expect(file_load(missing, &length) == NULL, "Windows missing file is rejected");
+    expect(file_load(temporary, NULL) == NULL, "Windows missing length destination is rejected");
+    expect(!write_to_file(fixture, "output space.bin", binary, sizeof(binary)),
+           "Windows write rejects duplicate fixture name");
+    expect(write_to_file(fixture, "written.bin", binary, sizeof(binary)), "Windows binary output is written");
+    absolute = new_abspath(temporary);
+    expect(absolute != NULL && absolute[1] == ':', "Windows drive-qualified path resolves absolutely");
+    free(absolute);
+    expect(new_abspath(NULL) == NULL && new_abspath("") == NULL, "Windows invalid paths are rejected");
+    DeleteFileA(temporary);
+    snprintf(output, sizeof(output), "%s\\written.bin", fixture);
+    DeleteFileA(output);
+    RemoveDirectoryA(fixture);
+    checks = 11;
+    return failures != 0 || checks == 0;
 }
 #endif

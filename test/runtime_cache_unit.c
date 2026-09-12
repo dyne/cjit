@@ -8,6 +8,8 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#else
+#include <windows.h>
 #endif
 
 #include "adapters/fs/local_filesystem.h"
@@ -196,8 +198,40 @@ int main(void)
     return failures != 0;
 }
 #else
+static int checks;
+static void make_directory(const char *path) { expect(CreateDirectoryA(path, NULL) != 0, "Windows cache directory is created"); }
+static void make_file(const char *path, size_t size) { FILE *file = fopen(path, "wb"); expect(file != NULL, "Windows cache file is created"); if (file) { if (size) { expect(fseek(file, (long)size - 1, SEEK_SET) == 0, "Windows cache file grows"); expect(fputc(0, file) != EOF, "Windows cache file writes"); } fclose(file); } }
+static void populate_complete_cache(const char *root) { char path[MAX_PATH]; const char *files[] = { "libtcc1.a", "include\\stdarg.h", "include\\stddef.h", "include\\tccdefs.h", "tinycc_win32\\stdio.h", "tinycc_win32\\_mingw.h", "win32ports\\unistd.h" }; size_t i; snprintf(path, sizeof(path), "%s\\include", root); make_directory(path); snprintf(path, sizeof(path), "%s\\tinycc_win32", root); make_directory(path); snprintf(path, sizeof(path), "%s\\win32ports", root); make_directory(path); for (i = 0; i < sizeof(files) / sizeof(files[0]); ++i) { snprintf(path, sizeof(path), "%s\\%s", root, files[i]); make_file(path, 2048); } }
+
 int main(void)
 {
-    return 0;
+    char temporary[MAX_PATH], root[MAX_PATH], path[MAX_PATH];
+    CJITState state = {0};
+    expect(GetTempPathA(sizeof(temporary), temporary) != 0, "Windows cache temp root is available");
+    expect(GetTempFileNameA(temporary, "cjc", 0, root) != 0, "Windows cache temp name is allocated");
+    DeleteFileA(root); make_directory(root);
+    expect(!cjit_runtime_cache_is_complete(root), "Windows empty cache is incomplete");
+    populate_complete_cache(root);
+    expect(cjit_runtime_cache_is_complete(root), "Windows complete cache is reusable");
+    snprintf(path, sizeof(path), "%s\\include\\stdarg.h", root); DeleteFileA(path);
+    expect(!cjit_runtime_cache_is_complete(root), "Windows incomplete cache is rejected");
+    make_file(path, 2048); expect(cjit_runtime_cache_is_complete(root), "Windows repaired cache is reusable");
+    snprintf(path, sizeof(path), "%s\\custom cache", root);
+    expect(cjit_mkdtemp(&state, path) && state.fresh, "Windows whitespace cache is created"); free(state.tmpdir); state.tmpdir = NULL;
+    expect(cjit_mkdtemp(&state, path) && !state.fresh, "Windows whitespace cache is reused"); free(state.tmpdir);
+    RemoveDirectoryA(path);
+    snprintf(path, sizeof(path), "%s\\libtcc1.a", root); DeleteFileA(path);
+    snprintf(path, sizeof(path), "%s\\include\\stdarg.h", root); DeleteFileA(path);
+    snprintf(path, sizeof(path), "%s\\include\\stddef.h", root); DeleteFileA(path);
+    snprintf(path, sizeof(path), "%s\\include\\tccdefs.h", root); DeleteFileA(path);
+    snprintf(path, sizeof(path), "%s\\tinycc_win32\\stdio.h", root); DeleteFileA(path);
+    snprintf(path, sizeof(path), "%s\\tinycc_win32\\_mingw.h", root); DeleteFileA(path);
+    snprintf(path, sizeof(path), "%s\\win32ports\\unistd.h", root); DeleteFileA(path);
+    snprintf(path, sizeof(path), "%s\\include", root); RemoveDirectoryA(path);
+    snprintf(path, sizeof(path), "%s\\tinycc_win32", root); RemoveDirectoryA(path);
+    snprintf(path, sizeof(path), "%s\\win32ports", root); RemoveDirectoryA(path);
+    RemoveDirectoryA(root);
+    checks = 8;
+    return failures != 0 || checks == 0;
 }
 #endif
