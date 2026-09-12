@@ -60,7 +60,7 @@ win-msvc: ## 🪟 Build cjit.exe for WIN64 on Windows using MSVC
 	"$(MAKE)" -f build/win-msvc.mk win-msvc
 
 apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
-	$(MAKE) -f build/osx.mk embed-posix cjit.command
+	$(MAKE) -f build/osx.mk embed-posix cjit.command cjit-ar.command
 	@rm -f .build_done*
 	date | tee .build_done_osx
 
@@ -80,8 +80,9 @@ debug-gdb: ## 🔬 Build using the address sanitizer to detect memory leaks
 
 debug-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
 	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' -o -name '*.gcda' -o -name '*.gcno' \) -delete
+	@rm -f cjit cjit-ar
 	@$(MAKE) -C lib/tinycc clean distclean
-	$(MAKE) -f build/linux.mk embed-posix cjit ASAN=1
+	$(MAKE) -f build/linux.mk embed-posix cjit cjit-ar ASAN=1
 	date | tee .build_done_linux
 
 self-host: ## 💎 Build a CJIT that builts itself (embed its source)
@@ -97,13 +98,21 @@ define RUN_BATS
 	@./test/run_bats_suite.sh $(1) $(2)
 endef
 
+define RUN_ARCHIVE_BATS
+	@archive_required=0; \
+	for archive_tool in cjit-ar cjit-ar.exe cjit-ar.command; do \
+		if [ -x "$$archive_tool" ]; then archive_required=1; break; fi; \
+	done; \
+	./test/run_bats_suite.sh test/archive_tool.bats "$$archive_required"
+endef
+
 check: ## 🧪 Run all tests using the currently built binary ./cjit
 	@$(MAKE) check-unit
 	$(call RUN_BATS,test/cli.bats,1)
 	@if [ -r .build_done_linux ]; then $(MAKE) run-linux-suite; fi
 	$(call RUN_BATS,test/windows.bats,$(if $(filter windows,$(CJIT_REQUIRED_PLATFORM)),1,0))
 	$(call RUN_BATS,test/muntar.bats,1)
-	$(call RUN_BATS,test/archive_tool.bats,1)
+	$(RUN_ARCHIVE_BATS)
 	$(call RUN_BATS,test/compatibility_modes.bats,1)
 	@if [ -r .build_done_linux ]; then $(MAKE) run-dmon-suite; fi
 
@@ -114,7 +123,7 @@ check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@if [ -r .build_done_linux ]; then $(MAKE) run-linux-suite; fi
 	$(call RUN_BATS,test/windows.bats,$(if $(filter windows,$(CJIT_REQUIRED_PLATFORM)),1,0))
 	$(call RUN_BATS,test/muntar.bats,1)
-	$(call RUN_BATS,test/archive_tool.bats,1)
+	$(RUN_ARCHIVE_BATS)
 	$(call RUN_BATS,test/compatibility_modes.bats,1)
 
 run-linux-suite:
@@ -128,7 +137,8 @@ COVERAGE_SOURCES := src/file.c src/cjit.c src/cjit-ar.c src/main.c src/support/s
 	src/support/string_list.c src/array.c src/app/execute_source.c \
 	src/app/compile_object.c src/app/build_executable.c src/app/print_status.c \
 	src/app/extract_assets.c src/app/extract_archive.c src/adapters/cli/route_parser.c \
-	src/adapters/cli/render_response.c src/adapters/compiler/tinycc_adapter.c \
+	src/adapters/cli/render_response.c src/adapters/cli/slice_composition.c \
+	src/adapters/compiler/tinycc_adapter.c \
 	src/adapters/fs/local_filesystem.c src/adapters/fs/local_asset.c \
 	src/adapters/platform/library_resolver_posix.c \
 	src/adapters/platform/library_resolver_windows.c src/adapters/platform/runtime_platform.c \
@@ -146,7 +156,8 @@ coverage: ## 📊 Build, test, and summarize maintained-source coverage (no thre
 	@$(MAKE) clean
 	@$(MAKE) linux
 	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
-	@$(MAKE) -f build/linux.mk embed-posix cjit CFLAGS="$(COVERAGE_FLAGS)" LDFLAGS="$(COVERAGE_FLAGS)"
+	@rm -f cjit cjit-ar
+	@$(MAKE) -f build/linux.mk embed-posix cjit cjit-ar CFLAGS="$(COVERAGE_FLAGS)" LDFLAGS="$(COVERAGE_FLAGS)"
 	@$(MAKE) check-ci
 	@$(MAKE) coverage-report
 	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
@@ -220,6 +231,6 @@ clean: ## 🧹 Clean the source from all built objects
 	"${MAKE}" -C lib/tinycc clean distclean
 	"${MAKE}" -C src clean
 	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
-	@rm -f cjit cjit.exe cjit-ar.exe cjit.command libtcc.dll
+	@rm -f cjit cjit.exe cjit-ar cjit-ar.exe cjit.command cjit-ar.command libtcc.dll
 	@rm -f $(UNIT_BINS) test/source_files_unit
 	@rm -rf meson coverage

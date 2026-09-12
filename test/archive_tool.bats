@@ -8,7 +8,11 @@ setup() {
     load "$T"/test_helper/bats_support/load
     load "$T"/test_helper/bats_assert/load
     CJIT="${R}/cjit"
+    [ -x "${CJIT}" ] || CJIT="${R}/cjit.exe"
+    [ -x "${CJIT}" ] || CJIT="${R}/cjit.command"
     ARCHIVE_TOOL="${R}/cjit-ar"
+    [ -x "${ARCHIVE_TOOL}" ] || ARCHIVE_TOOL="${R}/cjit-ar.exe"
+    [ -x "${ARCHIVE_TOOL}" ] || ARCHIVE_TOOL="${R}/cjit-ar.command"
     [ -x "${CJIT}" ] || { >&2 echo "CJIT is not built"; exit 1; }
     [ -x "${ARCHIVE_TOOL}" ] || skip "cjit-ar is not built for this target"
 }
