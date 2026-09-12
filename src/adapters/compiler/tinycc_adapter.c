@@ -21,6 +21,39 @@ static CJITResult relocate(void *context, RuntimeSession *session);
 static CJITResult resolve_symbol(void *context, RuntimeSession *session,
                                  const char *symbol_name, void **symbol);
 
+static int default_relocate(TCCState *state, void *memory)
+{
+#if defined(TCC_RELOCATE_AUTO)
+    return tcc_relocate(state, memory);
+#else
+    (void)memory;
+    return tcc_relocate(state);
+#endif
+}
+
+static TinyccAdapterApi default_api = {
+    .add_file = tcc_add_file,
+    .output_file = tcc_output_file,
+    .relocate = default_relocate,
+    .get_symbol = tcc_get_symbol
+};
+static TinyccAdapterApi active_api = {
+    .add_file = tcc_add_file,
+    .output_file = tcc_output_file,
+    .relocate = default_relocate,
+    .get_symbol = tcc_get_symbol
+};
+
+void tinycc_adapter_set_api_for_test(const TinyccAdapterApi *api)
+{
+    active_api = api ? *api : default_api;
+}
+
+void tinycc_adapter_reset_api_for_test(void)
+{
+    active_api = default_api;
+}
+
 static int resolve_libraries(CJITState *cjit)
 {
     LibraryResolverPort resolver;
@@ -150,7 +183,7 @@ static CJITResult compile_object(void *context, RuntimeSession *session, const c
         return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
     }
     if (cjit->output_filename) {
-        if (tcc_output_file(compiler_handle, cjit->output_filename) < 0) {
+        if (active_api.output_file(compiler_handle, cjit->output_filename) < 0) {
             return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
         }
     } else {
@@ -165,7 +198,7 @@ static CJITResult compile_object(void *context, RuntimeSession *session, const c
         strncpy(tmp, basename, len + 1);
         cwk_path_get_extension(tmp, (const char **)&ext, &extlen);
         strcpy(ext, ".o");
-        if (tcc_output_file(compiler_handle, tmp) < 0) {
+        if (active_api.output_file(compiler_handle, tmp) < 0) {
             free(tmp);
             return cjit_result_error(CJIT_RESULT_COMPILER_ERROR, 1, "Compile to object failed");
         }
@@ -190,10 +223,10 @@ static CJITResult link_executable(void *context, RuntimeSession *session)
     for (int i = 0; i < found; ++i) {
         char *resolved_path = string_list_get(cjit->reallibs, i);
         if (resolved_path) {
-            tcc_add_file(compiler_handle, resolved_path);
+            active_api.add_file(compiler_handle, resolved_path);
         }
     }
-    if (tcc_output_file(compiler_handle, cjit->output_filename) < 0) {
+    if (active_api.output_file(compiler_handle, cjit->output_filename) < 0) {
         return cjit_result_error(CJIT_RESULT_LINK_ERROR, 1, "Error in linker compiling to file");
     }
     return cjit_result_ok();
@@ -218,7 +251,7 @@ static CJITResult execute_program(void *context, RuntimeSession *session,
     for (int i = 0; i < found; ++i) {
         char *resolved_path = string_list_get(cjit->reallibs, i);
         if (resolved_path) {
-            tcc_add_file((TCCState *)session->compiler_handle, resolved_path);
+            active_api.add_file((TCCState *)session->compiler_handle, resolved_path);
         }
     }
 
@@ -244,9 +277,9 @@ static CJITResult relocate(void *context, RuntimeSession *session)
     (void)context;
     compiler_handle = (TCCState *)session->compiler_handle;
 #if defined(TCC_RELOCATE_AUTO)
-    if (tcc_relocate(compiler_handle, TCC_RELOCATE_AUTO) < 0) {
+    if (active_api.relocate(compiler_handle, TCC_RELOCATE_AUTO) < 0) {
 #else
-    if (tcc_relocate(compiler_handle) < 0) {
+    if (active_api.relocate(compiler_handle, NULL) < 0) {
 #endif
         return cjit_result_error(CJIT_RESULT_LINK_ERROR, -1, "TCC linker error");
     }
@@ -260,7 +293,7 @@ static CJITResult resolve_symbol(void *context, RuntimeSession *session,
 
     (void)context;
     compiler_handle = (TCCState *)session->compiler_handle;
-    *symbol = tcc_get_symbol(compiler_handle, symbol_name);
+    *symbol = active_api.get_symbol(compiler_handle, symbol_name);
     if (!*symbol) {
         return cjit_result_error(CJIT_RESULT_LINK_ERROR, -1, "Entrypoint symbol not found");
     }
