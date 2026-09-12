@@ -6,11 +6,20 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if defined(_WIN32) || defined(__MINGW32__)
+#include <direct.h>
+#include <process.h>
+#endif
+
 #include "muntar.h"
 #include "muntarfs.h"
 #include "tinf.h"
 
 static int failures;
+
+#if defined(_WIN32) || defined(__MINGW32__)
+#define CJIT_TEST_WINDOWS
+#endif
 
 #define CHECK(expression) do { \
     if (!(expression)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #expression); failures++; } \
@@ -57,6 +66,32 @@ static void fix_checksum(uint8_t *block)
     block[154] = '\0'; block[155] = ' ';
 }
 
+static int make_fixture_root(char *root, size_t size, const char *name)
+{
+#if defined(CJIT_TEST_WINDOWS)
+    const char *temporary_directory = getenv("TEMP");
+
+    if (!temporary_directory || !temporary_directory[0]) {
+        temporary_directory = ".";
+    }
+    snprintf(root, size, "%s/%s-%ld", temporary_directory, name,
+             (long)_getpid());
+    return _mkdir(root) == 0;
+#else
+    snprintf(root, size, "/tmp/%s-XXXXXX", name);
+    return mkdtemp(root) != NULL;
+#endif
+}
+
+static int remove_fixture_directory(const char *path)
+{
+#if defined(CJIT_TEST_WINDOWS)
+    return _rmdir(path);
+#else
+    return rmdir(path);
+#endif
+}
+
 static void test_gzip(void)
 {
     static const uint8_t good[] = {0x1f,0x8b,8,0,0,0,0,0,0,3,0xcb,0x48,0xcd,0xc9,0xc9,7,0,0x86,0xa6,0x10,0x36,5,0,0,0};
@@ -85,8 +120,11 @@ static void test_tar_and_paths(void)
     const char data[] = "ok";
     mtar_t parsed;
     const mtar_header_t *entry;
-    char root[] = "/tmp/cjit-muntar-unit-XXXXXX";
-    char canary[512], outside[] = "/tmp/cjit-muntar-outside-XXXXXX", link[512];
+    char root[512];
+    char canary[512];
+#if !defined(CJIT_TEST_WINDOWS)
+    char outside[512], link[512];
+#endif
     size_t length = tar_one(tar, "nested/file.txt", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(mtar_load(&parsed, "valid", tar, length) == MTAR_ESUCCESS);
     CHECK(mtar_header(&parsed, &entry) == MTAR_ESUCCESS && entry->size == 2);
@@ -104,7 +142,7 @@ static void test_tar_and_paths(void)
     header(tar, "bad-size", MTAR_TREG, NULL, 0);
     memset(tar + 124, '9', 11); tar[135] = '\0'; fix_checksum(tar);
     CHECK(mtar_load(&parsed, "bad-size", tar, 1536) == MTAR_EINVALIDMODE);
-    CHECK(mkdtemp(root) != NULL);
+    CHECK(make_fixture_root(root, sizeof(root), "cjit-muntar-unit"));
     snprintf(canary, sizeof(canary), "%s/canary", root);
     {
         int result = muntar_to_path(root, tar, length);
@@ -113,7 +151,8 @@ static void test_tar_and_paths(void)
     length = tar_one(tar, "../canary", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
     CHECK(access(canary, F_OK) != 0);
-    CHECK(mkdtemp(outside) != NULL);
+#if !defined(CJIT_TEST_WINDOWS)
+    CHECK(make_fixture_root(outside, sizeof(outside), "cjit-muntar-outside"));
     snprintf(link, sizeof(link), "%s/linked", root);
     CHECK(symlink(outside, link) == 0);
     length = tar_one(tar, "linked/escaped.txt", MTAR_TREG, data, sizeof(data) - 1);
@@ -121,7 +160,8 @@ static void test_tar_and_paths(void)
     snprintf(canary, sizeof(canary), "%s/escaped.txt", outside);
     CHECK(access(canary, F_OK) != 0);
     unlink(link);
-    rmdir(outside);
+    remove_fixture_directory(outside);
+#endif
     length = tar_one(tar, "/absolute", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EINVALIDMODE);
     length = tar_one(tar, "safe.txt", MTAR_TREG, data, sizeof(data) - 1);
@@ -131,7 +171,7 @@ static void test_tar_and_paths(void)
     CHECK(muntar_to_path(root, tar, length) == MTAR_ESUCCESS);
     snprintf(canary, sizeof(canary), "%s/safe.txt", root);
     unlink(canary);
-    rmdir(root);
+    remove_fixture_directory(root);
 }
 
 int main(void)
