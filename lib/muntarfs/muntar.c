@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 #include <muntar.h>
 
@@ -67,50 +68,54 @@ static unsigned checksum(const mtar_raw_header_t* rh)
 /**
  * Decode an octal field.
  */
-static uint64_t decodeTarOctal(
-	const char* data,
-	size_t size )
+static int decodeTarOctal(const char *data, size_t size, uint64_t *value)
 {
-    uint8_t* currentPtr = (uint8_t*) data + size;
-    uint64_t sum = 0;
-    uint64_t currentMultiplier = 1;
-
-	/* find then last NUL or space */
-    uint8_t* checkPtr = currentPtr;
-    for (; checkPtr >= (uint8_t*) data; checkPtr--)
-	{
-        if (*checkPtr == 0 || *checkPtr == ' ') currentPtr = checkPtr - 1;
-    }
-	/* decode the octal number */
-    for (; currentPtr >= (uint8_t*) data; currentPtr--)
-	{
-        sum += (uint64_t) ((*currentPtr) - 48) * currentMultiplier;
-        currentMultiplier *= 8;
-    }
-    return sum;
+	uint64_t sum = 0;
+	size_t i = 0;
+	while (i < size && (data[i] == ' ' || data[i] == '\0')) i++;
+	for (; i < size && data[i] != ' ' && data[i] != '\0'; i++) {
+		unsigned char digit = (unsigned char)data[i];
+		if (digit < '0' || digit > '7' || sum > (UINT64_MAX - (digit - '0')) / 8)
+			return MTAR_EINVALIDMODE;
+		sum = sum * 8 + (digit - '0');
+	}
+	while (i < size) {
+		if (data[i] != ' ' && data[i] != '\0') return MTAR_EINVALIDMODE;
+		i++;
+	}
+	*value = sum;
+	return MTAR_ESUCCESS;
 }
 
 static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh)
 {
-	unsigned chksum1, chksum2;
+	unsigned chksum1;
+	uint64_t chksum2, value;
 
 	/* if the checksum starts with a null byte we assume the record is NULL */
 	if (*rh->checksum == '\0') return MTAR_ENULLRECORD;
 
 	/* validate header fields */
 	chksum1 = checksum(rh);
-	chksum2 = (uint32_t) decodeTarOctal(rh->checksum, sizeof(rh->checksum));
+	if (decodeTarOctal(rh->checksum, sizeof(rh->checksum), &chksum2) != MTAR_ESUCCESS)
+		return MTAR_EINVALIDMODE;
 	if (chksum1 != chksum2) return MTAR_EBADCHKSUM;
 
 	if (strncmp(rh->magic, TMAGIC, sizeof(rh->magic)) != 0) return MTAR_ENULLRECORD;
 
-	h->mode     = (uint32_t) decodeTarOctal(rh->mode, sizeof(rh->mode));
-	h->uid      = (uint32_t) decodeTarOctal(rh->uid, sizeof(rh->uid));
-	h->gid      = (uint32_t) decodeTarOctal(rh->gid, sizeof(rh->gid));
-	h->size     = decodeTarOctal(rh->size, sizeof(rh->size));
-	h->mtime    = (uint32_t) decodeTarOctal(rh->mtime, sizeof(rh->mtime));
-	h->devmajor = (uint32_t) decodeTarOctal(rh->devmajor, sizeof(rh->devmajor));
-	h->devminor = (uint32_t) decodeTarOctal(rh->devminor, sizeof(rh->devminor));
+	if (decodeTarOctal(rh->mode, sizeof(rh->mode), &value) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+	h->mode = (uint32_t)value;
+	if (decodeTarOctal(rh->uid, sizeof(rh->uid), &value) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+	h->uid = (uint32_t)value;
+	if (decodeTarOctal(rh->gid, sizeof(rh->gid), &value) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+	h->gid = (uint32_t)value;
+	if (decodeTarOctal(rh->size, sizeof(rh->size), &h->size) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+	if (decodeTarOctal(rh->mtime, sizeof(rh->mtime), &value) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+	h->mtime = (uint32_t)value;
+	if (decodeTarOctal(rh->devmajor, sizeof(rh->devmajor), &value) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+	h->devmajor = (uint32_t)value;
+	if (decodeTarOctal(rh->devminor, sizeof(rh->devminor), &value) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+	h->devminor = (uint32_t)value;
 
 	h->type = (uint32_t) rh->type;
 	strncpy(h->name, rh->name, sizeof(h->name));
@@ -124,7 +129,7 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh)
 }
 
 static int mtar_read(mtar_t *tar, uint8_t *dest, size_t size) {
-	if(tar->position + size > tar->max) return(MTAR_EREADFAIL);
+	if(size > tar->max - tar->position) return(MTAR_EREADFAIL);
 	memcpy(dest, &tar->buffer[tar->position],(size_t)size);
 	tar->position += size;
 	return(MTAR_ESUCCESS);
@@ -165,61 +170,107 @@ static int mtar_rewind(mtar_t *tar) {
 #define makedir(path) mkdir(path,0755)
 #endif
 
+static int make_directory(const char *path)
+{
+	if (makedir(path)) return MTAR_ESUCCESS;
+#if defined(_WIN32) || defined(WINDOWS)
+	{
+		DWORD attributes = GetFileAttributes(path);
+		return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY)
+			? MTAR_ESUCCESS : MTAR_EWRITEFAIL;
+	}
+#else
+	{
+		struct stat status;
+		return lstat(path, &status) == 0 && S_ISDIR(status.st_mode)
+			? MTAR_ESUCCESS : MTAR_EWRITEFAIL;
+	}
+#endif
+}
+
+/* Archive entry names are untrusted.  Keep every output below destination. */
+static int append_safe_component(char *out, size_t capacity, size_t *length,
+				 const char *component)
+{
+	const char *p = component;
+	if (!component || component[0] == '/' || component[0] == '\\' || strchr(component, '\\'))
+		return MTAR_EINVALIDMODE;
+	while (*p) {
+		const char *end = strchr(p, '/');
+		size_t part = end ? (size_t)(end - p) : strlen(p);
+		if (part == 0 || (part == 1 && p[0] == '.') ||
+		    (part == 2 && p[0] == '.' && p[1] == '.')) return MTAR_EINVALIDMODE;
+		if (*length + 1 + part >= capacity) return MTAR_EOPENFAIL;
+		out[(*length)++] = '/';
+		memcpy(out + *length, p, part);
+		*length += part;
+		out[*length] = '\0';
+		if (!end) break;
+		p = end + 1;
+	}
+	return MTAR_ESUCCESS;
+}
+
+static int entry_path(char *out, size_t capacity, const char *destination,
+			  const mtar_header_t *header)
+{
+	size_t length;
+	if (!destination || !*destination || strlen(destination) >= capacity) return MTAR_EOPENFAIL;
+	strcpy(out, destination);
+	length = strlen(out);
+	if (header->path[0] && append_safe_component(out, capacity, &length, header->path) != MTAR_ESUCCESS)
+		return MTAR_EINVALIDMODE;
+	return append_safe_component(out, capacity, &length, header->name);
+}
+
 // used by extract_assets(char *tmpdir)
 int muntar_to_path(const char *path, const uint8_t *buf,
 		  const unsigned int len) {
 	int res;
 	mtar_t tar;
-	char tpath[512];
-	const size_t pathlen = strlen(path);
-	if(pathlen>100) return(MTAR_EFAILURE);
-	char *p;
+	char tpath[1024];
+	const size_t pathlen = path ? strlen(path) : 0;
+	if(!path || !buf || !len || pathlen >= sizeof(tpath)) return(MTAR_EFAILURE);
 	const mtar_header_t *header = NULL;
 	strcpy(tpath, path);
 	res = mtar_load(&tar, path, buf, len);
 	if(res != MTAR_ESUCCESS) return(MTAR_EOPENFAIL);
 	// first create extract dir if doesn't exist
-	makedir(tpath);
+	if (make_directory(tpath) != MTAR_ESUCCESS) return MTAR_EWRITEFAIL;
 	while(!mtar_eof(&tar)) {
 		// then create every other subdir
-		p = tpath+pathlen;
-		*p = '/'; p++;
-		mtar_header(&tar, &header);
+		if (mtar_header(&tar, &header) != MTAR_ESUCCESS) return MTAR_EREADFAIL;
 		switch(header->type) {
 		case MTAR_TDIR:
-			if(header->path[0]!=0) { // subdir
-				const size_t subdirlen = strlen(header->path);
-				if(p-tpath+subdirlen>1023) return(MTAR_EOPENFAIL);
-				strcpy(p,header->path);
-				p += subdirlen;
-				*p = '/'; p++;
-			}
-			const size_t namelen = strlen(header->name);
-			if(p-tpath+namelen>1023) return(MTAR_EOPENFAIL);
-			strcpy(p,header->name);
-			makedir(tpath);
+			if (entry_path(tpath, sizeof(tpath), path, header) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+			if (make_directory(tpath) != MTAR_ESUCCESS) return MTAR_EWRITEFAIL;
 			break;
 		}
-		mtar_next(&tar);
+		res = mtar_next(&tar);
+		if (res != MTAR_ESUCCESS && res != MTAR_ENULLRECORD) return res;
 	}
 	mtar_rewind(&tar);
 	while(!mtar_eof(&tar)) {
 		// and at last create the files
-		p = tpath+pathlen;
-		*p = '/'; p++;
-		mtar_header(&tar, &header);
+		if (mtar_header(&tar, &header) != MTAR_ESUCCESS) return MTAR_EREADFAIL;
 		switch(header->type) {
 		case MTAR_TREG:
-			if(header->path[0]!=0) { // subdir
-				const size_t subdirlen = strlen(header->path);
-				if(p-tpath+subdirlen>1023) return(MTAR_EOPENFAIL);
-				strcpy(p,header->path);
-				p += subdirlen;
-				*p = '/'; p++;
+			if (entry_path(tpath, sizeof(tpath), path, header) != MTAR_ESUCCESS) return MTAR_EINVALIDMODE;
+			/* Do not silently replace a file supplied by an earlier entry. */
+			{
+				FILE *existing = fopen(tpath, "rb");
+				if (existing) {
+					fclose(existing);
+					return MTAR_EWRITEFAIL;
+				}
+			#if !defined(_WIN32) && !defined(WINDOWS)
+				{
+					struct stat status;
+					if (lstat(tpath, &status) == 0 || errno != ENOENT)
+						return MTAR_EWRITEFAIL;
+				}
+			#endif
 			}
-			const size_t namelen = strlen(header->name);
-			if(p-tpath+namelen>1023) return(MTAR_EOPENFAIL);
-			strcpy(p,header->name);
 			FILE *fp = fopen(tpath,"wb");
 			if(!fp) {
 				fprintf(stderr,
@@ -228,12 +279,12 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 				perror("Reason: ");
 				return(MTAR_EWRITEFAIL);
 			}
-			fwrite(&tar.buffer[tar.iterator.cursor],
-			       1,header->size,fp);
-			fclose(fp);
+			if (fwrite(&tar.buffer[tar.iterator.cursor], 1, header->size, fp) != header->size || fclose(fp) != 0)
+				return MTAR_EWRITEFAIL;
 			break;
 		}
-		mtar_next(&tar);
+		res = mtar_next(&tar);
+		if (res != MTAR_ESUCCESS && res != MTAR_ENULLRECORD) return res;
 	}
 	return(MTAR_ESUCCESS);
 }
@@ -245,7 +296,7 @@ int muntar_to_path(const char *path, const uint8_t *buf,
 int muntargz_to_path(const char *path, const uint8_t *buf,
 		    const unsigned int len) {
 	unsigned int attempts = 0;
-	unsigned int destlen = len*DECOMPRESSED_SIZE_RATIO;
+	unsigned int destlen;
 	uint8_t *dest = NULL;
 	if(!buf) {
 		fprintf(stderr,"%s: called with NULL buffer\n",
@@ -257,6 +308,8 @@ int muntargz_to_path(const char *path, const uint8_t *buf,
 			__func__);
 		return(-1);
 	}
+	if (len > UINT_MAX / DECOMPRESSED_SIZE_RATIO) return TINF_BUF_ERROR;
+	destlen = len * DECOMPRESSED_SIZE_RATIO;
 	for(attempts = 0; attempts < 8; attempts++) {
 		unsigned int outlen = destlen;
 		int res;
@@ -277,6 +330,7 @@ int muntargz_to_path(const char *path, const uint8_t *buf,
 			fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
 			return(res);
 		}
+		if (destlen > UINT_MAX / 2) return TINF_BUF_ERROR;
 		destlen *= 2;
 	}
 	fprintf(stderr,"Error in gunzip decompression (untargz_to_path)\n");
@@ -324,6 +378,8 @@ int mtar_next(mtar_t *tar)
 
 	if (tar->iterator.offset == UINT64_MAX) return MTAR_ENULLRECORD;
 
+	if (tar->iterator.header.size > tar->max - tar->iterator.offset - 512)
+		return MTAR_EREADFAIL;
 	position = tar->iterator.offset + 512 + tar->iterator.header.size;
 	position = (size_t) ( (uint64_t)(position + 511) & (uint64_t) (~0x01FF) );
 	err = mtar_seek(tar, position);
