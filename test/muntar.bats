@@ -160,6 +160,29 @@ EOF
     assert_file_exist ${TMP}/muntarfs-bundle.c
 }
 
+@test "muntarfs pack script rejects missing input and invalid output parent" {
+    run ${R}/lib/muntarfs/muntarfs-pack.sh ${TMP}/missing ${TMP}/bundle
+    assert_failure
+    run ${R}/lib/muntarfs/muntarfs-pack.sh ${R}/examples ${TMP}/missing-parent/bundle
+    assert_failure
+    assert_file_not_exist ${TMP}/missing-parent/bundle.tar
+}
+
+@test "CLI archive extraction rejects corrupt archive without output" {
+    printf 'not a gzip archive' > ${TMP}/corrupt.tgz
+    mkdir ${TMP}/out
+    run ${R}/cjit --xtgz ${TMP}/corrupt.tgz
+    assert_failure
+    assert_output --partial 'Failed to extract archive'
+    assert_equal "$(find ${TMP}/out -mindepth 1 -print -quit)" ""
+}
+
+@test "CLI archive extraction reports a missing input file" {
+    run ${R}/cjit --xtgz ${TMP}/missing.tgz
+    assert_failure
+    assert_output --partial 'Failed to extract archive'
+}
+
 @test "muntarfs runtime extracts targz bundle" {
       cat << EOF > muntarfs_extract.c
 #include <stdio.h>
