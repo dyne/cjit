@@ -2,7 +2,6 @@
 
 #include <stddef.h>
 
-#include "adapters/compiler/tinycc_adapter.h"
 
 static CompileObjectResponse make_compile_object_response(CJITResultCode code, int exit_status,
                                                           bool ok, const char *message,
@@ -14,15 +13,16 @@ static CompileObjectResponse make_compile_object_response(CJITResultCode code, i
     return response;
 }
 
-CompileObjectResponse compile_object(CJITState *cjit, const CompileObjectRequest *request)
+CompileObjectResponse compile_object_with_dependencies(CJITState *cjit,
+                                                       const CompileObjectRequest *request,
+                                                       const SliceDependencies *dependencies)
 {
     CompileObjectResponse response;
     RuntimeSession session;
-    CompilerPort compiler = tinycc_compiler_port;
+    CompilerPort compiler = dependencies->compiler;
     if (request->options.print_status) {
-        cjit_status(cjit);
+        dependencies->print_status(dependencies->status_context);
     }
-    compiler.context = cjit;
     compiler.begin_session(compiler.context, &session);
 
     if (!request->source_path) {

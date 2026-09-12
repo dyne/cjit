@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "adapters/compiler/tinycc_adapter.h"
-#include "adapters/fs/local_filesystem.h"
 
 static ExecuteResponse make_error(CJITResultCode code, int exit_status, const char *message)
 {
@@ -13,17 +11,16 @@ static ExecuteResponse make_error(CJITResultCode code, int exit_status, const ch
     return response;
 }
 
-ExecuteResponse execute_source(CJITState *cjit, const ExecuteRequest *request)
+ExecuteResponse execute_source_with_dependencies(CJITState *cjit, const ExecuteRequest *request,
+                                                 const SliceDependencies *dependencies)
 {
     char *stdin_code = NULL;
     int i;
     int exit_status = 0;
     ExecuteResponse response;
     RuntimeSession session;
-    CompilerPort compiler = tinycc_compiler_port;
-    FilesystemPort filesystem = local_filesystem_port;
-    compiler.context = cjit;
-    filesystem.context = cjit;
+    CompilerPort compiler = dependencies->compiler;
+    FilesystemPort filesystem = dependencies->filesystem;
     compiler.begin_session(compiler.context, &session);
     response.result = cjit_result_ok();
 

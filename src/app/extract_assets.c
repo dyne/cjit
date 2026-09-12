@@ -1,14 +1,13 @@
 #include "app/extract_assets.h"
 
-#include "adapters/fs/local_asset.h"
-
-ExtractAssetsResponse extract_assets_route(CJITState *cjit, const ExtractAssetsRequest *request)
+ExtractAssetsResponse extract_assets_with_dependencies(CJITState *cjit,
+                                                       const ExtractAssetsRequest *request,
+                                                       const SliceDependencies *dependencies)
 {
     ExtractAssetsResponse response;
     RuntimeSession session;
-    AssetPort assets = local_asset_port;
+    AssetPort assets = dependencies->assets;
     char *resolved_path = NULL;
-    assets.context = cjit;
     session.compiler_handle = cjit->TCC;
     session.tmpdir = cjit->tmpdir;
     session.tempdir_is_fresh = cjit->fresh;

@@ -144,13 +144,15 @@ coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 	@find src lib/muntarfs lib/tinycc -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
 
 UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin \
-	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin
+	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin \
+	test/app_slices_unit.bin
 
 test/source_files_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
 test/source_files_edge_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
 test/cli_parser_unit.bin: UNIT_SOURCES := src/adapters/cli/route_parser.c
 test/cli_route_unit.bin: UNIT_SOURCES := src/adapters/cli/route_parser.c
 test/cli_render_unit.bin: UNIT_SOURCES := src/adapters/cli/render_response.c
+test/app_slices_unit.bin: UNIT_SOURCES := src/app/execute_source.c src/app/compile_object.c src/app/build_executable.c src/app/print_status.c src/app/extract_assets.c src/app/extract_archive.c
 
 $(UNIT_BINS): test/%_unit.bin: test/%_unit.c $(UNIT_SOURCES)
 	$(CC) $(CFLAGS) -Isrc -o $@ $< $(UNIT_SOURCES)

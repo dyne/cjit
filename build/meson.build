@@ -29,6 +29,7 @@ src = files(
   '../src/app/extract_archive.c',
   '../src/adapters/cli/route_parser.c',
   '../src/adapters/cli/render_response.c',
+  '../src/adapters/cli/slice_composition.c',
   '../src/adapters/compiler/tinycc_adapter.c',
   '../src/adapters/fs/local_filesystem.c',
   '../src/adapters/fs/local_asset.c',

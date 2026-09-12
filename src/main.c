@@ -38,6 +38,7 @@
 #include <app/extract_archive.h>
 #include <adapters/cli/route_parser.h>
 #include <adapters/cli/render_response.h>
+#include <adapters/cli/slice_composition.h>
 
 #ifdef SELFHOST
 extern const char *cjit_source;
@@ -245,6 +246,7 @@ int main(int argc, char **argv) {
 	_err("cjit version %s (c) 2024-2026 Dyne.org foundation",&VERSION[1]);
 
   {
+	  SliceDependencies dependencies = cjit_default_slice_dependencies(CJIT);
 	  ParsedRoute parsed = parse_cli_route(CJIT, argc, clean_argv, opt.ind, arg_separator,
 											  forced_route, forced_route_path);
 
@@ -255,7 +257,7 @@ int main(int argc, char **argv) {
 		  if(request.destination_path) {
 			  _err("Extracting runtime assets to: %s", request.destination_path);
 		  }
-		  response = extract_assets_route(CJIT, &request);
+		  response = extract_assets_with_dependencies(CJIT, &request, &dependencies);
 		  render_extract_assets_response(CJIT, &response);
 		  res = response.result.exit_status;
 		  goto endgame;
@@ -264,7 +266,7 @@ int main(int argc, char **argv) {
 		  ExtractArchiveResponse response;
 		  request = build_extract_archive_request(&parsed);
 		  _err("Extract contents of: %s", request.archive_path);
-		  response = extract_archive_route(&request);
+		  response = extract_archive_with_dependencies(&request, &dependencies);
 		  render_extract_archive_response(NULL, &response);
 		  res = response.result.exit_status;
 		  goto endgame;
@@ -272,7 +274,7 @@ int main(int argc, char **argv) {
 		  StatusRequest request;
 		  StatusResponse response;
 		  request = build_status_request(CJIT);
-		  response = print_status(CJIT, &request);
+		  response = print_status_with_dependencies(CJIT, &request, &dependencies);
 		  render_status_response(CJIT, &response);
 		  res = response.result.exit_status;
 		  goto endgame;
@@ -280,7 +282,7 @@ int main(int argc, char **argv) {
 	  CompileObjectRequest request;
 	  CompileObjectResponse response;
 	  request = build_compile_object_request(CJIT, &parsed);
-	  response = compile_object(CJIT, &request);
+	  response = compile_object_with_dependencies(CJIT, &request, &dependencies);
 	  render_compile_object_response(CJIT, &response);
 	  res = response.result.exit_status;
 	  goto endgame;
@@ -291,14 +293,14 @@ int main(int argc, char **argv) {
 	  BuildExecutableResponse response;
 	  _err("Create executable: %s", CJIT->output_filename);
 	  request = build_build_executable_request(CJIT, &parsed);
-	  response = build_executable(CJIT, &request);
+	  response = build_executable_with_dependencies(CJIT, &request, &dependencies);
 	  render_build_executable_response(CJIT, &response);
 	  res = response.result.exit_status;
   } else {
 	  ExecuteRequest request;
 	  ExecuteResponse response;
 	  request = build_execute_request(CJIT, &parsed);
-	  response = execute_source(CJIT, &request);
+	  response = execute_source_with_dependencies(CJIT, &request, &dependencies);
 	  render_execute_response(CJIT, &response);
 	  res = response.result.exit_status;
   }
