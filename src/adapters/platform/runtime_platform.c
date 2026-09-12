@@ -113,6 +113,7 @@ int cjit_platform_exec(CJITState *cjit, int (*entrypoint)(int, char **),
         ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
         if (ret != pid) {
             _err("Wait error in source: %s", cjit->entry);
+            return -1;
         }
         if (WIFEXITED(status)) {
             return WEXITSTATUS(status);

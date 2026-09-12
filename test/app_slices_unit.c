@@ -100,12 +100,22 @@ int main(void)
     failures += expect_events(&f, "BFFE", "execute input failure order");
     memset(&f, 0, sizeof(f)); execute_request.source_count = 0;
     execute_response = execute_source_with_dependencies(&state, &execute_request, &d);
+#if defined(_WIN32)
+    failures += expect(!execute_response.result.ok && execute_response.result.code == CJIT_RESULT_INVALID_REQUEST && f.stdin_reads == 0 && f.end == 1, "Windows rejects no-file stdin");
+    failures += expect_events(&f, "BE", "Windows no-file stdin cleanup");
+#else
     failures += expect(execute_response.result.ok && f.stdin_reads == 1 && f.buffer == 1 && f.end == 1, "stdin execution ownership");
     failures += expect_events(&f, "BRUXE", "zero-source stdin order");
+#endif
     memset(&f, 0, sizeof(f)); execute_request.source_count = 1; execute_request.sources = stdin_source;
     execute_response = execute_source_with_dependencies(&state, &execute_request, &d);
+#if defined(_WIN32)
+    failures += expect(!execute_response.result.ok && execute_response.result.code == CJIT_RESULT_INVALID_REQUEST && f.stdin_reads == 0 && f.end == 1, "Windows rejects explicit stdin");
+    failures += expect_events(&f, "BE", "Windows explicit stdin cleanup");
+#else
     failures += expect(execute_response.result.ok && f.stdin_reads == 1 && f.buffer == 1, "explicit stdin source");
     failures += expect_events(&f, "BRUXE", "explicit stdin order");
+#endif
     execute_request.source_count = 2; execute_request.sources = two;
     memset(&f, 0, sizeof(f)); f.program_status = 42;
     execute_response = execute_source_with_dependencies(&state, &execute_request, &d);
@@ -117,8 +127,13 @@ int main(void)
     failures += expect_events(&f, "BFFXE", "execute failure order");
     memset(&f, 0, sizeof(f)); f.fail_at = -4; execute_request.source_count = 0;
     execute_response = execute_source_with_dependencies(&state, &execute_request, &d);
+#if defined(_WIN32)
+    failures += expect(!execute_response.result.ok && execute_response.result.code == CJIT_RESULT_INVALID_REQUEST && f.stdin_reads == 0 && f.end == 1, "Windows no-file input never reads stdin");
+    failures += expect_events(&f, "BE", "Windows no-file stdin error cleanup");
+#else
     failures += expect(!execute_response.result.ok && execute_response.result.code == CJIT_RESULT_IO_ERROR && f.end == 1, "stdin read failure cleanup");
     failures += expect_events(&f, "BRE", "stdin read failure order");
+#endif
     execute_request.source_count = 2;
     memset(&f, 0, sizeof(f)); compile_request.source_path = NULL;
     compile_response = compile_object_with_dependencies(&state, &compile_request, &d);

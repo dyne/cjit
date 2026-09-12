@@ -40,7 +40,9 @@ _: ##
 ------: ## __ Production targets
 
 linux: ## 🐧 Build cjit linking shared libs found on Linux (target host arch)
-	$(MAKE) -f build/linux.mk embed-posix cjit
+	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
+	@$(MAKE) -C lib/tinycc clean distclean
+	$(MAKE) -f build/linux.mk embed-posix cjit cjit-ar
 	@rm -f .build_done*
 	date | tee .build_done_linux
 
@@ -83,6 +85,8 @@ debug-asan: ## 🔬 Build using the address sanitizer to detect memory leaks
 	date | tee .build_done_linux
 
 self-host: ## 💎 Build a CJIT that builts itself (embed its source)
+	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
+	@$(MAKE) -C lib/tinycc clean distclean
 	$(MAKE) -f build/linux.mk embed-posix-source cjit ASAN=1 SELFHOST=1
 	date | tee .build_done_linux
 
@@ -95,6 +99,8 @@ check: ## 🧪 Run all tests using the currently built binary ./cjit
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
 	@./test/bats/bin/bats test/windows.bats
 	@./test/bats/bin/bats test/muntar.bats
+	@./test/bats/bin/bats test/archive_tool.bats
+	@./test/bats/bin/bats test/compatibility_modes.bats
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/dmon.bats; fi
 
 check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
@@ -103,6 +109,8 @@ check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@if [ -r .build_done_linux ]; then ./test/bats/bin/bats test/linux.bats; fi
 	@./test/bats/bin/bats test/windows.bats
 	@./test/bats/bin/bats test/muntar.bats
+	@./test/bats/bin/bats test/archive_tool.bats
+	@./test/bats/bin/bats test/compatibility_modes.bats
 
 COVERAGE_FLAGS := --coverage -O0 -g
 COVERAGE_SOURCES := src/file.c src/cjit.c src/cjit-ar.c src/main.c src/support/source_files.c \
@@ -147,7 +155,7 @@ UNIT_BINS := test/source_files_unit.bin test/source_files_edge_unit.bin \
 	test/cli_parser_unit.bin test/cli_route_unit.bin test/cli_render_unit.bin \
 	test/app_slices_unit.bin test/string_list_unit.bin test/file_unit.bin \
 	test/runtime_cache_unit.bin test/cjit_lifecycle_unit.bin \
-	test/library_resolver_unit.bin test/muntar_unit.bin
+	test/library_resolver_unit.bin test/muntar_unit.bin test/runtime_platform_unit.bin
 
 test/source_files_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
 test/source_files_edge_unit.bin: UNIT_SOURCES := src/support/source_files.c src/support/cwalk.c
@@ -163,6 +171,8 @@ test/cjit_lifecycle_unit.bin: UNIT_SOURCES := src/cjit.c src/support/string_list
 test/cjit_lifecycle_unit.bin: CFLAGS += -DSHAREDTCC -DVERSION=\"unit\" -Ilib/tinycc
 test/library_resolver_unit.bin: UNIT_SOURCES := src/adapters/platform/library_resolver_posix.c src/adapters/platform/library_resolver_windows.c src/support/string_list.c src/array.c src/support/cwalk.c
 test/muntar_unit.bin: UNIT_SOURCES := lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c lib/muntarfs/muntarfs_runtime.c
+test/runtime_platform_unit.bin: UNIT_SOURCES := src/adapters/platform/runtime_platform.c
+test/runtime_platform_unit.bin: CFLAGS += -Ilib/tinycc
 
 $(UNIT_BINS): test/%_unit.bin: test/%_unit.c $(UNIT_SOURCES)
 	$(CC) $(CFLAGS) -Isrc -Ilib/muntarfs -o $@ $< $(UNIT_SOURCES)
@@ -185,7 +195,7 @@ install: ## 🔌 Install the built binaries in PREFIX
 	@cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
 	@cp -ra examples ${DESTDIR}${DATADIR}/
 
-.PHONY: debian
+.PHONY: meson debian
 debian:
 	$(info Creating the Debian package)
 	@rm -rf debian

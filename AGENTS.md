@@ -63,13 +63,12 @@ dispatch: `-ar`, the special `conftest.c` build, and self-host-only `--src`.
 - `src/ports/filesystem_port.h`: stdin, files, paths, encoding, and tempdir IO.
 - `src/ports/asset_port.h`: embedded asset and tar.gz extraction.
 - `src/ports/library_resolver_port.h`: logical-library-to-file resolution.
-- `src/ports/process_port.h`: intended process boundary; currently declared but
-  not wired into the application path.
 
 Important limitation: application slices currently copy global concrete ports
 (`tinycc_compiler_port`, `local_filesystem_port`, `local_asset_port`) rather than
 receiving ports as dependencies. Several declared port methods are not yet used.
-Do not assume the slices can already be isolated with fakes.
+Do not assume the slices can already be isolated with fakes. Process execution
+remains a tested runtime-platform adapter because it is inherently host-specific.
 
 ### Application slices
 

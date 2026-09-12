@@ -221,6 +221,7 @@ int main(int argc, char **argv) {
 		  chmod("cjit_source/test/bats/libexec/bats-core/bats-preprocess", 0755);
 		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-file", 0755);
 		  chmod("cjit_source/test/bats/libexec/bats-core/bats-exec-test", 0755);
+		  chmod("cjit_source/lib/tinycc/configure", 0755);
 #endif
 		  res = 0;
 		  goto endgame;
