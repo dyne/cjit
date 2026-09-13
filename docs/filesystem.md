@@ -11,6 +11,7 @@ which is tested to run on all CJIT platforms:
 
 ```c
 #include <stdio.h>
+#define DMON_IMPL
 #include <dmon.h>
 
 static void watch_callback(dmon_watch_id watch_id,

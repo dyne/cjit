@@ -1,6 +1,9 @@
 #define MA_NO_DECODING
 #define MA_NO_ENCODING
 #define MINIAUDIO_IMPLEMENTATION
+#if !defined(_WIN32)
+#pragma comment(lib, "m")
+#endif
 #include <miniaudio.h>
 
 #include <stdio.h>

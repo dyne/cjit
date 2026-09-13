@@ -190,6 +190,9 @@ check-ci-artifacts: ## 🧪 Verify CI artifact publication contracts
 check-ci-action-pins: ## 🧪 Verify immutable action references
 	@./test/ci_action_pins.sh
 
+check-tutorial-examples: ## 🧪 Link every program published by the VitePress tutorial
+	@./test/tutorial_examples.sh
+
 coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 	@find src lib/muntarfs lib/tinycc -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
 	@rm -f cjit-ar-cjit-ar.gcda cjit-ar-cjit-ar.gcno
@@ -269,7 +272,7 @@ install: ## 🔌 Install the built binaries in PREFIX
 	@cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
 	@cp -ra examples ${DESTDIR}${DATADIR}/
 
-.PHONY: meson debian fuzz-replay fuzz-smoke check-ci-contract check-ci-artifacts check-ci-action-pins check-coverage-report check-coverage-ratchet
+.PHONY: meson debian fuzz-replay fuzz-smoke check-ci-contract check-ci-artifacts check-ci-action-pins check-tutorial-examples check-coverage-report check-coverage-ratchet
 debian:
 	$(info Creating the Debian package)
 	@rm -rf debian
