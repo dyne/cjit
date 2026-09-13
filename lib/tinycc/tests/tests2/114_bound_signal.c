@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -83,6 +84,17 @@ static void child_handler(int sig)
     sem_post (&sem_child);
 }
 
+static unsigned getclock_ms(void)
+{
+#ifdef _WIN32
+    return GetTickCount();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec*1000 + (tv.tv_usec+500)/1000;
+#endif
+}
+
 int
 main (void)
 {
@@ -112,8 +124,8 @@ main (void)
 #endif
 
     /* sleep does not work !!! */
-    end = time(NULL) + 2;
-    while (time(NULL) < end) ;
+    end = getclock_ms() + 200;
+    while (getclock_ms() < end) ;
     run = 0;
 
     pthread_join(id1, NULL);

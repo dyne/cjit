@@ -49,8 +49,8 @@ external assembler or linker because TCC does that for you.
 TCC compiles so @emph{fast} that even for big projects @code{Makefile}s may
 not be necessary.
 
-TCC not only supports ANSI C, but also most of the new ISO C99
-standard and many GNUC extensions including inline assembly.
+TCC not only supports ANSI C, but also most of the ISO C99 standard,
+many ISO C11 features, and many GNUC extensions including inline assembly.
 
 TCC can also be used to make @emph{C scripts}, i.e. pieces of C source
 that you run as a Perl or Python script. Compilation is so fast that
@@ -63,10 +63,23 @@ these checks even if non patched libraries are used.
 With @code{libtcc}, you can use TCC as a backend for dynamic code
 generation (@pxref{Libtcc}).
 
-TCC mainly supports the i386 target on Linux and Windows. There are alpha
-ports for the ARM (@code{arm-tcc}) and the TMS320C67xx targets
-(@code{c67-tcc}). More information about the ARM port is available at
-@url{http://lists.gnu.org/archive/html/tinycc-devel/2003-10/msg00044.html}.
+TCC supports the following target and platform combinations:
+
+@multitable @columnfractions .15 .10 .12 .11 .11 .18 .09
+@item @strong{OS} @tab @strong{i386} @tab @strong{x86-64} @tab @strong{ARM} @tab @strong{ARM64} @tab @strong{RISC-V 64} @tab @strong{C67}
+@item Linux     @tab yes @tab yes @tab yes   @tab yes @tab yes @tab yes
+@item macOS     @tab     @tab yes @tab       @tab yes @tab     @tab
+@item Windows   @tab yes @tab yes @tab WinCE @tab yes @tab     @tab
+@item Android   @tab yes @tab yes @tab yes   @tab yes @tab     @tab
+@item FreeBSD   @tab     @tab yes @tab       @tab yes @tab     @tab
+@item NetBSD    @tab     @tab yes @tab yes   @tab yes @tab     @tab
+@item OpenBSD   @tab yes @tab yes @tab       @tab yes @tab yes @tab
+@item DragonFly @tab     @tab yes @tab       @tab     @tab     @tab
+@end multitable
+
+The TMS320C67xx (C67) target is a cross compiler for the digital signal
+processors of that family. It outputs COFF instead of ELF and has neither
+@file{libtcc1.a} nor bound checking.
 
 For usage on Windows, see also @url{tcc-win32.txt}.
 
@@ -83,7 +96,7 @@ usage: tcc [options] [@var{infile1} @var{infile2}@dots{}] [@option{-run} @var{in
 
 @noindent
 @c man begin DESCRIPTION
-TCC options are a very much like gcc options. The main difference is that TCC
+TCC options are very much like gcc options. The main difference is that TCC
 can also execute directly the resulting program and give it runtime
 arguments.
 
@@ -99,9 +112,9 @@ the @code{main()} of a.c.
 
 @item @samp{tcc a.c -run b.c arg1}
 Compile @file{a.c} and @file{b.c}, link them together and execute them. arg1 is given
-as first argument to the @code{main()} of the resulting program. 
-@ignore 
-Because multiple C files are specified, @option{--} are necessary to clearly 
+as first argument to the @code{main()} of the resulting program.
+@ignore
+Because multiple C files are specified, @option{--} are necessary to clearly
 separate the program arguments from the TCC options.
 @end ignore
 
@@ -136,14 +149,14 @@ need to add @code{#!/usr/local/bin/tcc -run} at the start of your C source:
 #!/usr/local/bin/tcc -run
 #include <stdio.h>
 
-int main() 
+int main()
 @{
     printf("Hello World\n");
     return 0;
 @}
 @end example
 
-TCC can read C source code from @emph{standard input} when @option{-} is used in 
+TCC can read C source code from @emph{standard input} when @option{-} is used in
 place of @option{infile}. Example:
 
 @example
@@ -153,9 +166,9 @@ echo 'main()@{puts("hello");@}' | tcc -run -
 
 @section Option summary
 
-General Options:
-
 @c man begin OPTIONS
+@subheading General Options
+
 @table @option
 @item -c
 Generate an object file.
@@ -176,6 +189,11 @@ In a script, it gives the following header:
 #!/usr/local/bin/tcc -run -L/usr/X11R6/lib -lX11
 @end example
 
+@item -rstdin file
+With @option{-run}: reopen standard input from @file{file} before executing
+the program. This is mainly useful when the C source itself was read from
+standard input (see @option{-} above).
+
 @item -v
 Display TCC version.
 
@@ -185,19 +203,38 @@ Show included files.  As sole argument, print search dirs.  -vvv shows tries too
 @item -bench
 Display compilation statistics.
 
+@item -dumpmachine
+Print target machine architecture triplet.
+
+@item -dumpversion
+Print TCC compiler version.
+
 @end table
 
-Preprocessor options:
+@subheading Preprocessor Options
 
 @table @option
 @item -Idir
 Specify an additional include path. Include paths are searched in the
 order they are specified.
 
-System include paths are always searched after. The default system
-include paths are: @file{/usr/local/include}, @file{/usr/include}
-and @file{PREFIX/lib/tcc/include}. (@file{PREFIX} is usually
-@file{/usr} or @file{/usr/local}).
+System include paths are always searched after. The defaults are
+@file{@var{tccdir}/include} and then @file{/usr/include}, where
+@var{tccdir} is the tcc private directory (@file{PREFIX/lib/tcc}, see
+@option{-B}; @file{PREFIX} is usually @file{/usr} or @file{/usr/local}).
+On Windows the defaults are @file{@var{tccdir}/include} and
+@file{@var{tccdir}/include/winapi}. Use @option{-vv} as sole argument to
+print the paths of the current build.
+
+@item -isystem dir
+Specify a system include path to be added to the defaults.
+
+@item -nostdinc
+Do not search the default system include paths; only search include paths
+provided on the command line.
+
+@item -include file
+Include @option{file} above each input file.
 
 @item -Dsym[=val]
 Define preprocessor symbol @samp{sym} to
@@ -210,9 +247,21 @@ Undefine preprocessor symbol @samp{sym}.
 @item -E
 Preprocess only, to stdout or file (with -o).
 
+@item -P
+Do not output @code{#line} directives.
+
+@item -P1
+Output alternative @code{#line} directives.
+
+@item -dD, -dM
+Output @code{#define} directives.
+
+@item -Wp,-opt
+Same as @option{-opt}.
+
 @end table
 
-Compilation flags:
+@subheading Compilation Flags
 
 Note: each of the following options has a negative form beginning with
 @option{-fno-}.
@@ -224,8 +273,10 @@ Let the @code{char} type be unsigned.
 @item -fsigned-char
 Let the @code{char} type be signed.
 
-@item -fno-common
-Do not generate common symbols for uninitialized data.
+@item -fcommon
+Generate common symbols for uninitialized data. The default is
+@option{-fno-common}, which puts tentative definitions directly in the
+bss section.
 
 @item -fleading-underscore
 Add a leading underscore at the beginning of each C symbol.
@@ -238,13 +289,22 @@ behaves like an unnamed one.
 @item -fdollars-in-identifiers
 Allow dollar signs in identifiers
 
+@item -freverse-funcargs
+Evaluate function arguments right to left.
+
+@item -fgnu89-inline
+@code{extern inline} is like @code{static inline}.
+
+@item -fasynchronous-unwind-tables
+Create eh_frame section [on]
+
 @item -ftest-coverage
 Create code coverage code. After running the resulting code an executable.tcov
 or sofile.tcov file is generated with code coverage.
 
 @end table
 
-Warning options:
+@subheading Warning Options
 
 @table @option
 @item -w
@@ -257,7 +317,10 @@ Note: each of the following warning options has a negative form beginning with
 
 @table @option
 @item -Wimplicit-function-declaration
-Warn about implicit function declaration.
+Warn about implicit function declaration (missing prototype).
+
+@item -Wdiscarded-qualifiers
+Warn when const is dropped.
 
 @item -Wunsupported
 Warn about unsupported GCC features that are ignored by TCC.
@@ -271,17 +334,22 @@ Abort compilation if a warning is issued. Can be given an option to enable
 the specified warning and turn it into an error, for example
 @option{-Werror=unsupported}.
 
-@item -Wall 
-Activate some useful warnings.
+@item -Wall
+Activate some useful warnings (@option{-Wimplicit-function-declaration},
+@option{-Wdiscarded-qualifiers}).
 
 @end table
 
-Linker options:
+@subheading Linker Options
 
 @table @option
 @item -Ldir
 Specify an additional static library path for the @option{-l} option. The
-default library paths are @file{/usr/local/lib}, @file{/usr/lib} and @file{/lib}.
+defaults are the tcc private directory (see @option{-B}) and
+@file{/usr/lib}, which the build may replace by the library directory of
+the host (@file{/usr/lib64} or a multiarch triplet directory). On Windows
+the default is @file{@var{tccdir}/lib}. Use @option{-vv} as sole argument
+to print the paths of the current build.
 
 @item -lxxx
 Link your program with dynamic library libxxx.so or static library
@@ -306,11 +374,26 @@ executable).
 Export global symbols to the dynamic linker. It is useful when a library
 opened with @code{dlopen()} needs to access executable symbols.
 
+@item -pthread
+Preprocess with @option{-D_REENTRANT} and link with @option{-lpthread}.
+
 @item -r
 Generate an object file combining all input files.
 
+@item -nostdlib
+Don't implicitly link with libc, the C runtime files, and libtcc1.
+
+@item -Wl,-nostdlib
+Don't search the default library paths (see @option{-L}). Only the paths
+specified with @option{-L} and @env{LIBRARY_PATH} are searched.
+
 @item -Wl,-rpath=path
 Put custom search path for dynamic libraries into executable.
+
+@item -Wl,-Ipath
+@item -Wl,--dynamic-linker=path
+Set the ELF interpreter (dynamic linker). This defaults to the value of the
+environment variable @env{LD_SO} if set, or a compiled-in default.
 
 @item -Wl,--enable-new-dtags
 When putting a custom search path for dynamic libraries into the executable,
@@ -338,6 +421,13 @@ Set type for PE (Windows) executables.
 @item -Wl,-[Ttext=# | section-alignment=# | file-alignment=# | image-base=# | stack=#]
 Modify executable layout.
 
+@item -Wl,-(no-|disable-)[dynamicbase | nxcompat | high-entropy-va | tsaware]
+Set or clear PE (Windows) executable header hardening flags.  The
+@option{-Wl,-high-entropy-va} option is supported on x86-64 and ARM64 PE
+targets and implies @option{-Wl,-dynamicbase}.  Clearing dynamicbase also
+clears high-entropy-va.  When @option{-Wl,-dynamicbase} is used for an
+executable, TCC also enables base relocation emission for Windows ASLR.
+
 @item -Wl,-Bsymbolic
 Set DT_SYMBOLIC tag.
 
@@ -346,7 +436,7 @@ Turn on/off linking of all objects in archives.
 
 @end table
 
-Debugger options:
+@subheading Debugger Options
 
 @table @option
 @item -g
@@ -372,9 +462,20 @@ is provided to trigger a stack trace with a message on demand.
 
 @end table
 
-Misc options:
+@subheading Misc Options
 
 @table @option
+
+@item -std=version
+Define @code{__STDC_VERSION__} to @code{201112} if @option{version} is
+c11 or gnu11; @code{199901} otherwise.
+
+@item -x[c|a|b|n]
+Specify content of next input file: respectively C, assembly, binary, or none.
+
+@item -O[n]
+Same as @option{-D__OPTIMIZE__} except for -O0.  @option{-Os} is treated
+the same as @option{-O1}.
 
 @item -M
 Just output makefile fragment with dependencies
@@ -391,16 +492,19 @@ Like -MD except mention only user header files, not system header files.
 @item -MF depfile
 Use @file{depfile} as output for -MD.
 
+@item -MP
+Mention all dependencies as targets too.
+
 @item -print-search-dirs
 Print the configured installation directory and a list of library
 and include directories tcc will search.
 
-@item -dumpversion
-Print version.
+@item -dt
+With @option{-run}/@option{-E}: auto-define 'test_...' macros
 
 @end table
 
-Target specific options:
+@subheading Target Specific Options
 
 @table @option
 @item -mms-bitfields
@@ -418,8 +522,49 @@ Pass command line to the i386/x86_64 cross compiler.
 
 @end table
 
-Note: GCC options @option{-Ox}, @option{-fx} and @option{-mx} are
-ignored.
+@subheading macOS Specific Options (Mach-O Targets Only)
+
+@table @option
+@item -dynamiclib
+Generate a dynamic library instead of an executable.
+
+@item -install_name name
+Set the install name for a dynamic library.
+
+@item -flat_namespace
+Use a flat namespace (ignored, accepted for compatibility).
+
+@item -two_levelnamespace
+Use a two-level namespace (default, accepted for compatibility).
+
+@item -undefined @var{treatment}
+Specify how undefined symbols are treated (accepted for compatibility).
+
+@item -compatibility_version version
+Set the compatibility version for a dynamic library.
+
+@item -current_version version
+Set the current version for a dynamic library.
+
+@end table
+
+@subheading Tool Modes
+
+@table @option
+@item tcc -ar [crstvx] lib [files]
+Create a static library archive.  TCC can function as an @command{ar}
+replacement without requiring an external archiver tool.  The
+@code{[abdiopN]} keys are not supported.
+
+@item tcc -impdef lib.dll [-v] [-o lib.def] (Windows only)
+Create a @file{.def} definition file from a DLL.
+
+@end table
+
+Note: GCC options @option{-fx}, @option{-mx}, @option{-arch}, @option{-C},
+@option{--param}, @option{-pedantic}, @option{-pie}, @option{-no-pie},
+@option{-pipe}, @option{-s}, and @option{-traditional} are ignored.
+@option{-Wunsupported} makes TCC warn about them.
 @c man end
 
 @c man begin ENVIRONMENT
@@ -501,7 +646,7 @@ function name.
 
     int tab[10] = @{ 1, 2, [5] = 5, [9] = 9@};
 @end example
-    
+
 @item Compound initializers are supported:
 @example
     int *p = (int [])@{ 1, 2, 3 @};
@@ -515,14 +660,50 @@ works for structures and strings.
 @end example
 
 @noindent
-is the same as writing 
+is the same as writing
 @example
           double d = 4771840.0;
 @end example
 
-@item @code{inline} keyword is ignored.
+@item @code{inline} keyword is supported.  Static inline functions are
+emitted at the end of the compilation unit only if used.  The behavior
+of @code{extern inline} depends on @option{-fgnu89-inline} (@pxref{Invoke}).
 
 @item @code{restrict} keyword is ignored.
+@end itemize
+
+@section ISO C11 extensions
+
+TCC implements several features of the ISO C11 standard:
+
+@itemize
+
+@item @code{_Generic} keyword for type-generic expressions:
+@example
+    #define print_type(x) _Generic((x), \
+        int: "int", \
+        float: "float", \
+        default: "other")
+@end example
+
+@item @code{_Static_assert(expr, msg)} for compile-time assertions.
+The single-argument form @code{_Static_assert(expr)} (C23) is also
+supported.
+
+@item @code{_Atomic} type qualifier for atomic types.
+
+@item @code{_Thread_local} storage-class specifier for thread-local
+storage.  The GCC extension @code{__thread} is also supported.
+
+@item @code{_Noreturn} function specifier (equivalent to the
+@code{__attribute__((noreturn))} GNU extension).
+
+@item @code{_Alignas(n)} specifier to request alignment of a variable
+or structure field.
+
+@item @code{_Alignof} operator to query the alignment of a type or
+expression.
+
 @end itemize
 
 @section GNU C extensions
@@ -531,12 +712,12 @@ TCC implements some GNU C extensions:
 
 @itemize
 
-@item array designators can be used without '=': 
+@item array designators can be used without '=':
 @example
     int a[10] = @{ [0] 1, [5] 2, 3, 4 @};
 @end example
 
-@item Structure field designators can be a label: 
+@item Structure field designators can be a label:
 @example
     struct @{ int x, y; @} st = @{ x: 1, y: 1@};
 @end example
@@ -563,11 +744,26 @@ instead of
 @cindex packed attribute
 @cindex section attribute
 @cindex unused attribute
+@cindex cleanup attribute
+@cindex constructor attribute
+@cindex destructor attribute
+@cindex always_inline attribute
+@cindex alias attribute
+@cindex visibility attribute
+@cindex weak attribute
+@cindex noreturn attribute
 @cindex cdecl attribute
 @cindex stdcall attribute
+@cindex fastcall attribute
+@cindex thiscall attribute
 @cindex regparm attribute
+@cindex mode attribute
 @cindex dllexport attribute
+@cindex dllimport attribute
 @cindex nodecorate attribute
+@cindex format attribute
+@cindex used attribute
+@cindex nodebug attribute
 
 @item The keyword @code{__attribute__} is handled to specify variable or
 function attributes. The following attributes are supported:
@@ -584,18 +780,62 @@ name (name is a string containing the section name) instead of the default
 section.
 
   @item @code{unused}: specify that the variable or the function is unused.
+Accepted but currently ignored.
+
+  @item @code{cleanup(func)}: specify a function to be called automatically
+when the variable goes out of scope.  The cleanup function must take one
+parameter, a pointer to a type compatible with the variable, and return
+@code{void}.
+
+  @item @code{constructor}: specify that the function is to be executed automatically before @code{main()} is called.
+
+  @item @code{destructor}: specify that the function is to be executed automatically after @code{main()} returns or @code{exit()} is called.
+
+  @item @code{always_inline}: force inline expansion of the function.
+
+  @item @code{alias("target")}: declare the function or variable as an alias for symbol @code{target} (a string containing the target symbol name).
+
+  @item @code{visibility("mode")}: set symbol visibility. Supported modes are @code{"default"}, @code{"hidden"}, @code{"internal"}, and @code{"protected"}.
+
+  @item @code{weak}: declare the symbol as a weak symbol.
+
+  @item @code{noreturn}: specify that the function does not return to its caller.
 
   @item @code{cdecl}: use standard C calling convention (default).
 
   @item @code{stdcall}: use Pascal-like calling convention.
 
+  @item @code{fastcall}: use fastcall calling convention (i386 only).
+
+  @item @code{thiscall}: use C++-style thiscall calling convention (i386 only).
+
   @item @code{regparm(n)}: use fast i386 calling convention. @var{n} must be
 between 1 and 3. The first @var{n} function parameters are respectively put in
 registers @code{%eax}, @code{%edx} and @code{%ecx}.
 
-  @item @code{dllexport}: export function from dll/executable (win32 only)
+  @item @code{__mode__(mode)}: specify the data type size mode for integer
+variables or typedefs (supported modes: @code{__QI__}, @code{__HI__},
+@code{__SI__}, @code{__DI__}, @code{__word__}). The attribute is only
+taken into account when it is given with the declaration specifiers, that
+is before the declarator:
+@example
+    typedef __attribute__ ((__mode__(__QI__))) int int8_type;
+@end example
 
-  @item @code{nodecorate}: do not apply any decorations that would otherwise be applied when exporting function from dll/executable (win32 only)
+  @item @code{dllexport}: export function from dll/executable (win32 only).
+
+  @item @code{dllimport}: import function from dll/executable (win32 only).
+
+  @item @code{nodecorate}: do not apply any decorations that would otherwise be applied when exporting function from dll/executable (win32 only).
+
+  @item @code{nodebug}: suppress debug information for the symbol.
+
+  @item @code{format(archetype, fmt_idx, chk_idx)}: marks functions that
+take @code{printf}- or @code{scanf}-style format strings.  Accepted but
+currently ignored (not checked by TCC).
+
+  @item @code{used}: indicates that the symbol must be retained even if it
+appears unreferenced.  Accepted but currently ignored.
 
   @end itemize
 
@@ -608,7 +848,7 @@ Here are some examples:
 align variable @code{a} to 8 bytes and put it in section @code{.mysection}.
 
 @example
-    int my_add(int a, int b) __attribute__ ((section(".mycodesection"))) 
+    int my_add(int a, int b) __attribute__ ((section(".mycodesection")))
     @{
         return a + b;
     @}
@@ -616,6 +856,17 @@ align variable @code{a} to 8 bytes and put it in section @code{.mysection}.
 
 @noindent
 generate function @code{my_add} in section @code{.mycodesection}.
+
+@example
+    void free_ptr(void *p) @{ free(*(void **)p); @}
+    void foo(void) @{
+        char *buf __attribute__((cleanup(free_ptr))) = malloc(1024);
+        /* buf is freed automatically when leaving foo */
+    @}
+@end example
+
+@noindent
+automatically call @code{free_ptr(&buf)} when variable @code{buf} goes out of scope.
 
 @item GNU style variadic macros:
 @example
@@ -625,19 +876,34 @@ generate function @code{my_add} in section @code{.mycodesection}.
     dprintf("one arg %d\n", 1);
 @end example
 
-@item @code{__FUNCTION__} is interpreted as C99 @code{__func__} 
+@item @code{__FUNCTION__} is interpreted as C99 @code{__func__}
 (so it has not exactly the same semantics as string literal GNUC
 where it is a string literal).
 
-@item The @code{__alignof__} keyword can be used as @code{sizeof} 
+@item The @code{__alignof__} keyword can be used as @code{sizeof}
 to get the alignment of a type or an expression.
 
-@item The @code{typeof(x)} returns the type of @code{x}. 
+@item The @code{typeof(x)} returns the type of @code{x}.
 @code{x} is an expression or a type.
 
-@item Computed gotos: @code{&&label} returns a pointer of type 
+@item Computed gotos: @code{&&label} returns a pointer of type
 @code{void *} on the goto label @code{label}. @code{goto *expr} can be
 used to jump on the pointer resulting from @code{expr}.
+
+@item Statement expressions: a compound statement enclosed in
+parentheses may appear as an expression.  The value of the expression is
+the value of the last statement.  This is commonly used in macros:
+@example
+    #define max(a,b) (@{ int _a = (a), _b = (b); _a > _b ? _a : _b; @})
+@end example
+
+@item The @code{__label__} keyword declares local labels within a block:
+@example
+    @{ __label__ done; /* ... */ done: ; @}
+@end example
+
+@item The @code{__extension__} keyword suppresses warnings for GNU
+extensions in strict compilation modes.
 
 @item Inline assembly with asm instruction:
 @cindex inline assembly
@@ -667,12 +933,65 @@ return (to);
 @cindex gas
 TCC includes its own x86 inline assembler with a @code{gas}-like (GNU
 assembler) syntax. No intermediate files are generated. GCC 3.x named
-operands are supported.
+operands are supported.  @code{asm goto} is also supported for
+control-flow transfer to C labels:
+@example
+  asm goto ("jmp %l[label]" : : : : label);
+@end example
 
-@item @code{__builtin_types_compatible_p()} and @code{__builtin_constant_p()} 
-are supported.
+@item The following GCC built-in functions are supported:
+  @itemize
+  @item @code{__builtin_types_compatible_p(type1, type2)}: returns 1 if @code{type1} is compatible with @code{type2}, 0 otherwise.
+  @item @code{__builtin_constant_p(exp)}: returns 1 if @code{exp} evaluates to a compile-time constant, 0 otherwise.
+  @item @code{__builtin_choose_expr(const_expr, exp1, exp2)}: evaluates to @code{exp1} if @code{const_expr} is non-zero, otherwise @code{exp2}.
+  @item @code{__builtin_expect(expr, expected)}: branch prediction hint (evaluates to @code{expr}).
+  @item @code{__builtin_unreachable()}: informs the compiler that the code location cannot be reached.
+  @item @code{__builtin_frame_address(level)}: returns the frame pointer address for stack level @code{level}.
+  @item @code{__builtin_return_address(level)}: returns the return address for stack level @code{level}.
+  @item @code{__builtin_offsetof(type, field)}: returns the byte offset of @code{field} within structure @code{type}.
+  @item Bit manipulation built-ins: @code{__builtin_clz},
+@code{__builtin_ctz}, @code{__builtin_ffs}, @code{__builtin_popcount},
+@code{__builtin_parity}, @code{__builtin_clrsb} (and their @code{l} /
+@code{ll} type variants).
+  @item Variadic argument handling built-ins: @code{__builtin_va_start}, @code{__builtin_va_arg}, @code{__builtin_va_copy}, @code{__builtin_va_end}.
+  @item Memory and string built-ins (mapped to libc):
+@code{__builtin_memcpy}, @code{__builtin_memmove},
+@code{__builtin_memset}, @code{__builtin_memcmp},
+@code{__builtin_strlen}, @code{__builtin_strcpy},
+@code{__builtin_strncpy}, @code{__builtin_strcmp},
+@code{__builtin_strncmp}, @code{__builtin_strcat},
+@code{__builtin_strncat}, @code{__builtin_strchr},
+@code{__builtin_strrchr}, @code{__builtin_strdup},
+@code{__builtin_malloc}, @code{__builtin_realloc},
+@code{__builtin_calloc}, @code{__builtin_memalign},
+@code{__builtin_free}, @code{__builtin_alloca},
+@code{__builtin_abort}.
+  @item Atomic built-ins: @code{__atomic_store},
+@code{__atomic_load}, @code{__atomic_exchange},
+@code{__atomic_compare_exchange}, @code{__atomic_fetch_add},
+@code{__atomic_fetch_sub}, @code{__atomic_fetch_or},
+@code{__atomic_fetch_xor}, @code{__atomic_fetch_and},
+@code{__atomic_fetch_nand}, and their reverse
+@code{__atomic_add_fetch} variants.
+  @end itemize
 
-@item @code{#pragma pack} is supported for win32 compatibility.
+@item Pragmas supported by TinyCC:
+  @itemize
+  @item @code{#pragma pack(n)}, @code{#pragma pack()}, @code{#pragma pack(push)}, @code{#pragma pack(push, n)}, @code{#pragma pack(pop)}: set structure alignment or manipulate the packing alignment stack.
+  @item @code{#pragma push_macro("MACRO")} and @code{#pragma pop_macro("MACRO")}: push and pop macro definitions to/from a macro stack.
+  @item @code{#pragma once}: ensure the header file is included only once during compilation.
+  @item @code{#pragma comment(lib, "libname")}: specify a library to link automatically.
+  @item @code{#pragma comment(option, "flags")}: pass command line options directly within source code.
+  @end itemize
+
+@item Preprocessor features:
+  @itemize
+  @item @code{#include_next <file>}: include the next file of the same name in the header search path order.
+  @item @code{#warning "message"}: emit a preprocessor warning message.
+  @item GNU empty variadic macro argument pasting: @code{, ##__VA_ARGS__} strips the leading comma when @code{__VA_ARGS__} is empty.
+  @item @code{__has_include(<file>)} and @code{__has_include("file")}: test whether a header file exists.  Can be used in @code{#if} / @code{#elif} preprocessor conditions.
+  @item @code{__has_include_next(<file>)}: like @code{__has_include} but searches in the next include path, for use in wrapper headers.
+  @end itemize
 
 @end itemize
 
@@ -710,9 +1029,12 @@ same as C.
 
 @item C and C++ comments are supported.
 
-@item Identifiers are the same as C, so you cannot use '.' or '$'.
+@item Identifiers are mostly the same as C.  The dot (@code{.}) is
+accepted as an identifier character in assembler code.  The dollar
+sign (@code{$}) is accepted with @option{-fdollars-in-identifiers},
+except in inline assembly on targets other than x86-64 and RISC-V 64.
 
-@item Only 32 bit integer numbers are supported.
+@item 64-bit integer numbers are supported.
 
 @end itemize
 
@@ -727,15 +1049,16 @@ same as C.
 @item Binary operators in decreasing priority order:
 
 @enumerate
-@item *, /, %
+@item *, /, %, <<, >>
 @item &, |, ^
 @item +, -
 @end enumerate
 
-@item A value is either an absolute number or a label plus an offset. 
-All operators accept absolute values except '+' and '-'. '+' or '-' can be
-used to add an offset to a label. '-' supports two labels only if they
-are the same or if they are both defined and in the same section.
+@item A value is either an absolute number or a label plus an offset.
+Only the @code{+} and @code{-} operators can be used with labels (to
+add or subtract an offset).  All other operators require absolute
+values.  @code{-} supports two labels only if they are the same or if
+they are both defined and in the same section.
 
 @end itemize
 
@@ -745,7 +1068,7 @@ are the same or if they are both defined and in the same section.
 
 @item All labels are considered as local, except undefined ones.
 
-@item Numeric labels can be used as local @code{gas}-like labels. 
+@item Numeric labels can be used as local @code{gas}-like labels.
 They can be defined several times in the same source. Use 'b'
 (backward) or 'f' (forward) as suffix to reference them:
 
@@ -782,6 +1105,14 @@ They can be defined several times in the same source. Use 'b'
 @cindex string directive
 @cindex asciz directive
 @cindex ascii directive
+@cindex p2align directive
+@cindex balign directive
+@cindex pushsection directive
+@cindex popsection directive
+@cindex set directive
+@cindex weak directive
+@cindex hidden directive
+@cindex type directive
 
 All directives are preceded by a '.'. The following directives are
 supported:
@@ -808,20 +1139,49 @@ supported:
 @item .string string[,...]
 @item .asciz string[,...]
 @item .ascii string[,...]
+@item .p2align n
+@item .balign n[,value]
+@item .pushsection section
+@item .popsection
+@item .set symbol, expr
+@item .weak symbol
+@item .hidden symbol
+@item .type symbol, type
 @end itemize
 
 @section X86 Assembler
 @cindex assembler
 
-All X86 opcodes are supported. Only ATT syntax is supported (source
-then destination operand order). If no size suffix is given, TinyCC
-tries to guess it from the operand sizes.
+All i386 opcodes are supported.  Most common x86_64 opcodes are
+supported, including MMX and a subset of the SSE instruction set; SSE2
+support is limited to a couple of instructions.  Only AT&T syntax is
+supported (source then destination operand order).  If no size suffix is
+given, TinyCC tries to guess it from the operand sizes.  Note that more
+recent extensions such as AVX, AVX2, and AVX-512 are @emph{not}
+supported.
 
-Currently, MMX opcodes are supported but not SSE ones.
+x86_64 adds 64-bit operand support (the @code{q} suffix), additional
+registers (@code{%r8}--@code{%r15}), and instructions such as
+@code{cqto}, @code{pushfq}, @code{popfq}, @code{bswapq},
+@code{cmpxchg16b}, @code{movnti}, @code{prefetch*}, @code{lfence},
+@code{mfence}, @code{sfence}, and @code{endbr64} (Control-Flow
+Enforcement).
+
+@section ARM, ARM64 and RISC-V Assemblers
+@cindex assembler
+
+TCC also includes assemblers for the ARM (32-bit), ARM64 (AArch64) and
+RISC-V 64 targets.  These handle the same @file{.S} and @file{.s} file
+extensions and support the same inline assembly mechanism as the x86
+assemblers.
 
 @node linker
 @chapter TinyCC Linker
 @cindex linker
+
+TCC includes its own linker and can directly output executables,
+shared libraries, and object files without relying on an external
+linker.
 
 @section ELF file generation
 @cindex ELF
@@ -839,18 +1199,80 @@ done on the object and library list, so the order in which object files and
 libraries are specified is important (same constraint as GNU ld). No grouping
 options (@option{--start-group} and @option{--end-group}) are supported.
 
+TCC generates standard ELF sections including @code{.text}, @code{.data},
+@code{.data.ro} (read only data), @code{.bss}, @code{.plt}, @code{.got},
+and @code{.eh_frame}.
+Shared libraries additionally get @code{.gnu.hash}, @code{.gnu.version},
+@code{.dynamic}, and relocation sections (@code{.rela.got},
+@code{.rela.plt}).
+
+@cindex section boundary symbols
+@cindex __start_SEC
+@cindex __stop_SEC
+TCC automatically defines @emph{section boundary symbols}
+@code{__start_SEC} and @code{__stop_SEC} for every allocated section
+whose name, without the leading dot, is a valid C identifier.  These are
+useful for iterating over section contents from C code:
+
+@example
+extern char __start_text[], __stop_text[];
+size_t text_size = __stop_text - __start_text;
+@end example
+
 @section ELF file loader
+@cindex ELF loader
 
-TCC can load ELF object files, archives (.a files) and dynamic
-libraries (.so).
+TCC can load ELF object files, archives (@code{.a} files) and dynamic
+libraries (@code{.so}).
 
-@section PE-i386 file generation
+@section PE file generation
+@cindex PE
 @cindex PE-i386
+@cindex PE32+
 
-TCC for Windows supports the native Win32 executable file format (PE-i386).  It
-generates EXE files (console and gui) and DLL files.
+TCC for Windows supports the native Win32 executable file format
+(PE-i386).  It generates PE32 (i386) and PE32+ (x86-64) executables,
+as well as DLL files.  TCC also supports PE with ARM64 machine type,
+including @code{.pdata} unwind information for structured exception
+handling.
 
-For usage on Windows, see also tcc-win32.txt.
+PE executables can target several subsystems (see @ref{Invoke,, the
+@option{-Wl,-subsystem} option}); which ones are available depends on
+the target.  Standard PE sections are emitted (@code{.text},
+@code{.data}, @code{.rdata}, @code{.bss}, @code{.rsrc}, @code{.pdata},
+@code{.idata}, @code{.reloc}); the export directory goes to
+@code{.rdata}.
+
+@section Mach-O file generation
+@cindex Mach-O
+@cindex macOS
+
+TCC on macOS produces Mach-O executables and dynamic libraries
+(@code{.dylib}) for x86-64 and ARM64 (AArch64).  The files TCC writes
+always contain a single architecture.
+
+TCC can load Mach-O dynamic libraries and text-based stub files
+(@code{.tbd}) for linking against system frameworks.  Fat (universal)
+libraries are accepted, the slice matching the target being selected.
+
+Mach-O output uses dyld chained fixups on both x86-64 and ARM64.
+
+@section Binary and COFF output
+@cindex binary output
+@cindex COFF
+
+In addition to the platform-native container formats, TCC supports:
+
+@table @code
+@item Binary image
+Raw binary output with no container headers.  Selected via
+@code{-Wl,--oformat=binary} (@pxref{Invoke}).  Useful for bootloaders,
+kernels, and embedded targets.  Only valid for executable output.
+
+@item COFF
+The TMS320C67xx (C67) target outputs COFF executables. Object files are
+always written as ELF.
+@end table
 
 @section GNU Linker Scripts
 @cindex scripts, linker
@@ -915,6 +1337,24 @@ Here are some examples of caught errors:
 @}
 @end example
 
+@item Out of bounds-error in alloca'ed data:
+@example
+@{
+    char *p = alloca(10);
+    memset(p, 'a', 11);
+@}
+@end example
+
+@item Out of bounds-error in variable length arrays:
+@example
+@{
+    int tab[n];
+    for(i=0;i<n+1;i++) @{
+        sum += tab[i];
+    @}
+@}
+@end example
+
 @item Access of freed memory:
 @example
 @{
@@ -936,7 +1376,28 @@ Here are some examples of caught errors:
     free(tab);
 @}
 @end example
+
+@item Overlapping regions in memory and string functions:
+@example
+@{
+    char tab[10];
+    memcpy(tab, tab + 1, 5);
+@}
+@end example
 @end table
+
+The checks are not limited to the code generated by TCC: the bound
+checking runtime also replaces the memory allocation functions
+(@code{malloc}, @code{calloc}, @code{realloc}, @code{memalign},
+@code{free}) and the most common memory and string functions
+(@code{memcpy}, @code{memmove}, @code{memset}, @code{memcmp},
+@code{strlen}, @code{strcpy}, @code{strncpy}, @code{strcmp},
+@code{strncmp}, @code{strcat}, @code{strncat}, @code{strchr},
+@code{strrchr}, @code{strdup}) by versions checking their arguments.
+Regions created by @code{alloca}, by variable length arrays and (except
+on Windows) by @code{mmap} are tracked as well.  @code{setjmp} and
+@code{longjmp} (and @code{sigsetjmp} and @code{siglongjmp}) are handled
+so that the regions of the abandoned stack frames are released.
 
 TCC defines @code{__TCC_BCHECK__} if activated.
 
@@ -959,8 +1420,10 @@ checking from usercode (see below).
 
 Notes:
 @itemize
-@item Only available on i386 (linux and windows), x86_64 (linux and windows),
-arm, arm64 and riscv64 for the moment.
+@item Available for all targets and platforms supported by TCC, except
+the TMS320C67xx target. The checking code is only built for the native
+compiler, and can be left out with @option{--config-bcheck=no} at
+configure time.
 @item The generated code is slower and bigger.
 @item The bound checking code is not included in shared libraries. The main
 executable should always be compiled with the @option{-b}.
@@ -1002,14 +1465,34 @@ For more information about the ideas behind this method, see
 @chapter The @code{libtcc} library
 
 The @code{libtcc} library enables you to use TCC as a backend for
-dynamic code generation. 
+dynamic code generation.
 
 Read the @file{libtcc.h} to have an overview of the API. Read
-@file{libtcc_test.c} to have a very simple example.
+@file{tests/libtcc_test.c} to have a very simple example.
 
 The idea consists in giving a C string containing the program you want
 to compile directly to @code{libtcc}. Then you can access to any global
 symbol (function or variable) defined.
+
+A typical session creates a compilation state with @code{tcc_new()},
+selects the output type with @code{tcc_set_output_type()} (this must be
+done before any compilation), passes command line options with
+@code{tcc_set_options()} and adds input with @code{tcc_compile_string()}
+or @code{tcc_add_file()}.  The result is then either written to a file
+with @code{tcc_output_file()}, run with @code{tcc_run()}, or relocated in
+memory with @code{tcc_relocate()} so that the compiled functions and
+variables can be retrieved with @code{tcc_get_symbol()}.
+@code{tcc_output_file()} and @code{tcc_run()} do the relocation
+themselves, so @code{tcc_relocate()} must not be called before them.
+Symbols of the host program are made visible to the compiled code with
+@code{tcc_add_symbol()}.  The state and everything it allocated is
+released by @code{tcc_delete()}.
+
+Errors and warnings go to @code{stderr} unless a callback is installed
+with @code{tcc_set_error_func()}. Several states may be used at the same
+time from different threads; see @file{tests/libtcc_test_mt.c}, which
+also shows how @code{tcc_setjmp()} catches the runtime exceptions of code
+compiled with @option{-b} or @option{-bt}.
 
 @node devel
 @chapter Developer's guide
@@ -1021,8 +1504,14 @@ it if you do not intend to modify the TCC code.
 
 The @code{BufferedFile} structure contains the context needed to read a
 file, including the current line number. @code{tcc_open()} opens a new
-file and @code{tcc_close()} closes it. @code{inp()} returns the next
-character.
+file and @code{tcc_close()} closes it. @code{tcc_open_bf()} builds the
+same context for a memory buffer instead of a file; it is used for the
+@option{-D} options of the command line and for token pasting.
+
+The contexts are stacked through the @code{BufferedFile.prev} field, so
+the current file is always the innermost @code{#include}.
+@code{next_c()} returns the next character and calls @code{handle_eob()}
+to refill the buffer when it is exhausted.
 
 @section Lexer
 
@@ -1030,10 +1519,12 @@ character.
 file. @code{next_nomacro()} reads the next token without macro
 expansion.
 
-@code{tok} contains the current token (see @code{TOK_xxx})
-constants. Identifiers and keywords are also keywords. @code{tokc}
-contains additional infos about the token (for example a constant value
-if number or string token).
+@code{tok} contains the current token (see @code{TOK_xxx}
+constants). Identifiers and keywords are also tokens: they are entered
+in the @code{table_ident} array of @code{TokenSym} structures, so a
+string is never needed to designate them. @code{tokc} contains
+additional infos about the token (for example a constant value if number
+or string token).
 
 @section Parser
 
@@ -1042,94 +1533,111 @@ except:
 
 @itemize
 
-@item For initialized arrays with unknown size, a first pass 
+@item For initialized arrays with unknown size, a first pass
 is done to count the number of elements.
 
-@item For architectures where arguments are evaluated in 
+@item For architectures where arguments are evaluated in
 reverse order, a first pass is done to reverse the argument order.
+
+@item For inline functions, the body is recorded as a token string and
+parsed again where the function is really needed.
 
 @end itemize
 
 @section Types
 
-The types are stored in a single 'int' variable. It was chosen in the
-first stages of development when tcc was much simpler. Now, it may not
-be the best solution.
+The types are stored in a @code{CType} structure. @code{CType.t} is a
+single 'int' holding the basic type, the type modifiers and, during
+parsing, the storage class. @code{CType.ref} points to the @code{Sym}
+describing the referenced type: the pointed type for pointers, the
+element type for arrays, the return type and the parameters for
+functions, and the fields for structures and unions.
 
 @example
-#define VT_INT        0  /* integer type */
-#define VT_BYTE       1  /* signed byte type */
-#define VT_SHORT      2  /* short type */
-#define VT_VOID       3  /* void type */
-#define VT_PTR        4  /* pointer */
-#define VT_ENUM       5  /* enum definition */
-#define VT_FUNC       6  /* function type */
-#define VT_STRUCT     7  /* struct/union definition */
-#define VT_FLOAT      8  /* IEEE float */
-#define VT_DOUBLE     9  /* IEEE double */
-#define VT_LDOUBLE   10  /* IEEE long double */
-#define VT_BOOL      11  /* ISOC99 boolean type */
-#define VT_LLONG     12  /* 64 bit integer */
-#define VT_LONG      13  /* long integer (NEVER USED as type, only
-                            during parsing) */
-#define VT_BTYPE      0x000f /* mask for basic type */
-#define VT_UNSIGNED   0x0010  /* unsigned type */
-#define VT_ARRAY      0x0020  /* array type (also has VT_PTR) */
-#define VT_VLA        0x20000 /* VLA type (also has VT_PTR and VT_ARRAY) */
-#define VT_BITFIELD   0x0040  /* bitfield modifier */
-#define VT_CONSTANT   0x0800  /* const modifier */
-#define VT_VOLATILE   0x1000  /* volatile modifier */
-#define VT_DEFSIGN    0x2000  /* signed type */
+#define VT_BTYPE       0x000f  /* mask for basic type */
+#define VT_VOID             0  /* void type */
+#define VT_BYTE             1  /* signed byte type */
+#define VT_SHORT            2  /* short type */
+#define VT_INT              3  /* integer type */
+#define VT_LLONG            4  /* 64 bit integer */
+#define VT_PTR              5  /* pointer */
+#define VT_FUNC             6  /* function type */
+#define VT_STRUCT           7  /* struct/union definition */
+#define VT_FLOAT            8  /* IEEE float */
+#define VT_DOUBLE           9  /* IEEE double */
+#define VT_LDOUBLE         10  /* IEEE long double */
+#define VT_BOOL            11  /* ISOC99 boolean type */
+#define VT_QLONG           13  /* 128-bit integer, only for the x86-64 ABI */
+#define VT_QFLOAT          14  /* 128-bit float, only for the x86-64 ABI */
 
-#define VT_STRUCT_SHIFT 18   /* structure/enum name shift (14 bits left) */
+#define VT_UNSIGNED    0x0010  /* unsigned type */
+#define VT_DEFSIGN     0x0020  /* explicitly signed or unsigned */
+#define VT_ARRAY       0x0040  /* array type (also has VT_PTR) */
+#define VT_BITFIELD    0x0080  /* bitfield modifier */
+#define VT_CONSTANT    0x0100  /* const modifier */
+#define VT_VOLATILE    0x0200  /* volatile modifier */
+#define VT_VLA         0x0400  /* VLA type (also has VT_PTR and VT_ARRAY) */
+#define VT_LONG        0x0800  /* long type (also has VT_INT rsp. VT_LLONG) */
+
+#define VT_STRUCT_SHIFT 20     /* shift for bitfield shift values */
 @end example
 
-When a reference to another type is needed (for pointers, functions and
-structures), the @code{32 - VT_STRUCT_SHIFT} high order bits are used to
-store an identifier reference.
-
 The @code{VT_UNSIGNED} flag can be set for chars, shorts, ints and long
-longs.
+longs. @code{VT_DEFSIGN} tells whether the signedness was written
+explicitly; @code{compare_types()} only looks at it for @code{char}, the
+one type whose default signedness differs from an explicit one.
 
 Arrays are considered as pointers @code{VT_PTR} with the flag
-@code{VT_ARRAY} set. Variable length arrays are considered as special
-arrays and have flag @code{VT_VLA} set instead of @code{VT_ARRAY}.
+@code{VT_ARRAY} set. Variable length arrays have @code{VT_VLA} set in
+addition to @code{VT_PTR} and @code{VT_ARRAY}.
 
-The @code{VT_BITFIELD} flag can be set for chars, shorts, ints and long
-longs. If it is set, then the bitfield position is stored from bits
-VT_STRUCT_SHIFT to VT_STRUCT_SHIFT + 5 and the bit field size is stored
-from bits VT_STRUCT_SHIFT + 6 to VT_STRUCT_SHIFT + 11.
+@code{VT_LONG} is a modifier, not a basic type: @code{long} is
+@code{VT_LONG | VT_INT} or @code{VT_LONG | VT_LLONG} depending on the
+target. It does not change the generated code, but it is part of the type
+so that @code{long} stays distinct from @code{int} rsp. @code{long long}
+for type compatibility, for @code{_Generic} and in diagnostics.
 
-@code{VT_LONG} is never used except during parsing.
+If @code{VT_BITFIELD} is set, then the bitfield position is stored in the
+6 bits starting at @code{VT_STRUCT_SHIFT} and the bitfield size in the 6
+bits above it (macros @code{BIT_POS()} and @code{BIT_SIZE()}).
+
+The same high order bits also distinguish types which share a basic
+type: @code{VT_UNION} is a @code{VT_STRUCT} with 1 there, @code{VT_ENUM}
+and @code{VT_ENUM_VAL} mark an integral type which is really an enum or
+an enum constant, and @code{VT_ASM} marks a symbol which was created by
+the assembler.
 
 During parsing, the storage of an object is also stored in the type
 integer:
 
 @example
-#define VT_EXTERN  0x00000080  /* extern definition */
-#define VT_STATIC  0x00000100  /* static variable */
-#define VT_TYPEDEF 0x00000200  /* typedef definition */
-#define VT_INLINE  0x00000400  /* inline definition */
-#define VT_IMPORT  0x00004000  /* win32: extern data imported from dll */
-#define VT_EXPORT  0x00008000  /* win32: data exported from dll */
-#define VT_WEAK    0x00010000  /* win32: data exported from dll */
+#define VT_EXTERN  0x00001000  /* extern definition */
+#define VT_STATIC  0x00002000  /* static variable */
+#define VT_TYPEDEF 0x00004000  /* typedef definition */
+#define VT_INLINE  0x00008000  /* inline definition */
+#define VT_TLS     0x00010000  /* thread-local storage */
 @end example
+
+The declaration properties which do not fit in the type integer
+(alignment, packing, visibility, weak, dllimport/dllexport, calling
+convention, @dots{}) are kept in the @code{SymAttr} and @code{FuncAttr}
+bitfields of the @code{Sym} structure.
 
 @section Symbols
 
-All symbols are stored in hashed symbol stacks. Each symbol stack
-contains @code{Sym} structures.
+All symbols are stored in symbol stacks, chained through the
+@code{Sym.prev} field. Each symbol stack contains @code{Sym} structures.
 
 @code{Sym.v} contains the symbol name (remember
 an identifier is also a token, so a string is never necessary to store
-it). @code{Sym.t} gives the type of the symbol. @code{Sym.r} is usually
+it). @code{Sym.type} gives the type of the symbol. @code{Sym.r} is usually
 the register in which the corresponding variable is stored. @code{Sym.c} is
 usually a constant associated to the symbol like its address for normal
 symbols, and the number of entries for symbols representing arrays.
 Variable length array types use @code{Sym.c} as a location on the stack
 which holds the runtime sizeof for the type.
 
-Four main symbol stacks are defined:
+Five main symbol stacks are defined:
 
 @table @code
 
@@ -1143,9 +1651,9 @@ for the global variables, functions and types.
 for the local variables, functions and types.
 
 @item global_label_stack
-for the local labels (for @code{goto}).
+for the function local labels (for @code{goto}).
 
-@item label_stack
+@item local_label_stack
 for GCC block local labels (see the @code{__label__} keyword).
 
 @end table
@@ -1154,13 +1662,18 @@ for GCC block local labels (see the @code{__label__} keyword).
 stack. If no local symbol stack is active, it is added in the global
 symbol stack.
 
-@code{sym_pop(st,b)} pops symbols from the symbol stack @var{st} until
-the symbol @var{b} is on the top of stack. If @var{b} is NULL, the stack
-is emptied.
+@code{sym_pop(st,b,keep)} pops symbols from the symbol stack @var{st}
+until the symbol @var{b} is on the top of stack. If @var{b} is NULL, the
+stack is emptied. The symbols are always made invisible to the parser,
+but if @var{keep} is non zero they are not freed, which is needed as long
+as the recorded body of an inline function may still refer to them.
 
-@code{sym_find(v)} return the symbol associated to the identifier
-@var{v}. The local stack is searched first from top to bottom, then the
-global stack.
+@code{sym_find(v)} returns the symbol associated to the identifier
+@var{v}. No stack is searched: each @code{TokenSym} of
+@code{table_ident} directly holds the innermost visible @code{Sym} for
+its identifier, and @code{sym_pop()} restores the previous one. Tags of
+structures, unions and enums live in their own namespace and are looked
+up with @code{struct_find()}, labels with @code{label_find()}.
 
 @section Sections
 
@@ -1175,13 +1688,26 @@ The following sections are predefined:
 
 @item text_section
 is the section containing the generated code. @var{ind} contains the
-current position in the code section.
+current position in the code section. @var{cur_text_section} is the
+section the code of the current function goes to, which is another
+section when the function has a @code{section} attribute.
 
 @item data_section
 contains initialized data
 
+@item rodata_section
+contains read only data: the literal strings and the objects declared
+@code{const}
+
 @item bss_section
 contains uninitialized data
+
+@item common_section
+receives the tentative definitions when @option{-fcommon} is given. Its
+symbols are @code{SHN_COMMON}, with the alignment in the symbol value,
+and @code{resolve_common_syms()} allocates them in @code{bss_section} at
+link time. By default TCC does not use common symbols and puts tentative
+definitions directly in @code{bss_section}
 
 @item bounds_section
 @itemx lbounds_section
@@ -1189,11 +1715,24 @@ are used when bound checking is activated
 
 @item stab_section
 @itemx stabstr_section
-are used when debugging is active to store debug information
+are used when debugging is active and stabs debug information is selected
+
+@item dwarf_info_section
+@itemx dwarf_abbrev_section
+@itemx dwarf_line_section
+@itemx dwarf_aranges_section
+@itemx dwarf_str_section
+@itemx dwarf_line_str_section
+are used when debugging is active and dwarf debug information is
+selected, which is the default on macOS and Android and can be enabled
+elsewhere with the @option{--config-dwarf} option of @command{configure}
+
+@item tcov_section
+contains the counters used by @option{-ftest-coverage}
 
 @item symtab_section
-@itemx strtab_section
-contain the exported symbols (currently only used for debugging).
+contains the symbols and their names (in @code{symtab_section->link}).
+It is needed for linking, not only for debugging.
 
 @end table
 
@@ -1211,8 +1750,12 @@ The TCC code generator is register based. Optimization is only done at
 the expression level. No intermediate representation of expression is
 kept except the current values stored in the @emph{value stack}.
 
-On x86, three temporary registers are used. When more registers are
-needed, one register is spilled into a new temporary variable on the stack.
+Each target declares the registers the code generator may use in
+@code{reg_classes[]}, and @code{NB_REGS} gives their number: five on
+i386 (@code{eax}, @code{ecx}, @code{edx}, @code{ebx}, which is only
+usable when @code{USE_EBX} is set, and the top of the x87 stack), 25 on
+x86-64, 28 on arm64. When more registers are needed, one register is
+spilled into a new temporary variable on the stack.
 
 @subsection The value stack
 @cindex value stack, introduction
@@ -1221,28 +1764,32 @@ When an expression is parsed, its value is pushed on the value stack
 (@var{vstack}). The top of the value stack is @var{vtop}. Each value
 stack entry is the structure @code{SValue}.
 
-@code{SValue.t} is the type. @code{SValue.r} indicates how the value is
+@code{SValue.type} is the type. @code{SValue.r} indicates how the value is
 currently stored in the generated code. It is usually a CPU register
 index (@code{REG_xxx} constants), but additional values and flags are
 defined:
 
 @example
-#define VT_CONST     0x00f0
-#define VT_LLOCAL    0x00f1
-#define VT_LOCAL     0x00f2
-#define VT_CMP       0x00f3
-#define VT_JMP       0x00f4
-#define VT_JMPI      0x00f5
-#define VT_LVAL      0x0100
-#define VT_SYM       0x0200
-#define VT_MUSTCAST  0x0400
-#define VT_MUSTBOUND 0x0800
-#define VT_BOUNDED   0x8000
-#define VT_LVAL_BYTE     0x1000
-#define VT_LVAL_SHORT    0x2000
-#define VT_LVAL_UNSIGNED 0x4000
-#define VT_LVAL_TYPE     (VT_LVAL_BYTE | VT_LVAL_SHORT | VT_LVAL_UNSIGNED)
+#define VT_VALMASK   0x003f  /* mask for value location, register or: */
+#define VT_CONST     0x0030  /* constant in vc */
+#define VT_LLOCAL    0x0031  /* lvalue, offset on stack */
+#define VT_LOCAL     0x0032  /* offset on stack */
+#define VT_CMP       0x0033  /* the value is stored in processor flags */
+#define VT_JMP       0x0034  /* value is the consequence of jmp true (even) */
+#define VT_JMPI      0x0035  /* value is the consequence of jmp false (odd) */
+#define VT_LVAL      0x0100  /* var is an lvalue */
+#define VT_SYM       0x0200  /* a symbol value is added */
+#define VT_MUSTCAST  0x0C00  /* value must be casted to be correct */
+#define VT_NONCONST  0x1000  /* VT_CONST, but not an (C standard) integer
+                                constant expression */
+#define VT_MUSTBOUND 0x4000  /* bound checking must be done before
+                                dereferencing value */
+#define VT_BOUNDED   0x8000  /* value is bounded */
 @end example
+
+@code{SValue.r2} holds the second register when a value needs two of
+them, as for a @code{long long} on a 32 bit target. It is set to
+@code{VT_CONST} when it is not used.
 
 @table @code
 
@@ -1257,10 +1804,14 @@ stack.
 @item VT_CMP
 indicates that the value is actually stored in the CPU flags (i.e. the
 value is the consequence of a test). The value is either 0 or 1. The
-actual CPU flags used is indicated in @code{SValue.c.i}. 
+comparison which set the flags is kept in @code{SValue.cmp_op};
+@code{SValue.cmp_r} is left to the code generator, which uses it to
+remember where the compared values are on the targets that have no flags
+register.
 
 If any code is generated which destroys the CPU flags, this value MUST be
-put in a normal register.
+put in a normal register. @code{vcheck_cmp()} does it, and the functions
+which manipulate the value stack call it before generating code.
 
 @item VT_JMP
 @itemx VT_JMPI
@@ -1268,7 +1819,9 @@ indicates that the value is the consequence of a conditional jump. For VT_JMP,
 it is 1 if the jump is taken, 0 otherwise. For VT_JMPI it is inverted.
 
 These values are used to compile the @code{||} and @code{&&} logical
-operators.
+operators. The jumps which still have to be resolved are chained in
+@code{SValue.jtrue} and @code{SValue.jfalse}; @code{gvtst()} adds to
+these lists and generates the final test.
 
 If any code is generated, this value MUST be put in a normal
 register. Otherwise, the generated code won't be executed if the jump is
@@ -1277,16 +1830,10 @@ taken.
 @item VT_LVAL
 is a flag indicating that the value is actually an lvalue (left value of
 an assignment). It means that the value stored is actually a pointer to
-the wanted value. 
+the wanted value.
 
 Understanding the use @code{VT_LVAL} is very important if you want to
 understand how TCC works.
-
-@item VT_LVAL_BYTE
-@itemx VT_LVAL_SHORT
-@itemx VT_LVAL_UNSIGNED
-if the lvalue has an integer type, then these flags give its real
-type. The type alone is not enough in case of cast optimisations.
 
 @item VT_LLOCAL
 is a saved lvalue on the stack. @code{VT_LVAL} must also be set with
@@ -1296,10 +1843,19 @@ architecture-specific calling convention.
 
 @item VT_MUSTCAST
 indicates that a cast to the value type must be performed if the value
-is used (lazy casting).
+is used (lazy casting), as for a @code{char} or a @code{short} kept in an
+integer register. It is a two bit field, so that the width the value has
+to be casted from (@code{int} or @code{long long}) is remembered too.
 
 @item VT_SYM
 indicates that the symbol @code{SValue.sym} must be added to the constant.
+
+@item VT_NONCONST
+marks a @code{VT_CONST} value which only became constant through
+optimization. Such a value is folded like any other constant, but it is
+not a constant expression in the sense of the C standard: it is rejected
+where the language requires one (@code{expr_const64()}) and it is not a
+null pointer constant.
 
 @item VT_MUSTBOUND
 @itemx VT_BOUNDED
@@ -1319,6 +1875,11 @@ previous @var{vtop} in a safe storage.
 code (for example if stacked floating point registers are used as on
 x86).
 
+@code{vdup()}, @code{vswap()}, @code{vrotb()} and @code{vrott()}
+duplicate, exchange and rotate the topmost entries. They all go through
+@code{vcheck_cmp()} first, because a @code{VT_CMP} value may only stay on
+top of the stack.
+
 The @code{gv(rc)} function generates code to evaluate @var{vtop} (the
 top value of the stack) into registers. @var{rc} selects in which
 register class the value should be put. @code{gv()} is the @emph{most
@@ -1326,6 +1887,13 @@ important function} of the code generator.
 
 @code{gv2()} is the same as @code{gv()} but for the top two stack
 entries.
+
+@code{get_reg(rc)} returns a free register of the class @var{rc}. When
+they are all busy it spills the one held by the oldest value stack entry,
+starting from the bottom of the stack so that the registers of the
+operation being generated are never taken away. The spill itself is done
+by @code{save_reg()}, which copies to the stack every value living in a
+given register.
 
 @subsection CPU dependent code generation
 @cindex CPU dependent
@@ -1340,10 +1908,11 @@ must generate the code needed to load a stack value into a register.
 must generate the code needed to store a register into a stack value
 lvalue.
 
-@item gfunc_start()
-@itemx gfunc_param()
-@itemx gfunc_call()
-should generate a function call
+@item gfunc_call(nb_args)
+should generate a function call, the arguments and the function address
+being the @code{nb_args + 1} topmost entries of the value stack.
+@code{gfunc_sret()} tells the parser how a structure return value is
+passed for the target ABI.
 
 @item gfunc_prolog()
 @itemx gfunc_epilog()
@@ -1369,6 +1938,23 @@ floating point to integer conversion.
 @item gen_cvt_ftof()
 floating point to floating point of different size conversion.
 
+@item gen_cvt_csti()
+performs the delayed cast of a @code{char} or a @code{short} held in an
+integer register (see @code{VT_MUSTCAST}).
+
+@item gjmp()
+@itemx gjmp_addr()
+@itemx gjmp_cond()
+@itemx gsym_addr()
+generate unconditional and conditional jumps, and patch the jumps whose
+target was not known yet.
+
+@item gen_vla_alloc()
+@itemx gen_vla_sp_save()
+@itemx gen_vla_sp_restore()
+allocate a variable length array on the stack, and save and restore the
+stack pointer around it.
+
 @end table
 
 @section Optimizations done
@@ -1380,9 +1966,12 @@ floating point to floating point of different size conversion.
 @cindex flags, caching
 @cindex jump optimization
 Constant propagation is done for all operations. Multiplications and
-divisions are optimized to shifts when appropriate. Comparison
-operators are optimized by maintaining a special cache for the
-processor flags. &&, || and ! are optimized by maintaining a special
+divisions by a power of two are optimized to shifts, and operations
+which are a no-operation for the given constant (@code{x*1},
+@code{x-0}, @code{x&-1}, @dots{}) are dropped. Constants added to a
+symbol or to a local variable address are folded into the address.
+Comparison operators are optimized by maintaining a special cache for
+the processor flags. &&, || and ! are optimized by maintaining a special
 'jump target' value. No other jump optimization is currently performed
 because it would require to store the code in a more abstract fashion.
 

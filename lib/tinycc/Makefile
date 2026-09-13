@@ -1,4 +1,3 @@
-
 # --------------------------------------------------------------------------
 #
 # Tiny C Compiler Makefile
@@ -21,31 +20,30 @@ LIBTCC = libtcc.a
 LIBTCC1 = libtcc1.a
 LINK_LIBTCC =
 LIBS =
-CFLAGS += -I$(TOP)
 CFLAGS += $(CPPFLAGS)
 VPATH = $(TOPSRC)
+-LTCC = $(TOP)/$(LIBTCC)
 
 ifdef CONFIG_WIN32
  CFG = -win
  ifneq ($(CONFIG_static),yes)
   LIBTCC = libtcc$(DLLSUF)
   LIBTCCDEF = libtcc.def
-  -LTCC = $(bindir)/libtcc.dll
- else
-  -LTCC = -ltcc -L$(libdir)
  endif
  ifneq ($(CONFIG_debug),yes)
-  LDFLAGS += -s
+  ifneq ($(CC_NAME),clang)
+   LDFLAGS += -s
+  endif
  endif
- NATIVE_TARGET = $(ARCH)-win$(if $(findstring arm,$(ARCH)),ce,32)
+ NATIVE_TARGET = $(if $(findstring arm64,$(ARCH)),arm64-win32,$(ARCH)-win$(if $(findstring arm,$(ARCH)),ce,32))
 else
  CFG = -unx
-# LIBS+=-lm
+ LIBS+=-lm
  ifneq ($(CONFIG_ldl),no)
-#  LIBS+=-ldl
+  LIBS+=-ldl
  endif
  ifneq ($(CONFIG_pthread),no)
-#  LIBS+=-lpthread
+  LIBS+=-lpthread
  endif
  # make libtcc as static or dynamic library?
  ifeq ($(CONFIG_static),no)
@@ -70,11 +68,13 @@ else
  ifdef CONFIG_OSX
   NATIVE_TARGET = $(ARCH)-osx
   ifneq ($(CC_NAME),tcc)
-    LDFLAGS += -flat_namespace -undefined warning
+    LDFLAGS += -flat_namespace
+    ifneq (1,$(shell expr $(GCC_MAJOR) ">=" 15))
+      LDFLAGS += -undefined warning # depreciated in clang >= 15.0
+    endif
   endif
   export MACOSX_DEPLOYMENT_TARGET := 10.6
  endif
- -LTCC = -ltcc
 endif
 
 # run local version of tcc with local libraries and includes
@@ -87,41 +87,14 @@ TCC = $(TCC_LOCAL) $(TCCFLAGS)
 # run tests with the installed tcc instead
 ifdef TESTINSTALL
   TCC_LOCAL = $(bindir)/tcc
-  TCCFLAGS-unx = -I..
-  TCCFLAGS-win = -I.. -B$(bindir)
-  LIBTCC =
-  LIBS += $(-LTCC)
+  TCCFLAGS-unx = -I$(TOP)
+  TCCFLAGS-win = -B$(bindir) -I$(TOP)
+  -LTCC = $(libdir)/$(LIBTCC) $(LINK_LIBTCC)
 endif
 
 CFLAGS_P = $(CFLAGS) -pg -static -DCONFIG_TCC_STATIC -DTCC_PROFILE
 LIBS_P = $(LIBS)
 LDFLAGS_P = $(LDFLAGS)
-
-CONFIG_$(ARCH) = yes
-NATIVE_DEFINES_$(CONFIG_i386) += -DTCC_TARGET_I386
-NATIVE_DEFINES_$(CONFIG_x86_64) += -DTCC_TARGET_X86_64
-NATIVE_DEFINES_$(CONFIG_WIN32) += -DTCC_TARGET_PE
-NATIVE_DEFINES_$(CONFIG_OSX) += -DTCC_TARGET_MACHO
-NATIVE_DEFINES_$(CONFIG_uClibc) += -DTCC_UCLIBC
-NATIVE_DEFINES_$(CONFIG_musl) += -DTCC_MUSL
-NATIVE_DEFINES_$(CONFIG_libgcc) += -DCONFIG_USE_LIBGCC
-NATIVE_DEFINES_$(CONFIG_selinux) += -DHAVE_SELINUX
-NATIVE_DEFINES_$(CONFIG_arm) += -DTCC_TARGET_ARM
-NATIVE_DEFINES_$(CONFIG_arm_eabihf) += -DTCC_ARM_EABI -DTCC_ARM_HARDFLOAT
-NATIVE_DEFINES_$(CONFIG_arm_eabi) += -DTCC_ARM_EABI
-NATIVE_DEFINES_$(CONFIG_arm_vfp) += -DTCC_ARM_VFP
-NATIVE_DEFINES_$(CONFIG_arm64) += -DTCC_TARGET_ARM64
-NATIVE_DEFINES_$(CONFIG_riscv64) += -DTCC_TARGET_RISCV64
-NATIVE_DEFINES_$(CONFIG_BSD) += -DTARGETOS_$(TARGETOS)
-NATIVE_DEFINES_$(CONFIG_Android) += -DTARGETOS_ANDROID
-NATIVE_DEFINES_$(CONFIG_pie) += -DCONFIG_TCC_PIE
-NATIVE_DEFINES_$(CONFIG_pic) += -DCONFIG_TCC_PIC
-NATIVE_DEFINES_no_$(CONFIG_new_macho) += -DCONFIG_NEW_MACHO=0
-NATIVE_DEFINES_$(CONFIG_codesign) += -DCONFIG_CODESIGN
-NATIVE_DEFINES_$(CONFIG_new-dtags) += -DCONFIG_NEW_DTAGS
-NATIVE_DEFINES_no_$(CONFIG_bcheck) += -DCONFIG_TCC_BCHECK=0
-NATIVE_DEFINES_no_$(CONFIG_backtrace) += -DCONFIG_TCC_BACKTRACE=0
-NATIVE_DEFINES += $(NATIVE_DEFINES_yes) $(NATIVE_DEFINES_no_no)
 
 DEF-i386           = -DTCC_TARGET_I386
 DEF-i386-win32     = -DTCC_TARGET_I386 -DTCC_TARGET_PE
@@ -142,13 +115,12 @@ DEF-arm64-osx      = $(DEF-arm64) -DTCC_TARGET_MACHO
 DEF-arm64-FreeBSD  = $(DEF-arm64) -DTARGETOS_FreeBSD
 DEF-arm64-NetBSD   = $(DEF-arm64) -DTARGETOS_NetBSD
 DEF-arm64-OpenBSD  = $(DEF-arm64) -DTARGETOS_OpenBSD
+DEF-arm64-win32    = $(DEF-arm64) -DTCC_TARGET_PE
 DEF-riscv64        = -DTCC_TARGET_RISCV64
 DEF-c67            = -DTCC_TARGET_C67 -w # disable warnigs
 DEF-x86_64-FreeBSD = $(DEF-x86_64) -DTARGETOS_FreeBSD
 DEF-x86_64-NetBSD  = $(DEF-x86_64) -DTARGETOS_NetBSD
 DEF-x86_64-OpenBSD = $(DEF-x86_64) -DTARGETOS_OpenBSD
-
-DEF-$(NATIVE_TARGET) = $(NATIVE_DEFINES)
 
 ifeq ($(INCLUDED),no)
 # --------------------------------------------------------------------------
@@ -161,7 +133,7 @@ TCCDOCS = tcc.1 tcc-doc.html tcc-doc.info
 all: $(PROGS) $(TCCLIBS) $(TCCDOCS)
 
 # cross compiler targets to build
-TCC_X = i386 x86_64 i386-win32 x86_64-win32 x86_64-osx arm arm64 arm-wince c67
+TCC_X = i386 x86_64 i386-win32 x86_64-win32 x86_64-osx arm arm64 arm64-win32 arm-wince c67
 TCC_X += riscv64 arm64-osx
 # TCC_X += arm-fpa arm-fpa-ld arm-vfp arm-eabi
 
@@ -186,43 +158,45 @@ all : cross
 endif
 
 # --------------------------------------------
-
-T = $(or $(CROSS_TARGET),$(NATIVE_TARGET),unknown)
+T = $(or $(CROSS_TARGET),$(NATIVE_TARGET))
 X = $(if $(CROSS_TARGET),$(CROSS_TARGET)-)
 
-DEFINES += $(DEF-$T) $(DEF-all)
+ifneq ($(T),$(NATIVE_TARGET))
+$(if $(DEF-$T),,$(error error: unknown target: '$T'))
+ifneq ($(CONFIG_WIN32),yes)
+DEF-win = -DCONFIG_TCCDIR="\"$(tccdir)/win32\""
+endif
+# some default config for cross compilers
+TRIPLET-i386 = i686-linux-gnu
+TRIPLET-x86_64 = x86_64-linux-gnu
+TRIPLET-arm = arm-linux-gnueabihf
+TRIPLET-arm64 = aarch64-linux-gnu
+TRIPLET-riscv64 = riscv64-linux-gnu
+ifneq ($(TRIPLET-$T),)
+# assume support files in "/usr/<triplet>"
+ROOT-$T = /usr/$(TRIPLET-$T)
+INC-$T = {B}/include:{R}/include
+LIB-$T = {R}/lib:{B}
+CRT-$T = {R}/lib
+endif
+DEFINES += $(DEF-$T)
 DEFINES += $(if $(ROOT-$T),-DCONFIG_SYSROOT="\"$(ROOT-$T)\"")
 DEFINES += $(if $(CRT-$T),-DCONFIG_TCC_CRTPREFIX="\"$(CRT-$T)\"")
 DEFINES += $(if $(LIB-$T),-DCONFIG_TCC_LIBPATHS="\"$(LIB-$T)\"")
 DEFINES += $(if $(INC-$T),-DCONFIG_TCC_SYSINCLUDEPATHS="\"$(INC-$T)\"")
 DEFINES += $(if $(ELF-$T),-DCONFIG_TCC_ELFINTERP="\"$(ELF-$T)\"")
 DEFINES += $(DEF-$(or $(findstring win,$T),unx))
-
-ifneq ($(X),)
-$(if $(DEF-$T),,$(error error: unknown target: '$T'))
-DEF-all += -DCONFIG_TCC_CROSSPREFIX="\"$X\""
-ifneq ($(CONFIG_WIN32),yes)
-DEF-win += -DCONFIG_TCCDIR="\"$(tccdir)/win32\""
-endif
+DEFINES += -DCONFIG_TCC_CROSSPREFIX="\"$X\""
 endif
 
 # include custom configuration (see make help)
 -include config-extra.mak
 
-ifneq ($(T),$(NATIVE_TARGET))
-# assume support files for cross-targets in "/usr/<triplet>" by default
-TRIPLET-i386 ?= i686-linux-gnu
-TRIPLET-x86_64 ?= x86_64-linux-gnu
-TRIPLET-arm ?= arm-linux-gnueabi
-TRIPLET-arm64 ?= aarch64-linux-gnu
-TRIPLET-riscv64 ?= riscv64-linux-gnu
-MARCH-i386 ?= i386-linux-gnu
-MARCH-$T ?= $(TRIPLET-$T)
-TR = $(if $(TRIPLET-$T),$T,ignored)
-CRT-$(TR) ?= /usr/$(TRIPLET-$T)/lib
-LIB-$(TR) ?= {B}:/usr/$(TRIPLET-$T)/lib:/usr/lib/$(MARCH-$T)
-INC-$(TR) ?= {B}/include:/usr/$(TRIPLET-$T)/include:/usr/include
-endif
+# so one can use: make EXTRA-DEFS=...
+DEFINES += $(EXTRA-DEFS)
+
+# find config.h with 'out of tree' builds
+DEFINES += -I$(TOP)
 
 CORE_FILES = tcc.c tcctools.c libtcc.c tccpp.c tccgen.c tccdbg.c tccelf.c tccasm.c tccrun.c
 CORE_FILES += tcc.h config.h libtcc.h tcctok.h
@@ -233,14 +207,14 @@ x86_64-win32_FILES = $(x86_64_FILES) tccpe.c
 x86_64-osx_FILES = $(x86_64_FILES) tccmacho.c
 arm_FILES = $(CORE_FILES) arm-gen.c arm-link.c arm-asm.c arm-tok.h
 arm-wince_FILES = $(arm_FILES) tccpe.c
-arm-eabihf_FILES = $(arm_FILES)
 arm-fpa_FILES     = $(arm_FILES)
 arm-fpa-ld_FILES  = $(arm_FILES)
 arm-vfp_FILES     = $(arm_FILES)
 arm-eabi_FILES    = $(arm_FILES)
 arm-eabihf_FILES  = $(arm_FILES)
-arm64_FILES = $(CORE_FILES) arm64-gen.c arm64-link.c arm64-asm.c
+arm64_FILES = $(CORE_FILES) arm64-gen.c arm64-link.c arm64-asm.c arm64-tok.h
 arm64-osx_FILES = $(arm64_FILES) tccmacho.c
+arm64-win32_FILES = $(arm64_FILES) tccpe.c
 c67_FILES = $(CORE_FILES) c67-gen.c c67-link.c tcccoff.c
 riscv64_FILES = $(CORE_FILES) riscv64-gen.c riscv64-link.c riscv64-asm.c
 
@@ -253,15 +227,17 @@ ifeq ($(ONE_SOURCE),yes)
 LIBTCC_OBJ = $(X)libtcc.o
 LIBTCC_INC = $($T_FILES)
 TCC_FILES = $(X)tcc.o
-tcc.o : DEFINES += -DONE_SOURCE=0
-$(X)tcc.o $(X)libtcc.o  : $(TCCDEFS_H)
+$(X)tcc.o $(X)libtcc.o : $(TCCDEFS_H)
 else
 LIBTCC_OBJ = $(patsubst %.c,$(X)%.o,$(LIBTCC_SRC))
 LIBTCC_INC = $(filter %.h %-gen.c %-link.c,$($T_FILES))
 TCC_FILES = $(X)tcc.o $(LIBTCC_OBJ)
-$(TCC_FILES) : DEFINES += -DONE_SOURCE=0
 $(X)tccpp.o : $(TCCDEFS_H)
+$(X)libtcc.o : DEFINES += -DONE_SOURCE=0
+$(CROSS_TARGET)-tcc.o : DEFINES += -DONE_SOURCE=0
 endif
+# native tcc always made from tcc.o and libtcc.[so|a]
+tcc.o : DEFINES += -DONE_SOURCE=0
 
 GITHASH:=$(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo no)
 ifneq ($(GITHASH),no)
@@ -276,12 +252,15 @@ LDFLAGS += -g
 endif
 
 # convert "include/tccdefs.h" to "tccdefs_.h"
-%_.h : include/%.h conftest.c
-	$S$(CC) -DC2STR $(filter %.c,$^) -o c2str.exe && ./c2str.exe $< $@
+%_.h : include/%.h c2str.exe
+	$S./c2str.exe $< $@
+
+c2str.exe : conftest.c
+	$S$(CC) -DC2STR $< -o $@
 
 # target specific object rule
 $(X)%.o : %.c $(LIBTCC_INC)
-	$S$(CC) -o $@ -c $< $(DEFINES) $(CFLAGS)
+	$S$(CC) -o $@ -c $< $(addsuffix ,$(DEFINES) $(CFLAGS))
 
 # additional dependencies
 $(X)tcc.o : tcctools.c
@@ -289,7 +268,7 @@ $(X)tcc.o : DEFINES += $(DEF_GITHASH)
 
 # Host Tiny C Compiler
 tcc$(EXESUF): tcc.o $(LIBTCC)
-	$S$(CC) -o $@ $^ $(LIBS) $(LDFLAGS) $(LINK_LIBTCC)
+	$S$(CC) -o $@ $^ $(addsuffix ,$(LIBS) $(LDFLAGS) $(LINK_LIBTCC))
 
 # Cross Tiny C Compilers
 # (the TCCDEFS_H dependency is only necessary for parallel makes,
@@ -312,20 +291,25 @@ tcc_p$(EXESUF): $($T_FILES)
 libtcc.a: $(LIBTCC_OBJ)
 	$S$(AR) rcs $@ $^
 
+ifeq ($(CC_NAME)-$(ARCH),clang-x86_64)
+# avoid 32-bit relocations in libtcc.a for its usage with tcc -run
+libtcc.a: override CFLAGS += -fPIC
+endif
+
 # dynamic libtcc library
 libtcc.so: $(LIBTCC_OBJ)
 	$S$(CC) -shared -Wl,-soname,$@ -o $@ $^ $(LIBS) $(LDFLAGS)
 
-libtcc.so: CFLAGS+=-fPIC
-libtcc.so: LDFLAGS+=-fPIC
+libtcc.so: override CFLAGS += -fPIC
+libtcc.so: override LDFLAGS += -fPIC
 
 # OSX dynamic libtcc library
 libtcc.dylib: $(LIBTCC_OBJ)
-	$S$(CC) -dynamiclib $(DYLIBVER) -install_name @rpath/$@ -o $@ $^ $(LDFLAGS)
+	$S$(CC) -dynamiclib $(DYLIBVER) -install_name @rpath/$@ -o $@ $^ $(LDFLAGS) 
 
 # OSX libtcc.dylib (without rpath/ prefix)
 libtcc.osx: $(LIBTCC_OBJ)
-	$S$(CC) -shared -install_name libtcc.dylib -o libtcc.dylib $^ $(LDFLAGS)
+	$S$(CC) -shared -install_name libtcc.dylib -o libtcc.dylib $^ $(LDFLAGS) 
 
 # windows dynamic libtcc library
 libtcc.dll : $(LIBTCC_OBJ)
@@ -352,7 +336,7 @@ FORCE:
 # some versions of gnu-make do not recognize 'command' as a shell builtin
 WHICH = sh -c 'command -v $1'
 
-run-if = $(if $(shell $(call WHICH,$1)),$S $1 $2)
+run-if = $(if $(shell $(call WHICH,$1)),$S $1 $2,@echo "(skipping $@ - no $1)")
 S = $(if $(findstring yes,$(SILENT)),@$(info * $@))
 
 # --------------------------------------------------------------------------
@@ -374,8 +358,8 @@ doc : $(TCCDOCS)
 # --------------------------------------------------------------------------
 # install
 
-INSTALL = install -m644
-INSTALLBIN = install -m755 $(STRIP_$(CONFIG_strip))
+INSTALL = install -m 644
+INSTALLBIN = install -m 755 $(STRIP_$(CONFIG_strip))
 STRIP_yes = -s
 
 LIBTCC1_W = $(filter %-win32-libtcc1.a %-wince-libtcc1.a,$(LIBTCC1_CROSS))
@@ -388,7 +372,7 @@ IR = $(IM) mkdir -p $2 && cp -r $1/. $2
 IM = @echo "-> $2 : $1" ;
 BINCHECK = $(if $(wildcard $(PROGS) *-tcc$(EXESUF)),,@echo "Makefile: nothing found to install" && exit 1)
 
-EXTRA_O = runmain.o bt-exe.o bt-dll.o bt-log.o bcheck.o
+EXTRA_O = runmain.o bt-exe.o bt-dll.o bt-log.o bcheck.o bcheck_run.o
 
 # install progs & libs
 install-unx:
@@ -410,7 +394,7 @@ endif
 # uninstall
 uninstall-unx:
 	@rm -fv $(addprefix "$(bindir)/",$(PROGS) $(PROGS_CROSS))
-	@rm -fv $(addprefix "$(libdir)/", libtcc*.a libtcc*.so libtcc.dylib,$P)
+	@rm -fv $(addprefix "$(libdir)/", libtcc*.a libtcc*.so libtcc.dylib)
 	@rm -fv $(addprefix "$(includedir)/", libtcc.h)
 	@rm -fv "$(mandir)/man1/tcc.1" "$(infodir)/tcc-doc.info"
 	@rm -fv "$(docdir)/tcc-doc.html"
@@ -488,16 +472,21 @@ tcov-tes% : tcc_c$(EXESUF)
 	@$(MAKE) --no-print-directory TCC_LOCAL=$(CURDIR)/$< tes$*
 tcc_c$(EXESUF): $($T_FILES)
 	$S$(TCC) tcc.c -o $@ -ftest-coverage $(DEFINES) $(LIBS)
+# run tests with sanitize option
+sani-tes% : tcc_s$(EXESUF)
+	@$(MAKE) --no-print-directory TCC_LOCAL=$(CURDIR)/$< tes$*
+tcc_s$(EXESUF): $($T_FILES)
+	$S$(CC) tcc.c -o $@ -fsanitize=address,undefined $(DEFINES) $(CFLAGS) $(LDFLAGS) $(LIBS)
 # test the installed tcc instead
-test-install: tccdefs_.h
+test-install: $(TCCDEFS_H)
 	@$(MAKE) -C tests TESTINSTALL=yes #_all
 
 clean:
-	@rm -f tcc *-tcc tcc_p tcc_c
+	@rm -f tcc *-tcc tcc_p tcc_c tcc_s
 	@rm -f tags ETAGS *.o *.a *.so* *.out *.log lib*.def *.exe *.dll
 	@rm -f a.out *.dylib *_.h *.pod *.tcov
-	@"$(MAKE)" -s -C lib $@
-	@"$(MAKE)" -s -C tests $@
+	@$(MAKE) -s -C lib $@
+	@$(MAKE) -s -C tests $@
 
 distclean: clean
 	@rm -vf config.h config.mak config.texi
@@ -508,32 +497,33 @@ distclean: clean
 help:
 	@echo "make"
 	@echo "   build native compiler (from separate objects)"
-	@echo "make cross"
-	@echo "   build cross compilers (from one source)"
 	@echo "make ONE_SOURCE=no/yes SILENT=no/yes"
 	@echo "   force building from separate/one object(s), less/more silently"
 	@echo "make cross-TARGET"
 	@echo "   build one specific cross compiler for 'TARGET'. Currently supported:"
 	@echo "   $(wordlist 1,8,$(TCC_X))"
 	@echo "   $(wordlist 9,99,$(TCC_X))"
+	@echo "make cross"
+	@echo "   build all cross compilers"
 	@echo "make test"
 	@echo "   run all tests"
 	@echo "make tests2.all / make tests2.37 / make tests2.37+"
 	@echo "   run all/single test(s) from tests2, optionally update .expect"
 	@echo "make testspp.all / make testspp.17"
 	@echo "   run all/single test(s) from tests/pp"
-	@echo "make tcov-test / tcov-tests2... / tcov-testspp..."
+	@echo "make tcov-test / tcov-tests2.37 / tcov-testspp.17"
 	@echo "   run tests as above with code coverage. After test(s) see tcc_c$(EXESUF).tcov"
+	@echo "make sani-test / sani-tests2.37 / sani-testspp.17"
+	@echo "   run tests as above with sanitize option."
 	@echo "make test-install"
 	@echo "   run tests with the installed tcc"
 	@echo "Other supported make targets:"
-	@echo "   install install-strip doc clean tags ETAGS tar distclean help"
+	@echo "   install install-strip uninstall doc [dist]clean tags ETAGS tar help"
 	@echo "Custom configuration:"
 	@echo "   The makefile includes a file 'config-extra.mak' if it is present."
-	@echo "   This file may contain some custom configuration.  For example:"
-	@echo "      NATIVE_DEFINES += -D..."
-	@echo "   Or for example to configure the search paths for a cross-compiler"
-	@echo "   assuming the support files in /usr/i686-linux-gnu:"
+	@echo "   This file may contain some custom configuration.  For example to"
+	@echo "   configure the search paths for a cross-compiler, assuming the"
+	@echo "   support files in /usr/i686-linux-gnu:"
 	@echo "      ROOT-i386 = /usr/i686-linux-gnu"
 	@echo "      CRT-i386  = {R}/lib"
 	@echo "      LIB-i386  = {B}:{R}/lib"

@@ -6,13 +6,13 @@ InstallerType: inno
 Installers:
 - Architecture: x64
   Scope: user
-  InstallerUrl: https://github.com/dyne/cjit/releases/download/v%%VERSION%%/CJIT_install.exe
+  InstallerUrl: https://github.com/dyne/cjit/releases/download/v%%VERSION%%/cjit-installer-windows-x86_64.exe
   InstallerSha256: %%INSTALLER_HASH_SHA256%%
   InstallerSwitches:
     Custom: /CURRENTUSER=1 /SILENT
 - Architecture: x64
   Scope: machine
-  InstallerUrl: https://github.com/dyne/cjit/releases/download/v%%VERSION%%/CJIT_install.exe
+  InstallerUrl: https://github.com/dyne/cjit/releases/download/v%%VERSION%%/cjit-installer-windows-x86_64.exe
   InstallerSha256: %%INSTALLER_HASH_SHA256%%
   InstallerSwitches:
     Custom: /ALLUSERS /SILENT

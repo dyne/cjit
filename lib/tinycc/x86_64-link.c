@@ -13,7 +13,7 @@
 #define R_NUM       R_X86_64_NUM
 
 #define ELF_START_ADDR 0x400000
-#define ELF_PAGE_SIZE  0x200000
+#define ELF_PAGE_SIZE  0x1000
 
 #define PCRELATIVE_DLLPLT 1
 #define RELOCATE_DLLPLT 1
@@ -96,13 +96,15 @@ ST_FUNC int gotplt_entry_type (int reloc_type)
         case R_X86_64_TLSGD:
         case R_X86_64_TLSLD:
         case R_X86_64_DTPOFF32:
-        case R_X86_64_TPOFF32:
         case R_X86_64_DTPOFF64:
-        case R_X86_64_TPOFF64:
         case R_X86_64_REX_GOTPCRELX:
         case R_X86_64_PLT32:
         case R_X86_64_PLTOFF64:
             return ALWAYS_GOTPLT_ENTRY;
+
+        case R_X86_64_TPOFF32:
+        case R_X86_64_TPOFF64:
+            return NO_GOTPLT_ENTRY;
     }
 
     return -1;
@@ -221,6 +223,13 @@ ST_FUNC void relocate(TCCState *s1, ElfW_Rel *rel, int type, unsigned char *ptr,
                 qrel->r_addend = (int)read32le(ptr) + val;
                 qrel++;
             }
+            if ((type == R_X86_64_32 ? val != (unsigned)val : val != (int)val)
+                /* ignore relocation check for stab section */
+                && (stab_section == NULL ||
+                    addr < stab_section->sh_addr ||
+                    addr >= (stab_section->sh_addr + stab_section->data_offset))) {
+                tcc_error_noabort("relocation 'R_X86_64_32[S]' out of range");
+            }
             add32le(ptr, val);
             break;
 
@@ -251,7 +260,7 @@ ST_FUNC void relocate(TCCState *s1, ElfW_Rel *rel, int type, unsigned char *ptr,
               /* ignore overflow with undefined weak symbols */
               if (((ElfW(Sym)*)symtab_section->data)[sym_index].st_shndx != SHN_UNDEF)
 #endif
-                tcc_error_noabort("internal error: relocation failed");
+                tcc_error_noabort("relocation '%d' out of range", type);
             }
             add32le(ptr, diff);
         }
@@ -359,30 +368,29 @@ ST_FUNC void relocate(TCCState *s1, ElfW_Rel *rel, int type, unsigned char *ptr,
                     tcc_error_noabort("unexpected R_X86_64_TLSLD pattern");
             }
             break;
+
         case R_X86_64_DTPOFF32:
         case R_X86_64_TPOFF32:
-            {
-                ElfW(Sym) *sym;
-                Section *sec;
-                int32_t x;
-
-                sym = &((ElfW(Sym) *)symtab_section->data)[sym_index];
-                sec = s1->sections[sym->st_shndx];
-                x = val - sec->sh_addr - sec->data_offset;
-                add32le(ptr, x);
-            }
-            break;
         case R_X86_64_DTPOFF64:
         case R_X86_64_TPOFF64:
             {
-                ElfW(Sym) *sym;
-                Section *sec;
                 int32_t x;
-
-                sym = &((ElfW(Sym) *)symtab_section->data)[sym_index];
-                sec = s1->sections[sym->st_shndx];
-                x = val - sec->sh_addr - sec->data_offset;
-                add64le(ptr, x);
+                if (s1->tls_end) {
+                    x = val - s1->tls_end;
+                } else {
+                    ElfW(Sym) *sym = &((ElfW(Sym) *)symtab_section->data)[sym_index];
+                    Section *sec = s1->sections[sym->st_shndx];
+                    x = val - sec->sh_addr - sec->data_offset;
+                }
+                switch (type) {
+                case R_X86_64_DTPOFF64:
+                case R_X86_64_TPOFF64:
+                    add64le(ptr, x);
+                    break;
+                default:
+                    add32le(ptr, x);
+                    break;
+                }
             }
             break;
         case R_X86_64_NONE:

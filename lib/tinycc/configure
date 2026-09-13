@@ -27,6 +27,7 @@ mandir=""
 infodir=""
 sysroot=""
 cross_prefix=""
+os_release=""
 cc="gcc"
 ar="ar"
 bigendian="no"
@@ -34,13 +35,11 @@ mingw32="no"
 LIBSUF=".a"
 EXESUF=""
 DLLSUF=".so"
-tcc_usrinclude=""
 tcc_sysincludepaths=""
 tcc_libpaths=""
 tcc_crtprefix=""
 tcc_elfinterp=""
 triplet=
-tcc_lddir=
 confvars=
 suggest="yes"
 gcc_major=0
@@ -52,92 +51,127 @@ cpuver=
 dwarf=
 targetos=
 build_cross=
+quiet=
 
 # use CC/AR from environment when set
 test -n "$CC" && cc="$CC"
 test -n "$AR" && ar="$AR"
-test -n "CFLAGS" && CFLAGS="-Wall -O2"
+
+# set default CFLAGS if unset in environment
+test -z "$CFLAGS" && CFLAGS="-Wall -O2"
 
 # find source path
 source_path=${0%configure}
 source_path=${source_path%/}
 
+# $1: --OPTNAME=VALUE [, $2: NAME to assign-to instead of OPTNAME]
+assign_opt() {
+  set -- "${2:-${1%%=*}}" "${1#*=}"  # [--OPT]NAME VALUE
+  eval ${1#--}=\$2  # no risk of IFS/glob in [OPT]NAME
+}
+
+# succeed if $1 doesn't IFS-split funny (globs, spaces, ...)
+good_split() {
+  set -- "$1" $1
+  test $# = 2 && test "$1" = "$2"
+}
+
+# $1: NAME[=VALUE]  succeed if confvars has NAME or NAME=* element
+confvars_has() {
+  ! case " $confvars " in *" ${1%%=*} "* | *" ${1%%=*}="*)
+    false
+  esac
+}
+
+# [multiple] NAME or NAME=VAL
+confvars_set() {
+  for cv; do
+    good_split "$cv" || { echo "configure: ERROR: bad config '$cv'"; exit 1; }
+    confvars_has "$cv" && echo "configure: WARNING: duplicate config '$cv'"
+    confvars="$confvars $cv"
+  done
+}
+
 for opt do
   eval opt=\"$opt\"
   case "$opt" in
-  --prefix=*) prefix=`echo $opt | cut -d '=' -f 2-`
+  --prefix=*) assign_opt "$opt"
   ;;
-  --exec-prefix=*) execprefix=`echo $opt | cut -d '=' -f 2-`
+  --exec-prefix=*) assign_opt "$opt" execprefix
   ;;
-  --tccdir=*) tccdir=`echo $opt | cut -d '=' -f 2-`
+  --tccdir=*) assign_opt "$opt"
   ;;
-  --bindir=*) bindir=`echo $opt | cut -d '=' -f 2-`
+  --bindir=*) assign_opt "$opt"
   ;;
-  --libdir=*) libdir=`echo $opt | cut -d '=' -f 2-`
+  --libdir=*) assign_opt "$opt"
   ;;
-  --includedir=*) includedir=`echo $opt | cut -d '=' -f 2-`
+  --includedir=*) assign_opt "$opt"
   ;;
-  --sharedir=*) sharedir=`echo $opt | cut -d '=' -f 2-`
+  --sharedir=*) assign_opt "$opt"
   ;;
-  --mandir=*) mandir=`echo $opt | cut -d '=' -f 2-`
+  --mandir=*) assign_opt "$opt"
   ;;
-  --infodir=*) infodir=`echo $opt | cut -d '=' -f 2-`
+  --infodir=*) assign_opt "$opt"
   ;;
-  --docdir=*) docdir=`echo $opt | cut -d '=' -f 2-`
+  --docdir=*) assign_opt "$opt"
   ;;
-  --sysroot=*) sysroot=`echo $opt | cut -d '=' -f 2-`
+  --sysroot=*) assign_opt "$opt"
   ;;
-  --targetos=*) targetos=`echo $opt | cut -d '=' -f 2-`
+  --targetos=*) assign_opt "$opt"
   ;;
-  --source-path=*) source_path=`echo $opt | cut -d '=' -f 2-`
+  --source-path=*) assign_opt "$opt" source_path
   ;;
-  --cross-prefix=*) cross_prefix=`echo $opt | cut -d '=' -f 2-`
+  --cross-prefix=*) assign_opt "$opt" cross_prefix
   ;;
-  --cc=*) cc=`echo $opt | cut -d '=' -f 2-`
+  --os-release=*) assign_opt "$opt" os_release
   ;;
-  --ar=*) ar=`echo $opt | cut -d '=' -f 2-` ; ar_set="yes"
+  --cc=*) assign_opt "$opt"
   ;;
-  --extra-cflags=*) CFLAGS="${opt#--extra-cflags=}"
+  --ar=*) assign_opt "$opt" ; ar_set="yes"
   ;;
-  --extra-ldflags=*) LDFLAGS="${opt#--extra-ldflags=}"
+  --extra-cflags=*) assign_opt "$opt" CFLAGS
   ;;
-  --extra-libs=*) extralibs="${opt#--extra-libs=}"
+  --extra-ldflags=*) assign_opt "$opt" LDFLAGS
   ;;
-  --sysincludepaths=*) tcc_sysincludepaths=`echo $opt | cut -d '=' -f 2-`
+  --extra-libs=*) assign_opt "$opt" extralibs
   ;;
-  --libpaths=*) tcc_libpaths=`echo $opt | cut -d '=' -f 2-`
+  --sysincludepaths=*) assign_opt "$opt" tcc_sysincludepaths
   ;;
-  --crtprefix=*) tcc_crtprefix=`echo $opt | cut -d '=' -f 2-`
+  --libpaths=*) assign_opt "$opt" tcc_libpaths
   ;;
-  --elfinterp=*) tcc_elfinterp=`echo $opt | cut -d '=' -f 2-`
+  --crtprefix=*) assign_opt "$opt" tcc_crtprefix
   ;;
-  --triplet=*) triplet=`echo $opt | cut -d '=' -f 2-`
+  --elfinterp=*) assign_opt "$opt" tcc_elfinterp
   ;;
-  --cpu=*) cpu=`echo $opt | cut -d '=' -f 2-`
+  --triplet=*) assign_opt "$opt"
   ;;
-  --dwarf=*) dwarf=`echo $opt | cut -d '=' -f 2-`
+  --cpu=*) assign_opt "$opt"
   ;;
-  --enable-cross) confvars="$confvars cross"
+  --dwarf=*) confvars_set "dwarf=${opt#*=}"
   ;;
-  --disable-static) confvars="$confvars static=no"
+  --enable-cross) confvars_set cross
   ;;
-  --enable-static) confvars="$confvars static"
+  --disable-static) confvars_set static=no
   ;;
-  --disable-rpath) confvars="$confvars rpath=no"
+  --enable-static) confvars_set static
   ;;
-  --debug) confvars="$confvars debug"
+  --disable-rpath) confvars_set rpath=no
   ;;
-  --with-libgcc) confvars="$confvars libgcc"
+  --debug) confvars_set debug
   ;;
-  --with-selinux) confvars="$confvars selinux"
+  --with-selinux) confvars_set selinux
   ;;
-  --tcc-switches=*) tcc_switches=`echo $opt | cut -d '=' -f 2-`
+  --tcc-switches=*) assign_opt "$opt" tcc_switches
   ;;
-  --config-mingw32*) mingw32=$(echo "$opt=yes" | cut -d '=' -f 2)
+  --config-mingw32) mingw32=yes
   ;;
-  --config-*) confvars="$confvars ${opt#--config-}"; suggest="no"
+  --config-mingw32=*) assign_opt "$opt" mingw32
+  ;;
+  --config-*) confvars_set "${opt#--config-}"; suggest="no"
   ;;
   --help|-h) show_help="yes"
+  ;;
+  -q) quiet=yes
   ;;
   *) echo "configure: WARNING: unrecognized option $opt"
   ;;
@@ -162,6 +196,7 @@ Standard options:
   --docdir=DIR             documentation in DIR [SHAREDIR/doc/tcc]
   --mandir=DIR             man documentation in DIR [SHAREDIR/man]
   --infodir=DIR            info documentation in DIR [SHAREDIR/info]
+   -q                      be quiet
 
 Advanced options (experts only):
   --source-path=PATH       path of source code [$source_path]
@@ -175,9 +210,8 @@ Advanced options (experts only):
   --disable-static         make libtcc.so instead of libtcc.a
   --enable-static          make libtcc.a instead of libtcc.dll (win32)
   --disable-rpath          disable use of -rpath with libtcc.so
-  --with-libgcc            use libgcc_s.so.1 instead of libtcc1.a
   --with-selinux           use mmap for executable memory (tcc -run)
-  --enable-cross           build cross compilers (see also 'make help')
+  --enable-cross           build all cross compilers (see also 'make help')
 
   --sysincludepaths=...    specify system include paths, colon separated
   --libpaths=...           specify system library paths, colon separated
@@ -187,36 +221,36 @@ Advanced options (experts only):
   --tcc-switches=...       specify implicit switches passed to tcc
 
   --config-uClibc,-musl    enable system specific configurations
-  --config-mingw32         build on windows using msys, busybox, etc.
+  --config-mingw32[=yes|no] build on windows using msys, busybox, etc.
   --config-backtrace=no    disable stack backtraces (with -run or -bt)
   --config-bcheck=no       disable bounds checker (-b)
   --config-predefs=no      do not compile tccdefs.h, instead just include
-  --config-new_macho=no|yes Force apple object format (autodetect osx <= 10)
+  --config-new_macho=no|yes force apple object format (autodetect osx <= 10)
+  --config-new_dtags=yes   use new ELF DTAGs (DT_RUNPATH instead of DT_RPATH)
   --config-codesign=no     do not use codesign on apple to sign executables
-  --dwarf=x                Use dwarf debug info instead of stabs (x=2..5)
+  --config-dwarf=x         use dwarf debug info instead of stabs (x=2..5)
+  --config-pie             let tcc generate position independent executables
 
 Cross build options (experimental):
   --cpu=CPU                target CPU [$cpu]
   --targetos=...           target OS (Darwin,WIN32,Android/Termux) [$targetos]
+  --os-release=x.y.z       target os release x.y.z [$os_release] (with BSD systems)
   --cross-prefix=PREFIX    use PREFIX for compile tools [$cross_prefix]
 EOF
 exit 1
 }
 
-default() # set variable unless already set
+default() # set variable unless already set and not empty
 {
-    local v
-    eval v=\"\$$1\"
-    test -z "$v" && eval $1=\"$2\"
+    test -n "$2" && eval : \${$1:=\$2}  # ': ${foo:=$2}'
 }
 
-default_conf() # add to confvars unless already present
+default_conf() # add one config to confvars unless already present
 {
-    local v=${1%=*}
-    test "${confvars%$v*}" = "${confvars}" && confvars="$confvars $1"
+    confvars_has "$1" || confvars_set "$1"
 }
 
-if test -z "$source_path" -o "$source_path" = "." ; then
+if test -z "${source_path#.}" ; then
   source_path=$(pwd)
   source_path_used="no"
 else
@@ -225,10 +259,17 @@ fi
 
 # OS specific
 buildos=$(uname)
+cpu_sys=$(uname -m)
+default os_release "$(uname -r)"
 
 case $buildos in
   Windows_NT|MINGW*|MSYS*|CYGWIN*)
     buildos="WIN32"
+    case "$MSYSTEM" in
+      MINGW32) cpu_sys=i386 ;;
+      MINGW64) cpu_sys=x86_64 ;;
+      CLANGARM64|MINGW_ARM64) cpu_sys=arm64 ;;
+    esac
   ;;
   Linux)
     if test "$(uname -o)" = "Android"; then
@@ -246,14 +287,13 @@ else
   default targetos "$buildos"
 fi
 
-cpu_sys=$(uname -m)
 default cpu "$cpu_sys"
-cpu_set="$cpu"
 
 # check for crpss build
-if test "$cpu_set" != "$cpu_sys" \
-  -o "$targetos" != "$buildos" \
-  -o -n "$cross_prefix" ; then
+if test "$cpu" != "$cpu_sys" ||
+   test "$targetos" != "$buildos" ||
+   test -n "$cross_prefix"
+then
   build_cross="yes"
   cc="${cross_prefix}${cc}"
   ar="${cross_prefix}${ar}"
@@ -319,29 +359,31 @@ esac
 
 case $targetos in
   Darwin)
-    dwarf=4
-    confvars="$confvars OSX"
+    confvars_set OSX dwarf=4
     default_conf "codesign"
     DLLSUF=".dylib"
     if test -z "$build_cross"; then
-      cc=`command -v cc`
-      cc=`readlink $cc || echo clang`
+      if test "$cc" = "gcc"; then
+        cc=`command -v cc`
+        cc=`readlink $cc || echo clang`
+      fi
       tcc_usrinclude="`xcrun --show-sdk-path`/usr/include"
+      default tcc_sysincludepaths "{B}/include:$tcc_usrinclude"
       if test "${confvars%new_macho*}" = "${confvars}"; then
           # if new_macho was not specified and (known) ver <= 10, use old (=no)
           osxver=$(sw_vers -productVersion 2>/dev/null)  # X.Y.Z
           osxver=${osxver%%.*}  # major version (or empty on sw_vers error)
-          [ "${osxver:-11}" -ge 11 ] || confvars="$confvars new_macho=no"
+          [ "${osxver:-11}" -ge 11 ] || confvars_set new_macho=no
       fi
     fi
     # on OSX M1 with --cpu=x86_64, build a tcc to run under rosetta entirely
-    if test "$cpu" = "x86_64" -a "$cpu_sys" = "arm64"; then
+    if test "$cpu" = x86_64 && test "$cpu_sys" = arm64; then
         CFLAGS="$CFLAGS -arch $cpu"
         LDFLAGS="$LDFLAGS -arch $cpu"
     fi
     ;;
   DragonFly|OpenBSD|FreeBSD|NetBSD)
-    confvars="$confvars BSD ldl=no"
+    confvars_set BSD ldl=no
     ;;
   Android|Termux)
     if test "$targetos" = "Termux"; then
@@ -351,15 +393,15 @@ case $targetos in
       default sysroot "/usr"
     fi
     default prefix "${sysroot}"
-    confvars="$confvars Android new-dtags rpath=no"
-    test "${cpu}" != "i386" && confvars="$confvars pie"
+    confvars_set Android new_dtags rpath=no dwarf=4
+    test "${cpu}" != "i386" && confvars_set pie
     default_conf "static=no"
-    if test "${cpu}" = "arm"; then
-      default triplet "arm-linux-androideabi"
-      cpuver=7
-    else
-      default triplet "${cpu_set}-linux-android"
-    fi
+    case "$cpu" in
+      arm) default triplet "arm-linux-androideabi"; cpuver=7 ;;
+      arm64) default triplet "aarch64-linux-android" ;;
+      x86_64) default triplet "x86_64-linux-android" ;;
+      i386) default triplet "i686-linux-android" ;;
+    esac
     test "${cpu%64}" != "${cpu}" && S="64" || S=""
     default tcc_sysincludepaths "{B}/include:{R}/include:{R}/include/${triplet}"
     default tcc_libpaths "{B}:{R}/lib:/system/lib${S}"
@@ -369,13 +411,17 @@ case $targetos in
     ;;
   WIN32)
     mingw32="yes"
-    confvars="$confvars WIN32"
+    confvars="WIN32 $confvars"  # WIN32 intentionally first (commit 729918ef)
     default prefix "C:/Program Files/tcc"
     default tccdir "${prefix}"
     default bindir "${tccdir}"
     default docdir "${tccdir}/doc"
     default libdir "${tccdir}/libtcc"
+    # set tccdir at runtime from executable path
     test "$tccdir" = "$bindir" && tccdir_auto="yes"
+    # chech $cc to avoid mingw gcc dependencies such as 'libgcc_s_dw2-1.dll'
+    # (no confirmed $cc_name yet, and also will never have if cross compiling)
+    test "${cc%gcc*}" = "$cc" || default LDFLAGS "-static"
     LIBSUF=".lib"
     EXESUF=".exe"
     DLLSUF=".dll"
@@ -404,93 +450,94 @@ if test x"$show_help" = "xyes" ; then
     show_help
 fi
 
-if test -z "$build_cross"; then
-  CONFTEST=./conftest$EXESUF
-  if ! $cc -o $CONFTEST $source_path/conftest.c ; then
+CONFTEST=./conftest$EXESUF
+if test -z "$cross_prefix" \
+    && $cc -o $CONFTEST "$source_path/conftest.c" \
+    && $CONFTEST 2>/dev/null; then
+  cc_name="$($CONFTEST compiler)"
+  gcc_major="$($CONFTEST version)"
+  gcc_minor="$($CONFTEST minor)"
+else
+  if test -z "$build_cross"; then
     echo "configure: error: '$cc' failed to compile conftest.c."
-  else
-    cc_name="$($CONFTEST compiler)"
-    gcc_major="$($CONFTEST version)"
-    gcc_minor="$($CONFTEST minor)"
-    bigendian="$($CONFTEST bigendian)"
-    _triplet="$($CONFTEST triplet)"
   fi
+  if test "${cc%tcc*}" != "$cc"; then
+    cc_name="tcc"
+  elif test "${cc%clang*}" != "$cc"; then
+    cc_name="clang"
+  fi
+fi
+
+if test -z "$build_cross"; then
+  bigendian="$($CONFTEST bigendian)"
+  _triplet="$($CONFTEST triplet)"
   if test "$mingw32" = "no" ; then
-      if test -z "$triplet" -a -n "$_triplet"; then
+      if test -z "$triplet" && test -n "$_triplet"; then
         if test -f "/usr/lib/$_triplet/crti.o"; then
           triplet="$_triplet"
         fi
       fi
       if test -z "$triplet"; then
-        if test $cpu = "x86_64" -o $cpu = "arm64" -o $cpu = "riscv64" ; then
+        case $cpu in x86_64|arm64|riscv64)
           if test -f "/usr/lib64/crti.o" ; then
-            tcc_lddir="lib64"
+            default tcc_libpaths "{B}:/usr/lib64"
+            default tcc_crtprefix "/usr/lib64"
           fi
-        fi
+        esac
       fi
       if test "$suggest" = "yes"; then
         if test -f "/lib/ld-uClibc.so.0" ; then
           echo "Perhaps you want ./configure --config-uClibc"
         fi
-        if test -f "/lib/ld-musl-$cpu.so.1"; then
+        if test -f "/lib/ld-musl-${cpu}.so.1"; then
           echo "Perhaps you want ./configure --config-musl"
         fi
       fi
   fi
 else
   # can only make guesses about compiler and target
-  if test "${cc%tcc*}" != "$cc"; then
-    cc_name="tcc"
-  elif test "${cc%clang*}" != "$cc"; then
-    cc_name="clang"
-  fi
   case $cpu in
     ppc|mips|s390)  bigendian=yes;;
   esac
   case $targetos in
     Linux)
-      default triplet "$cpu_set-linux-gnu"
+      default triplet "${cpu}-linux-gnu"
   esac
 fi
 
 if test "$bigendian" = "yes" ; then
-  confvars="$confvars BIGENDIAN"
-fi
-
-if test "$mingw32" = "yes" -a "$cc_name" = "gcc"; then
-  # avoid mingw dependencies such as 'libgcc_s_dw2-1.dll'
-  default LDFLAGS "-static"
+  confvars_set BIGENDIAN
 fi
 
 if test "$cpu" = "arm"; then
   if test "${triplet%eabihf}" != "$triplet" ; then
-    confvars="$confvars arm_eabihf arm_vfp"
+    confvars_set arm_eabihf arm_vfp
   elif test "${triplet%eabi}" != "$triplet" ; then
-    confvars="$confvars arm_eabi arm_vfp"
+    confvars_set arm_eabi arm_vfp
   elif test -z "$build_cross"; then
     if test "${_triplet%eabihf}" != "$_triplet" ; then
-      confvars="$confvars arm_eabihf arm_vfp"
+      confvars_set arm_eabihf arm_vfp
     elif test "${_triplet%eabi}" != "$_triplet" ; then
-      confvars="$confvars arm_eabi arm_vfp"
+      confvars_set arm_eabi arm_vfp
     elif grep -s -q "^Features.* \(vfp\|iwmmxt\) " /proc/cpuinfo ; then
-      confvars="$confvars arm_vfp"
+      confvars_set arm_vfp
+    fi
+  fi
+  if test -z "$build_cross"; then
+    if grep -s -q "^Features.* \(idiv\)" /proc/cpuinfo ; then
+      confvars_set arm_idiv
     fi
   fi
 fi
 
-if test -n "$dwarf"; then
-  confvars="$confvars dwarf=$dwarf"
-fi
-
 # a final configuration tuning
 if test "$cc_name" != "tcc"; then
-  OPT1="-Wdeclaration-after-statement -fno-strict-aliasing"
+  OPT1="-Wdeclaration-after-statement" #-fno-strict-aliasing
   # we want -Wno- but gcc does not always reject unknown -Wno- options
-  OPT2="-Wpointer-sign -Wsign-compare -Wunused-result -Wformat-truncation"
-  OPT2="$OPT2 -Wstringop-truncation"
   if test "$cc_name" = "clang"; then
-    OPT1="$OPT1 -fheinous-gnu-extensions"
-    OPT2="$OPT2 -Wstring-plus-int -Wdeprecated-declarations"
+    OPT2= #"-Wstring-plus-int"
+  else
+    OPT2="-Wunused-result"
   fi
   $cc $OPT1 $OPT2 -o a.out -c -xc - < /dev/null > cc_msg.txt 2>&1
   for o in $OPT1; do # enable these options
@@ -508,6 +555,7 @@ fi
 
 fcho() { if test -n "$2"; then echo "$1$2"; fi }
 
+if test -z "$quiet"; then
 fcho "Binary directory    " "$bindir"
 fcho "TinyCC directory    " "$tccdir"
 fcho "Library directory   " "$libdir"
@@ -516,7 +564,6 @@ fcho "Manual directory    " "$mandir"
 fcho "Info directory      " "$infodir"
 fcho "Doc directory       " "$docdir"
 fcho "Target root prefix  " "$sysroot"
-fcho "/usr/include dir    " "$tcc_usrinclude"
 echo "Source path         $source_path"
 echo "Build OS            $(uname -m -s)"
 echo "C compiler          $cc ($gcc_major.$gcc_minor)"
@@ -530,6 +577,9 @@ fcho "Elfinterp           " "$tcc_elfinterp"
 fcho "Switches            " "$tcc_switches"
 fcho "Config              " "${confvars# }"
 echo "Creating config.mak and config.h"
+fi
+
+version=$(head "$source_path/VERSION")
 
 cat >config.mak <<EOF
 # Automatically generated by configure - do not modify
@@ -546,65 +596,16 @@ CC_NAME=$cc_name
 GCC_MAJOR=$gcc_major
 GCC_MINOR=$gcc_minor
 AR=$ar
-CFLAGS=$CFLAGS
-LDFLAGS=$LDFLAGS
 LIBSUF=$LIBSUF
 EXESUF=$EXESUF
 DLLSUF=$DLLSUF
+CFLAGS=$CFLAGS
+LDFLAGS=$LDFLAGS
+ARCH=$cpu
+TARGETOS=$targetos
+BUILDOS=$buildos
+VERSION=$version
 EOF
-
-print_inc() {
-  local v="$2"
-  if test -n "$v"; then
-    test "$3" = "num" || v="\"$v\""
-    echo "#ifndef $1" >> $TMPH
-    echo "# define $1 $v" >> $TMPH
-    echo "#endif" >> $TMPH
-  fi
-}
-
-print_mak() {
-  local v="$2"
-  if test -n "$v"; then
-    test "$3" = "num" || v="\"\\\"$v\\\"\""
-    echo "NATIVE_DEFINES+=-D$1=$v" >> config.mak
-  fi
-}
-
-echo "/* Automatically generated by configure - do not modify */" > $TMPH
-
-print_inc CONFIG_SYSROOT "$sysroot"
-test "$tccdir_auto" = "yes" || print_inc CONFIG_TCCDIR "$tccdir"
-print_inc DWARF_VERSION "$dwarf" num
-print_mak CONFIG_USR_INCLUDE "$tcc_usrinclude"
-print_mak CONFIG_TCC_SYSINCLUDEPATHS "$tcc_sysincludepaths"
-print_mak CONFIG_TCC_LIBPATHS "$tcc_libpaths"
-print_mak CONFIG_TCC_CRTPREFIX "$tcc_crtprefix"
-print_mak CONFIG_TCC_ELFINTERP "$tcc_elfinterp"
-print_mak CONFIG_TCC_SWITCHES "$tcc_switches"
-print_mak CONFIG_LDDIR "$tcc_lddir"
-print_mak CONFIG_TRIPLET "$triplet"
-print_mak TCC_CPU_VERSION "$cpuver" num
-
-echo "ARCH=$cpu" >> config.mak
-echo "TARGETOS=$targetos" >> config.mak
-echo "BUILDOS=$buildos" >> config.mak
-
-predefs="1"
-for v in $confvars ; do
-  test "$v" = "predefs=no" && predefs=""
-  if test "${v%=*}" = "$v"; then
-    echo "CONFIG_$v=yes" >> config.mak
-  else
-    echo "CONFIG_$v" >> config.mak
-  fi
-done
-print_inc CONFIG_TCC_PREDEFS "$predefs" num
-
-version=`head $source_path/VERSION`
-echo "VERSION = $version" >> config.mak
-echo "#define TCC_VERSION \"$version\"" >> $TMPH
-echo "@set VERSION $version" > config.texi
 
 if test "$source_path_used" = "yes" ; then
     case $source_path in
@@ -614,24 +615,128 @@ if test "$source_path_used" = "yes" ; then
 else
      echo 'TOPSRC=$(TOP)' >>config.mak
 fi
-cat >>$TMPH <<EOF
+
+# $1: macro name, $2: val to set - quoted [, $3: non-empty for #ifndef]
+print_str() {
+  if test -n "$2"; then
+    test -n "$3" && echo "#ifndef $1" >> $TMPH
+    echo "#define $1 \"$2\"" >> $TMPH
+    test -n "$3" && echo "#endif" >> $TMPH
+  fi
+}
+
+# $1: macro name, $2: val to set [, $3: non-empty for #ifndef]
+print_num() {
+  if test -n "$2"; then
+     test -n "$3" && echo "#ifndef $1" >> $TMPH
+     echo "#define $1 $2" >> $TMPH
+     test -n "$3" && echo "#endif" >> $TMPH
+  fi
+}
+
+cat >$TMPH <<EOF
+/* Automatically generated by configure - do not modify */
+
+#define TCC_VERSION "$version"
+
+#define CC_NAME CC_$cc_name
 #define GCC_MAJOR $gcc_major
 #define GCC_MINOR $gcc_minor
-#define CC_NAME CC_${cc_name}
+
+#if !(TCC_TARGET_I386 || TCC_TARGET_X86_64 || TCC_TARGET_ARM\
+ || TCC_TARGET_ARM64 || TCC_TARGET_RISCV64 || TCC_TARGET_C67)
 EOF
+
+predefs=1
+# options that are applied only to the native tcc
+for v in $cpu $confvars ; do
+  if test "${v%=*}" = "$v"; then
+    v="$v=yes"
+  fi
+  R="CONFIG_$v"
+  echo "$R" >> config.mak
+  case "$R" in
+    # CPU
+    CONFIG_i386=yes)        print_num TCC_TARGET_I386 1 ;;
+    CONFIG_x86_64=yes)      print_num TCC_TARGET_X86_64 1 ;;
+    CONFIG_arm64=yes)       print_num TCC_TARGET_ARM64 1 ;;
+    CONFIG_riscv64=yes)     print_num TCC_TARGET_RISCV64 1 ;;
+    CONFIG_arm=yes)         print_num TCC_TARGET_ARM 1
+                            print_num CONFIG_TCC_CPUVER "$cpuver" ;;
+    CONFIG_arm_eabihf=yes)  print_num TCC_ARM_EABI 1
+                            print_num TCC_ARM_HARDFLOAT 1 ;;
+    CONFIG_arm_eabi=yes)    print_num TCC_ARM_EABI 1 ;;
+    CONFIG_arm_vfp=yes)     print_num TCC_ARM_VFP 1 ;;
+    CONFIG_arm_idiv=yes)    print_num __ARM_FEATURE_IDIV 1 ;;
+    # OS
+    CONFIG_WIN32=yes)       print_num TCC_TARGET_PE 1 ;;
+    CONFIG_OSX=yes)         print_num TCC_TARGET_MACHO 1 ;;
+    CONFIG_Android=yes)     print_num TARGETOS_ANDROID 1 ;;
+    CONFIG_BSD=yes)         print_num TARGETOS_$targetos 1
+      case "$targetos" in
+        FreeBSD)    default tcc_elfinterp "/libexec/ld-elf.so.1";;
+        FreeBSD_kernel)
+          case "$cpu" in
+          x86_64)   default tcc_elfinterp "/lib/ld-kfreebsd-x86-64.so.1";;
+          *)        default tcc_elfinterp "/lib/ld.so.1";;
+          esac ;;
+        DragonFly)  default tcc_elfinterp "/usr/libexec/ld-elf.so.2";;
+        NetBSD)     default tcc_elfinterp "/usr/libexec/ld.elf_so";;
+        OpenBSD)    default tcc_elfinterp "/usr/libexec/ld.so";;
+      esac
+      ;;
+    CONFIG_uClibc=yes)      print_num CONFIG_TCC_UCLIBC 1
+      default tcc_elfinterp "/lib/ld-uClibc.so.0"
+      ;;
+    CONFIG_musl=yes)        print_num CONFIG_TCC_MUSL 1
+      case "$cpu" in
+        arm64)      default tcc_elfinterp "/lib/ld-musl-aarch64.so.1";;
+        *)          default tcc_elfinterp "/lib/ld-musl-${cpu}.so.1";;
+      esac
+      ;;
+    # other
+    CONFIG_selinux=yes)     print_num CONFIG_SELINUX 1 ;;
+    CONFIG_pie=yes)         print_num CONFIG_TCC_PIE 1 ;;
+    CONFIG_pic=yes)         print_num CONFIG_TCC_PIC 1 ;;
+    CONFIG_new_dtags=yes)   print_num CONFIG_NEW_DTAGS 1 ;;
+    CONFIG_codesign=yes)    print_num CONFIG_CODESIGN 1 ;;
+    CONFIG_new_macho=no)    print_num CONFIG_NEW_MACHO 0 ;;
+    CONFIG_bcheck=no)       print_num CONFIG_TCC_BCHECK 0 ;;
+    CONFIG_backtrace=no)    print_num CONFIG_TCC_BACKTRACE 0 ;;
+    CONFIG_dwarf=*)         print_num CONFIG_DWARF_VERSION ${R#*=} ;;
+    CONFIG_semlock=*)       print_num CONFIG_TCC_SEMLOCK ${R#*=} ;;
+    CONFIG_predefs=no)      predefs=0 ;;
+  esac
+done
+
+print_str CONFIG_TCC_SYSINCLUDEPATHS "$tcc_sysincludepaths"
+print_str CONFIG_TCC_LIBPATHS "$tcc_libpaths"
+print_str CONFIG_TCC_CRTPREFIX "$tcc_crtprefix"
+print_str CONFIG_TCC_ELFINTERP "$tcc_elfinterp"
+print_str CONFIG_TCC_SWITCHES "$tcc_switches"
+print_str CONFIG_TRIPLET "$triplet"
+print_str CONFIG_OS_RELEASE "$os_release"
+echo "#endif" >> $TMPH && echo >> $TMPH
+
+print_str CONFIG_SYSROOT "$sysroot" x
+test "$tccdir_auto" = "yes" || print_str CONFIG_TCCDIR "$tccdir" x
+print_num CONFIG_TCC_PREDEFS "$predefs"
 
 diff $TMPH config.h >/dev/null 2>&1
 if test $? -ne 0 ; then
     mv -f $TMPH config.h
-else
+elif test -z "$quiet"; then
     echo "config.h is unchanged"
 fi
+
+echo "@set VERSION $version" > config.texi
 
 rm -f $TMPN* $CONFTEST
 
 # ---------------------------------------------------------------------------
 # build tree in object directory if source path is different from current one
 
+use_cp=
 fn_makelink()
 {
     tgt=$1/$2
@@ -648,13 +753,15 @@ fn_makelink()
 	 ;;
     esac
 
-    ln -sfn $tgt $2 || ( echo "ln failed. Using cp instead."; cp -f $1/$2 $2 )
+    test -n "$use_cp" || ln -sfn "$tgt" $2 ||
+        { use_cp=yes; echo "ln failed. Using cp instead."; }
+    test -z "$use_cp" || cp -f "$1/$2" $2
 }
 
 if test "$source_path_used" = "yes" ; then
   FILES="Makefile lib/Makefile tests/Makefile tests/tests2/Makefile tests/pp/Makefile"
   for f in $FILES ; do
-    fn_makelink $source_path $f
+    fn_makelink "$source_path" $f
   done
 fi
 

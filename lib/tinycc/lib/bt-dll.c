@@ -34,7 +34,11 @@
   REDIR(__bound_strncmp) \
   REDIR(__bound_strcat) \
   REDIR(__bound_strchr) \
-  REDIR(__bound_strdup)
+  REDIR(__bound_strdup) \
+  REDIR(__bound_strncat) \
+  REDIR(__bound_strrchr) \
+  REDIR(__bound_setjmp) \
+  REDIR(__bound_longjmp)
 
 #ifdef __leading_underscore
 #define _(s) "_"#s
@@ -45,11 +49,28 @@
 #define REDIR(s) void *s;
 static struct { REDIR_ALL } all_ptrs;
 #undef REDIR
+
 #define REDIR(s) #s"\0"
 static const char all_names[] = REDIR_ALL;
 #undef REDIR
-#define REDIR(s) __asm__(".global " _(s) ";" _(s) ": jmp *%0" : : "m" (all_ptrs.s) );
-static void all_jmps() { REDIR_ALL }
+
+#if __aarch64__
+# define REDIR(s) \
+    __asm__(".global "_(s)";"_(s)":"); \
+    __asm__(".int 0x58000090"); /* ldr x16, [pc, #16] */ \
+    __asm__(".int 0xf9400210"); /* ldr x16, [x16] */ \
+    __asm__(".int 0xd61f0200"); /* br x16 */ \
+    __asm__(".int 0xd503201f"); /* nop for alignment */ \
+    __asm__(".quad all_ptrs + (. - all_jmps - 16) / 24 * 8"); \
+    __asm__(".type "_(s)",function\n.size "_(s)",.-"_(s));
+
+    __asm__(".text\n.align 8\nall_jmps:");
+    REDIR_ALL
+#else
+# define REDIR(s) \
+    __asm__(".global "_(s)";"_(s)":"); goto *all_ptrs.s;
+    static void all_jmps() { REDIR_ALL }
+#endif
 #undef REDIR
 
 void __bt_init_dll(int bcheck)

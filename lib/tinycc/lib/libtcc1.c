@@ -107,10 +107,9 @@ union float_long {
 };
 
 /* XXX: we don't support several builtin supports for now */
-#if !defined __x86_64__ && !defined __arm__ && !defined __riscv
+#if defined __i386__
 
 /* XXX: use gcc/tcc intrinsic ? */
-#if defined __i386__
 #define sub_ddmmss(sh, sl, ah, al, bh, bl) \
   __asm__ ("subl %5,%1\n\tsbbl %3,%0"					\
 	   : "=r" ((USItype) (sh)),					\
@@ -139,9 +138,6 @@ union float_long {
 	     : "=r" (__cbtmp) : "rm" ((USItype) (x)));			\
     (count) = __cbtmp ^ 31;						\
   } while (0)
-#else
-#error unsupported CPU type
-#endif
 
 /* most of this code is taken from libgcc2.c from gcc */
 
@@ -478,7 +474,7 @@ long long __ashldi3(long long a, int b)
 #endif
 }
 
-#endif /* !__x86_64__ */
+#endif /* __i386__ */
 
 /* XXX: fix tcc's code generator to do this instead */
 float __floatundisf(unsigned long long a)
@@ -625,17 +621,3 @@ long long __fixxfdi (long double a1)
     return s ? ret : -ret;
 }
 #endif /* !ARM */
-
-#if defined __x86_64__
-/* float constants used for unary minus operation */
-const float __mzerosf = -0.0;
-const double __mzerodf = -0.0;
-#endif
-
-#if defined _WIN64
-/* MSVC x64 intrinsic */
-void __faststorefence(void)
-{
-    __asm__("lock; orl $0,(%rsp)");
-}
-#endif

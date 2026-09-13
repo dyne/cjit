@@ -6,6 +6,10 @@ typedef struct {
     double d2;
 } Node;
 
+typedef struct {
+    int a, b, c;
+} A;
+
 Node init(Node self) {
     self.data[0] = 0;
     self.data[1] = 1;
@@ -25,11 +29,25 @@ void print_data(Node data) {
             data.d1, data.d2);
 }
 
+A test(void)
+{
+    int i;
+    A arr[30];
+
+    for (i = 0; i < 30; i++)
+        arr[i].b = i;
+    return arr[29];
+}
+
 int main(void) {
     /* This code resulted in a bounds checking error */
     Node data;
+    A a;
     dummy (data);
     char val;
     data = init (data);
     print_data(data);
+    a = test();
+    printf("%d\n", a.b);
+    return 0;
 }

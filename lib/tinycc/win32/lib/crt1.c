@@ -75,10 +75,11 @@ __attribute__((weak)) extern int __run_on_exit();
 int _runtmain(int argc, /* as tcc passed in */ char **argv)
 {
     int ret;
-#ifdef UNICODE
+#if defined UNICODE || defined __aarch64__
     _startupinfo start_info = {0};
-
-    __tgetmainargs(&__argc, &__targv, &_tenviron, _dowildcard, &start_info);
+    __tgetmainargs(&__argc, &__targv, &_tenviron, 0, &start_info);
+#endif
+#ifdef UNICODE
     /* may be wrong when tcc has received wildcards (*.c) */
     if (argc < __argc) {
         __targv += __argc - argc;
@@ -93,6 +94,8 @@ int _runtmain(int argc, /* as tcc passed in */ char **argv)
 #endif
     run_ctors(__argc, __targv, _tenviron);
     ret = _tmain(__argc, __targv, _tenviron);
+    fflush(stdout);
+    fflush(stderr);
     run_dtors();
     __run_on_exit(ret);
     return ret;

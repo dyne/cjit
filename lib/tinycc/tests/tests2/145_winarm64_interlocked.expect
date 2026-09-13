@@ -1,0 +1,8 @@
+exchange old: yes
+exchange stored: yes
+compare old: yes
+compare stored: yes
+acquire old: yes
+acquire stored: yes
+release old: yes
+release stored: yes

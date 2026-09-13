@@ -31,7 +31,9 @@ int main()
     double da0 = 0X.1ACP12;
     double da1 = 0x.1acp-12;
     double da2 = 0x.1acp+12;
-    printf("%f\n%f\n%f\n\n", da0, da1, da2);
+    double da3 = 0x1.00000000000000000000000000000000000000000000p+12;
+    double da4 = 0x1000000000000000000000000000000000000000000000p-140;
+    printf("%f\n%f\n%f\n%f\n%f\n\n", da0, da1, da2, da3, da4);
 
     double db0 = 0X1AC.BDP12;
     double db1 = 0x1ac.bdp-12;

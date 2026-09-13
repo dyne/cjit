@@ -25,6 +25,7 @@ config*.h
 *_.h
 config*.mak
 config.texi
+conftest*
 c2str
 tags
 TAGS
@@ -47,6 +48,9 @@ win32/include/stddef.h
 win32/include/stdnoreturn.h
 win32/include/varargs.h
 win32/include/tcclib.h
+win32/include/tccdefs.h
+win32/include/stdatomic.h
+win32/include/tgmath.h
 
 tests/tcctest[1234]
 tests/tcctest.gcc

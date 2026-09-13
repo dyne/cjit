@@ -207,6 +207,21 @@ extern "C" {
 #endif
 #endif
 #endif
+
+#if defined __aarch64__
+/* something does not work using those from msvcrt.dll */
+# undef __argc
+# undef __argv
+# undef __wargv
+# undef _wenviron
+# undef _environ
+extern int __argc;
+extern char **__argv;
+extern wchar_t **__wargv;
+extern char **_environ;
+extern wchar_t **_wenviron;
+#endif
+
 #ifndef _pgmptr
 #ifdef _MSVCRT_
   extern char *_pgmptr;
@@ -376,10 +391,16 @@ extern "C" {
   _CRTIMP int __cdecl _set_error_mode(int _Mode);
   void __cdecl srand(unsigned int _Seed);
   double __cdecl strtod(const char *_Str,char **_EndPtr);
-  float __cdecl strtof(const char *nptr, char **endptr);
 #if !defined __NO_ISOCEXT  /* in libmingwex.a */
+#if __TINYC__
+  __CRT_INLINE float __cdecl strtof (const char *p, char ** e) { return strtod(p, e); }
+  __CRT_INLINE long double __cdecl strtold(const char *p, char ** e) { return strtod(p, e); }
+#else
   float __cdecl strtof (const char * __restrict__, char ** __restrict__);
   long double __cdecl strtold(const char * __restrict__, char ** __restrict__);
+#endif
+#else
+  float __cdecl strtof(const char *nptr, char **endptr);
 #endif /* __NO_ISOCEXT */
   _CRTIMP double __cdecl _strtod_l(const char *_Str,char **_EndPtr,_locale_t _Locale);
   long __cdecl strtol(const char *_Str,char **_EndPtr,int _Radix);

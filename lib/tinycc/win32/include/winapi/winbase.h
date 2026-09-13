@@ -859,7 +859,7 @@ extern "C" {
   }
 #endif
 
-#ifndef !defined (InterlockedAnd64)
+#ifndef InterlockedAnd64
 #define InterlockedAnd64 InterlockedAnd64_Inline
 
   __CRT_INLINE LONGLONG InterlockedAnd64_Inline (LONGLONG volatile *Destination,LONGLONG Value) {
@@ -972,7 +972,9 @@ extern "C" {
   LONG WINAPI InterlockedDecrement(LONG volatile *lpAddend);
   LONG WINAPI InterlockedExchange(LONG volatile *Target,LONG Value);
 
+#ifndef InterlockedExchangePointer
 #define InterlockedExchangePointer(Target,Value) (PVOID)InterlockedExchange((PLONG)(Target),(LONG)(Value))
+#endif
 
   LONG WINAPI InterlockedExchangeAdd(LONG volatile *Addend,LONG Value);
   LONG WINAPI InterlockedCompareExchange(LONG volatile *Destination,LONG Exchange,LONG Comperand);
@@ -1035,6 +1037,7 @@ extern "C" {
     return Old;
   }
 
+#ifndef InterlockedCompareExchangePointer
 #ifdef __cplusplus
   __CRT_INLINE PVOID __cdecl __InlineInterlockedCompareExchangePointer(PVOID volatile *Destination,PVOID ExChange,PVOID Comperand) {
     return((PVOID)(LONG_PTR)InterlockedCompareExchange((LONG volatile *)Destination,(LONG)(LONG_PTR)ExChange,(LONG)(LONG_PTR)Comperand));
@@ -1042,6 +1045,7 @@ extern "C" {
 #define InterlockedCompareExchangePointer __InlineInterlockedCompareExchangePointer
 #else
 #define InterlockedCompareExchangePointer(Destination,ExChange,Comperand)(PVOID)(LONG_PTR)InterlockedCompareExchange((LONG volatile *)(Destination),(LONG)(LONG_PTR)(ExChange),(LONG)(LONG_PTR)(Comperand))
+#endif
 #endif
 
 #define InterlockedIncrementAcquire InterlockedIncrement
@@ -1054,8 +1058,12 @@ extern "C" {
 #define InterlockedCompareExchangeRelease InterlockedCompareExchange
 #define InterlockedCompareExchangeAcquire64 InterlockedCompareExchange64
 #define InterlockedCompareExchangeRelease64 InterlockedCompareExchange64
+#ifndef InterlockedCompareExchangePointerAcquire
 #define InterlockedCompareExchangePointerAcquire InterlockedCompareExchangePointer
+#endif
+#ifndef InterlockedCompareExchangePointerRelease
 #define InterlockedCompareExchangePointerRelease InterlockedCompareExchangePointer
+#endif
 #endif
 
 #if defined(_SLIST_HEADER_) && !defined(_NTOSP_)
@@ -1847,8 +1855,15 @@ extern "C" {
 #define LOAD_LIBRARY_AS_DATAFILE 0x2
 #define LOAD_WITH_ALTERED_SEARCH_PATH 0x8
 #define LOAD_IGNORE_CODE_AUTHZ_LEVEL 0x10
-#define LOAD_LINRARY_AS_IMAGE_RESOURCE 0x20
+#define LOAD_LIBRARY_AS_IMAGE_RESOURCE 0x20
 #define LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE 0x40
+#define LOAD_LIBRARY_REQUIRE_SIGNED_TARGET 0x80
+#define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR 0x100
+#define LOAD_LIBRARY_SEARCH_APPLICATION_DIR 0x200
+#define LOAD_LIBRARY_SEARCH_USER_DIRS 0x400
+#define LOAD_LIBRARY_SEARCH_SYSTEM32 0x800
+#define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS 0x1000
+#define LOAD_LIBRARY_SAFE_CURRENT_DIRS 0x2000
 
   WINBASEAPI DWORD WINAPI GetModuleFileNameA(HMODULE hModule,LPCH lpFilename,DWORD nSize);
   WINBASEAPI DWORD WINAPI GetModuleFileNameW(HMODULE hModule,LPWCH lpFilename,DWORD nSize);

@@ -21,7 +21,7 @@ extern "C" {
 #define __CRT_UNALIGNED
 #endif
 
-#if defined(__ia64__) || defined(__x86_64)
+#if defined(__ia64__) || defined(__x86_64) || defined(__aarch64__)
 #define UNALIGNED __CRT_UNALIGNED
 #ifdef _WIN64
 #define UNALIGNED64 __CRT_UNALIGNED
@@ -65,7 +65,7 @@ extern "C" {
 #ifdef _WIN64
 #ifdef _AMD64_
 #define PROBE_ALIGNMENT(_s) TYPE_ALIGNMENT(DWORD)
-#elif defined(_IA64_)
+#elif defined(_IA64_) || defined(_ARM64_)
 #define PROBE_ALIGNMENT(_s) (TYPE_ALIGNMENT(_s) > TYPE_ALIGNMENT(DWORD) ? TYPE_ALIGNMENT(_s) : TYPE_ALIGNMENT(DWORD))
 #else
 #error No Target Architecture
@@ -79,7 +79,7 @@ extern "C" {
 
 #include <basetsd.h>
 
-#if defined(_X86_) || defined(__ia64__) || defined(__x86_64)
+#if defined(_X86_) || defined(__ia64__) || defined(__x86_64) || defined(__aarch64__)
 #define DECLSPEC_IMPORT __declspec(dllimport)
 #else
 #define DECLSPEC_IMPORT
@@ -321,7 +321,7 @@ typedef DWORD LCID;
 #define Int32x32To64(a,b) (LONGLONG)((LONGLONG)(LONG)(a) *(LONG)(b))
 #define UInt32x32To64(a,b) (ULONGLONG)((ULONGLONG)(DWORD)(a) *(DWORD)(b))
 #define Int64ShrlMod32(a,b) ((DWORDLONG)(a)>>(b))
-#elif defined(__ia64__) || defined(__x86_64)
+#elif defined(__ia64__) || defined(__x86_64) || defined(__aarch64__)
 #define Int32x32To64(a,b) ((LONGLONG)((LONG)(a)) *(LONGLONG)((LONG)(b)))
 #define UInt32x32To64(a,b) ((ULONGLONG)((DWORD)(a)) *(ULONGLONG)((DWORD)(b)))
 #define Int64ShrlMod32(a,b) ((ULONGLONG)(a) >> (b))
@@ -829,8 +829,6 @@ typedef DWORD LCID;
   typedef ULONG_PTR KSPIN_LOCK;
   typedef KSPIN_LOCK *PKSPIN_LOCK;
 
-#ifdef _AMD64_
-
 #if defined(__x86_64) && !defined(RC_INVOKED)
 
 #ifdef __cplusplus
@@ -1282,7 +1280,6 @@ typedef DWORD LCID;
 #ifdef __cplusplus
   }
 #endif
-#endif
 
 #define EXCEPTION_READ_FAULT 0
 #define EXCEPTION_WRITE_FAULT 1
@@ -1420,7 +1417,160 @@ typedef DWORD LCID;
   typedef DWORD (*POUT_OF_PROCESS_FUNCTION_TABLE_CALLBACK)(HANDLE Process,PVOID TableAddress,PDWORD Entries,PRUNTIME_FUNCTION *Functions);
 
 #define OUT_OF_PROCESS_FUNCTION_TABLE_CALLBACK_EXPORT_NAME "OutOfProcessFunctionTableCallback"
+#endif /* defined(__x86_64) && !defined(RC_INVOKED) */
 
+#if defined(__TINYC__) && (defined(__aarch64__) || defined(__arm64__)) && !defined(RC_INVOKED)
+
+#define __TCC_WINNT_ATOMIC_SEQ_CST 5
+/* TCC lowers __atomic_compare_exchange's fourth argument as weak, but the
+   ARM64 helper reads it as success_memorder.  Strong CAS passes weak == 0,
+   so keep Interlocked's barriers explicit here. */
+#define __TCC_WINNT_MEMORY_BARRIER() __asm__ __volatile__("dmb ish" : : : "memory")
+
+/* This covers the LONG operations needed by TCC's semaphore code and the
+   pointer helpers that winbase.h exposes through Interlocked pointer macros.
+   Add local helpers before relying on increment/decrement, add/exchange-add,
+   bitwise, or 64-bit Interlocked forms on Windows ARM64 with TCC. */
+
+    __CRT_INLINE LONG InterlockedExchange(LONG volatile *Target,LONG Value) {
+      LONG Old;
+      __atomic_load(Target,&Old,__TCC_WINNT_ATOMIC_SEQ_CST);
+      __TCC_WINNT_MEMORY_BARRIER();
+      while (!__atomic_compare_exchange(Target,&Old,&Value,0,
+	__TCC_WINNT_ATOMIC_SEQ_CST,__TCC_WINNT_ATOMIC_SEQ_CST))
+	;
+      __TCC_WINNT_MEMORY_BARRIER();
+      return Old;
+    }
+    __CRT_INLINE LONG InterlockedCompareExchange(LONG volatile *Destination,LONG ExChange,LONG Comperand) {
+      LONG Old = Comperand;
+      __TCC_WINNT_MEMORY_BARRIER();
+      __atomic_compare_exchange(Destination,&Old,&ExChange,0,
+	__TCC_WINNT_ATOMIC_SEQ_CST,__TCC_WINNT_ATOMIC_SEQ_CST);
+      __TCC_WINNT_MEMORY_BARRIER();
+      return Old;
+    }
+    __CRT_INLINE PVOID __TCC_WINNT_InterlockedExchangePointer(PVOID volatile *Target,PVOID Value) {
+      PVOID Old;
+      __atomic_load(Target,&Old,__TCC_WINNT_ATOMIC_SEQ_CST);
+      __TCC_WINNT_MEMORY_BARRIER();
+      while (!__atomic_compare_exchange(Target,&Old,&Value,0,
+	__TCC_WINNT_ATOMIC_SEQ_CST,__TCC_WINNT_ATOMIC_SEQ_CST))
+	;
+      __TCC_WINNT_MEMORY_BARRIER();
+      return Old;
+    }
+    __CRT_INLINE PVOID __TCC_WINNT_InterlockedCompareExchangePointer(PVOID volatile *Destination,PVOID ExChange,PVOID Comperand) {
+      PVOID Old = Comperand;
+      __TCC_WINNT_MEMORY_BARRIER();
+      __atomic_compare_exchange(Destination,&Old,&ExChange,0,
+	__TCC_WINNT_ATOMIC_SEQ_CST,__TCC_WINNT_ATOMIC_SEQ_CST);
+      __TCC_WINNT_MEMORY_BARRIER();
+      return Old;
+    }
+
+#define InterlockedExchangePointer __TCC_WINNT_InterlockedExchangePointer
+#define InterlockedCompareExchangePointer __TCC_WINNT_InterlockedCompareExchangePointer
+#define InterlockedCompareExchangePointerAcquire InterlockedCompareExchangePointer
+#define InterlockedCompareExchangePointerRelease InterlockedCompareExchangePointer
+
+#define InterlockedCompareExchangeAcquire InterlockedCompareExchange
+#define InterlockedCompareExchangeRelease InterlockedCompareExchange
+
+#undef __TCC_WINNT_MEMORY_BARRIER
+#undef __TCC_WINNT_ATOMIC_SEQ_CST
+
+#endif /* defined(__TINYC__) && (defined(__aarch64__) || defined(__arm64__)) && !defined(RC_INVOKED) */
+
+#if defined(_ARM64_)
+
+/* ARM64 Context Definition */
+#define CONTEXT_ARM64 0x00400000
+#define CONTEXT_CONTROL (CONTEXT_ARM64 | 0x00000001L)
+#define CONTEXT_INTEGER (CONTEXT_ARM64 | 0x00000002L)
+#define CONTEXT_FLOATING_POINT (CONTEXT_ARM64 | 0x00000004L)
+#define CONTEXT_DEBUG (CONTEXT_ARM64 | 0x00000008L)
+#define CONTEXT_FULL (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT)
+#define CONTEXT_ALL (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT | CONTEXT_DEBUG)
+#define ARM64_MAX_BREAKPOINTS 8
+#define ARM64_MAX_WATCHPOINTS 2
+
+  typedef union _ARM64_NT_NEON128 {
+    struct {
+      ULONGLONG Low;
+      LONGLONG High;
+    } DUMMYSTRUCTNAME;
+    double D[2];
+    float S[4];
+    WORD H[8];
+    BYTE B[16];
+  } ARM64_NT_NEON128,*PARM64_NT_NEON128;
+
+  typedef struct DECLSPEC_ALIGN(16) _ARM64_NT_CONTEXT {
+    ULONG ContextFlags;
+    ULONG Cpsr;
+    union {
+      struct {
+        DWORD64 X0;
+        DWORD64 X1;
+        DWORD64 X2;
+        DWORD64 X3;
+        DWORD64 X4;
+        DWORD64 X5;
+        DWORD64 X6;
+        DWORD64 X7;
+        DWORD64 X8;
+        DWORD64 X9;
+        DWORD64 X10;
+        DWORD64 X11;
+        DWORD64 X12;
+        DWORD64 X13;
+        DWORD64 X14;
+        DWORD64 X15;
+        DWORD64 X16;
+        DWORD64 X17;
+        DWORD64 X18;
+        DWORD64 X19;
+        DWORD64 X20;
+        DWORD64 X21;
+        DWORD64 X22;
+        DWORD64 X23;
+        DWORD64 X24;
+        DWORD64 X25;
+        DWORD64 X26;
+        DWORD64 X27;
+        DWORD64 X28;
+        DWORD64 Fp;
+        DWORD64 Lr;
+      } DUMMYSTRUCTNAME;
+      DWORD64 X[31];
+    } DUMMYUNIONNAME;
+    DWORD64 Sp;
+    DWORD64 Pc;
+    ARM64_NT_NEON128 V[32];
+    DWORD Fpcr;
+    DWORD Fpsr;
+    DWORD Bcr[ARM64_MAX_BREAKPOINTS];
+    DWORD64 Bvr[ARM64_MAX_BREAKPOINTS];
+    DWORD Wcr[ARM64_MAX_WATCHPOINTS];
+    DWORD64 Wvr[ARM64_MAX_WATCHPOINTS];
+  } ARM64_NT_CONTEXT,*PARM64_NT_CONTEXT;
+
+  C_ASSERT(sizeof(ARM64_NT_CONTEXT) == 0x390);
+
+  typedef ARM64_NT_CONTEXT CONTEXT,*PCONTEXT;
+
+  typedef struct _RUNTIME_FUNCTION {
+    DWORD BeginAddress;
+    DWORD UnwindData;
+  } RUNTIME_FUNCTION,*PRUNTIME_FUNCTION;
+
+  typedef PRUNTIME_FUNCTION (*PGET_RUNTIME_FUNCTION_CALLBACK)(DWORD64 ControlPc,PVOID Context);
+  typedef DWORD (*POUT_OF_PROCESS_FUNCTION_TABLE_CALLBACK)(HANDLE Process,PVOID TableAddress,PDWORD Entries,PRUNTIME_FUNCTION *Functions);
+
+#endif /* _ARM64_ */
+
+#if (defined _ARM64_ || defined _AMD64_) && !defined RC_INVOKED
   NTSYSAPI VOID __cdecl RtlRestoreContext (PCONTEXT ContextRecord,struct _EXCEPTION_RECORD *ExceptionRecord);
   NTSYSAPI BOOLEAN __cdecl RtlAddFunctionTable(PRUNTIME_FUNCTION FunctionTable,DWORD EntryCount,DWORD64 BaseAddress);
   NTSYSAPI BOOLEAN __cdecl RtlInstallFunctionTableCallback(DWORD64 TableIdentifier,DWORD64 BaseAddress,DWORD Length,PGET_RUNTIME_FUNCTION_CALLBACK Callback,PVOID Context,PCWSTR OutOfProcessCallbackDll);
@@ -2761,6 +2911,8 @@ typedef DWORD LCID;
 #define PROCESS_SET_INFORMATION (0x0200)
 #define PROCESS_QUERY_INFORMATION (0x0400)
 #define PROCESS_SUSPEND_RESUME (0x0800)
+#define PROCESS_QUERY_LIMITED_INFORMATION (0x1000)
+#define PROCESS_SET_LIMITED_INFORMATION (0x2000)
 #define PROCESS_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF)
 
 #ifdef _WIN64
@@ -3699,6 +3851,7 @@ typedef DWORD LCID;
 #define IMAGE_FILE_MACHINE_CEF 0x0CEF
 #define IMAGE_FILE_MACHINE_EBC 0x0EBC
 #define IMAGE_FILE_MACHINE_AMD64 0x8664
+#define IMAGE_FILE_MACHINE_ARM64 0xAA64
 #define IMAGE_FILE_MACHINE_M32R 0x9041
 #define IMAGE_FILE_MACHINE_CEE 0xC0EE
 
@@ -3855,10 +4008,16 @@ typedef DWORD LCID;
 #define IMAGE_SUBSYSTEM_EFI_ROM 13
 #define IMAGE_SUBSYSTEM_XBOX 14
 
+#define IMAGE_DLLCHARACTERISTICS_HIGH_ENTROPY_VA 0x0020
+#define IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE 0x0040
+#define IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY 0x0080
+#define IMAGE_DLLCHARACTERISTICS_NX_COMPAT 0x0100
 #define IMAGE_DLLCHARACTERISTICS_NO_ISOLATION 0x0200
 #define IMAGE_DLLCHARACTERISTICS_NO_SEH 0x0400
 #define IMAGE_DLLCHARACTERISTICS_NO_BIND 0x0800
+#define IMAGE_DLLCHARACTERISTICS_APPCONTAINER 0x1000
 #define IMAGE_DLLCHARACTERISTICS_WDM_DRIVER 0x2000
+#define IMAGE_DLLCHARACTERISTICS_GUARD_CF 0x4000
 #define IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE 0x8000
 
 #define IMAGE_DIRECTORY_ENTRY_EXPORT 0

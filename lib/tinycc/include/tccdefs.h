@@ -90,8 +90,6 @@
     #define __NO_TLS 1
     #define __RUNETYPE_INTERNAL 1
 # if __SIZEOF_POINTER__ == 8
-    /* FIXME, __int128_t is used by setjump */
-    #define __int128_t struct { unsigned char _dummy[16] __attribute((aligned(16))); }
     #define __SIZEOF_SIZE_T__ 8
     #define __SIZEOF_PTRDIFF_T__ 8
 #else
@@ -120,12 +118,12 @@
     #define __GNUC__ 4   /* darwin emits warning on GCC<4 */
     #define __APPLE_CC__ 1 /* for <TargetConditionals.h> */
     #define __LITTLE_ENDIAN__ 1
-    #define _Float16 short unsigned int /* fake type just for size & alignment in macOS 15 SDK headers */
     #define _DONT_USE_CTYPE_INLINE_ 1
     /* avoids usage of GCC/clang specific builtins in libc-headerfiles: */
     #define __FINITE_MATH_ONLY__ 1
     #define _FORTIFY_SOURCE 0
     //#define __has_builtin(x) 0
+    #define _Float16 short unsigned int /* fake type just for size & alignment (macOS Sequoia) */
 
 #elif defined __ANDROID__
     #define  BIONIC_IOCTL_NO_SIGNEDNESS_OVERLOAD
@@ -153,6 +151,7 @@
     #define  __PRETTY_FUNCTION__ __FUNCTION__
     #define __has_builtin(x) 0
     #define __has_feature(x) 0
+    #define __has_attribute(x) 0
     /* C23 Keywords */
     #define _Nonnull
     #define _Nullable
@@ -180,11 +179,17 @@
 # endif
 #endif
 
+    /* GCC's __uint128_t appears in some Linux/OSX header files.
+       Just make it some type with same size and alignment. */
+    struct __uint128__ { char x[16]; } __attribute((__aligned__(16)));
+    #define __int128_t struct __uint128__
+    #define __uint128_t struct __uint128__
+
     /* __builtin_va_list */
 #if defined __x86_64__
 #if !defined _WIN32
     /* GCC compatible definition of va_list. */
-    /* This should be in sync with the declaration in our lib/libtcc1.c */
+    /* This should be in sync with the declaration in our lib/va_list.c */
     typedef struct {
         unsigned gp_offset, fp_offset;
         union {
@@ -217,7 +222,9 @@
                            &~3), *(type *)(ap - ((sizeof(type)+3)&~3)))
 
 #elif defined __aarch64__
-#if defined __APPLE__
+#if defined _WIN32
+    typedef char *__builtin_va_list;
+#elif defined __APPLE__
     typedef struct {
         void *__stack;
     } __builtin_va_list;
@@ -301,11 +308,8 @@
     __MAYBE_REDIR(void*, calloc, (__SIZE_TYPE__, __SIZE_TYPE__))
     __MAYBE_REDIR(void*, memalign, (__SIZE_TYPE__, __SIZE_TYPE__))
     __MAYBE_REDIR(void, free, (void*))
-#if defined __i386__ || defined __x86_64__
     __BOTH(void*, alloca, (__SIZE_TYPE__))
-#else
-    __BUILTIN(void*, alloca, (__SIZE_TYPE__))
-#endif
+    void *alloca(__SIZE_TYPE__);
     __BUILTIN(void, abort, (void))
     __BOUND(void, longjmp, ())
 #if !defined _WIN32

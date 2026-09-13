@@ -30,10 +30,19 @@
 
 #define CHAR_IS_UNSIGNED
 
+/* define if return values need to be extended explicitely
+   at caller side (for interfacing with non-TCC compilers) */
+#define PROMOTE_RET
+
 #else
 #define USING_GLOBALS
 #include "tcc.h"
 #include <assert.h>
+
+#define UPPER(x)	(((unsigned)(x) + 0x800u) & 0xfffff000)
+#define LOW_OVERFLOW(x)	UPPER(x)
+#define SIGN7(x)	((((x) & 0xff) ^ 0x80) - 0x80)
+#define SIGN11(x)	((((x) & 0xfff) ^ 0x800) - 0x800)
 
 ST_DATA const char * const target_machine_defs =
     "__riscv\0"
@@ -131,14 +140,14 @@ static void ER(uint32_t opcode, uint32_t func3,
 static void EI(uint32_t opcode, uint32_t func3,
                uint32_t rd, uint32_t rs1, uint32_t imm)
 {
-    assert(! ((imm + (1 << 11)) >> 12));
+    assert(! LOW_OVERFLOW(imm));
     EIu(opcode, func3, rd, rs1, imm);
 }
 
 static void ES(uint32_t opcode, uint32_t func3,
                uint32_t rs1, uint32_t rs2, uint32_t imm)
 {
-    assert(! ((imm + (1 << 11)) >> 12));
+    assert(! LOW_OVERFLOW(imm));
     o(opcode | (func3 << 12) | ((imm & 0x1f) << 7) | (rs1 << 15)
       | (rs2 << 20) | ((imm >> 5) << 25));
 }
@@ -154,7 +163,7 @@ ST_FUNC void gsym_addr(int t_, int a_)
         uint32_t r = a - t, imm;
         if ((r + (1 << 21)) & ~((1U << 22) - 2))
           tcc_error("out-of-range branch chain");
-        imm =   (((r >> 12) &  0xff) << 12)
+        imm = (((r >> 12) &  0xff) << 12)
             | (((r >> 11) &     1) << 20)
             | (((r >>  1) & 0x3ff) << 21)
             | (((r >> 20) &     1) << 31);
@@ -163,19 +172,32 @@ ST_FUNC void gsym_addr(int t_, int a_)
     }
 }
 
-static int load_symofs(int r, SValue *sv, int forstore)
+static int load_symofs(int r, SValue *sv, int forstore, int *new_fc)
 {
     int rr, doload = 0, large_addend = 0;
     int fc = sv->c.i, v = sv->r & VT_VALMASK;
     if (sv->r & VT_SYM) {
         Sym label = {0};
         assert(v == VT_CONST);
+        if (sv->sym->type.t & VT_TLS) {
+            /* TLS Local Exec model: lui + addi + add tp */
+            rr = is_ireg(r) ? ireg(r) : 5;
+            greloca(cur_text_section, sv->sym, ind,
+                    R_RISCV_TPREL_HI20, sv->c.i);
+            o(0x37 | (rr << 7));  // lui RR, 0 %tprel_hi(sym)
+            greloca(cur_text_section, sv->sym, ind,
+                    R_RISCV_TPREL_LO12_I, sv->c.i);
+            EI(0x13, 0, rr, rr, 0); // addi RR, RR, 0 %tprel_lo(sym)
+            ER(0x33, 0, rr, rr, 4, 0); // add RR, RR, tp
+            *new_fc = 0;
+            return rr;
+        }
         if (sv->sym->type.t & VT_STATIC) { // XXX do this per linker relax
             greloca(cur_text_section, sv->sym, ind,
                     R_RISCV_PCREL_HI20, sv->c.i);
-            sv->c.i = 0;
+            *new_fc = 0;
         } else {
-            if (((unsigned)fc + (1 << 11)) >> 12){
+            if (LOW_OVERFLOW(fc)){
               large_addend = 1;
             }
             greloca(cur_text_section, sv->sym, ind,
@@ -193,20 +215,20 @@ static int load_symofs(int r, SValue *sv, int forstore)
         if (doload) {
             EI(0x03, 3, rr, rr, 0); // ld RR, 0(RR)
             if (large_addend) {
-                o(0x37 | (6 << 7) | ((0x800 + fc) & 0xfffff000)); //lui t1, high(fc)
+                o(0x37 | (6 << 7) | UPPER(fc)); //lui t1, high(fc)
                 ER(0x33, 0, rr, rr, 6, 0); // add RR, RR, t1
-                sv->c.i = fc << 20 >> 20;
+                *new_fc = SIGN11(fc);
             }
         }
     } else if (v == VT_LOCAL || v == VT_LLOCAL) {
         rr = 8; // s0
         if (fc != sv->c.i)
           tcc_error("unimp: store(giant local off) (0x%lx)", (long)sv->c.i);
-        if (((unsigned)fc + (1 << 11)) >> 12) {
+        if (LOW_OVERFLOW(fc)) {
             rr = is_ireg(r) ? ireg(r) : 5; // t0
-            o(0x37 | (rr << 7) | ((0x800 + fc) & 0xfffff000)); //lui RR, upper(fc)
+            o(0x37 | (rr << 7) | UPPER(fc)); //lui RR, upper(fc)
             ER(0x33, 0, rr, rr, 8, 0); // add RR, RR, s0
-            sv->c.i = fc << 20 >> 20;
+            *new_fc = SIGN11(fc);
         }
     } else
       tcc_error("uhh");
@@ -217,13 +239,12 @@ static void load_large_constant(int rr, int fc, uint32_t pi)
 {
     if (fc < 0)
 	pi++;
-    o(0x37 | (rr << 7) | (((pi + 0x800) & 0xfffff000))); // lui RR, up(up(fc))
-    EI(0x13, 0, rr, rr, (int)pi << 20 >> 20);   // addi RR, RR, lo(up(fc))
+    o(0x37 | (rr << 7) | UPPER(pi)); // lui RR, up(up(fc))
+    EI(0x13, 0, rr, rr, SIGN11(pi));   // addi RR, RR, lo(up(fc))
     EI(0x13, 1, rr, rr, 12); // slli RR, RR, 12
-    EI(0x13, 0, rr, rr, (fc + (1 << 19)) >> 20);  // addi RR, RR, up(lo(fc))
+    EI(0x13, 0, rr, rr, SIGN11(((unsigned)fc + (1 << 19)) >> 20)); // addi RR, RR, up(lo(fc))
     EI(0x13, 1, rr, rr, 12); // slli RR, RR, 12
-    fc = fc << 12 >> 12;
-    EI(0x13, 0, rr, rr, fc >> 8);  // addi RR, RR, lo1(lo(fc))
+    EI(0x13, 0, rr, rr, SIGN11(((unsigned)fc + (1 << 7)) >> 8));  // addi RR, RR, lo1(lo(fc))
     EI(0x13, 1, rr, rr, 8); // slli RR, RR, 8
 }
 
@@ -245,16 +266,14 @@ ST_FUNC void load(int r, SValue *sv)
         if (size < 4 && !is_float(sv->type.t) && (sv->type.t & VT_UNSIGNED))
           func3 |= 4;
         if (v == VT_LOCAL || (fr & VT_SYM)) {
-            br = load_symofs(r, sv, 0);
-            fc = sv->c.i;
+            br = load_symofs(r, sv, 0, &fc);
         } else if (v < VT_CONST) {
             br = ireg(v);
-            /*if (((unsigned)fc + (1 << 11)) >> 12)
+            /*if (LOW_OVERFLOW(fc))
               tcc_error("unimp: load(large addend) (0x%x)", fc);*/
             fc = 0; // XXX store ofs in LVAL(reg)
         } else if (v == VT_LLOCAL) {
-            br = load_symofs(r, sv, 0);
-            fc = sv->c.i;
+            br = load_symofs(r, sv, 0, &fc);
             EI(0x03, 3, rr, br, fc); // ld RR, fc(BR)
             br = rr;
             fc = 0;
@@ -263,10 +282,10 @@ ST_FUNC void load(int r, SValue *sv)
             si >>= 32;
             if (si != 0) {
 		load_large_constant(rr, fc, si);
-                fc &= 0xff;
+                fc = SIGN7(fc);
             } else {
-                o(0x37 | (rr << 7) | ((0x800 + fc) & 0xfffff000)); //lui RR, upper(fc)
-                fc = fc << 20 >> 20;
+                o(0x37 | (rr << 7) | UPPER(fc)); //lui RR, upper(fc)
+                fc = SIGN11(fc);
 	    }
             br = rr;
 	} else {
@@ -275,20 +294,35 @@ ST_FUNC void load(int r, SValue *sv)
         EI(opcode, func3, rr, br, fc); // l[bhwd][u] / fl[wd] RR, fc(BR)
     } else if (v == VT_CONST) {
         int rb = 0, do32bit = 8, zext = 0;
-        assert((!is_float(sv->type.t) && is_ireg(r)) || bt == VT_LDOUBLE);
+        if (is_float(sv->type.t) && bt != VT_LDOUBLE) {
+            /* load float/double constant: move bit pattern from int reg */
+            uint64_t val = sv->c.i;
+            int is_dbl = bt == VT_DOUBLE;
+            if (val == 0) {
+                o(0x53 | (rr << 7) | ((unsigned)(0x78 | is_dbl) << 25));
+                return;
+            }
+            if (is_dbl) {
+                load_large_constant(6, (int)val, (int)(val >> 32));
+            } else {
+                if (LOW_OVERFLOW(fc))
+                    o(0x37 | (6 << 7) | UPPER(fc)); // lui t1, upper
+                EI(0x13 | 8, 0, 6, LOW_OVERFLOW(fc) ? 6 : 0, SIGN11(fc)); // addiw t1,...
+            }
+            o(0x53 | (rr << 7) | (6 << 15) | ((unsigned)(0x78 | is_dbl) << 25));
+            return;
+        }
+        assert(is_ireg(r) || bt == VT_LDOUBLE);
         if (fr & VT_SYM) {
-            rb = load_symofs(r, sv, 0);
-            fc = sv->c.i;
+            rb = load_symofs(r, sv, 0, &fc);
             do32bit = 0;
         }
-        if (is_float(sv->type.t) && bt != VT_LDOUBLE)
-          tcc_error("unimp: load(float)");
-        if (fc != sv->c.i) {
+        if (do32bit && fc != sv->c.i) {
             int64_t si = sv->c.i;
             si >>= 32;
             if (si != 0) {
 		load_large_constant(rr, fc, si);
-                fc &= 0xff;
+                fc = SIGN7(fc);
                 rb = rr;
                 do32bit = 0;
             } else if (bt == VT_LLONG) {
@@ -297,18 +331,17 @@ ST_FUNC void load(int r, SValue *sv)
                 zext = 1;
             }
         }
-        if (((unsigned)fc + (1 << 11)) >> 12)
-            o(0x37 | (rr << 7) | ((0x800 + fc) & 0xfffff000)), rb = rr; //lui RR, upper(fc)
+        if (LOW_OVERFLOW(fc))
+            o(0x37 | (rr << 7) | UPPER(fc)), rb = rr; //lui RR, upper(fc)
         if (fc || (rr != rb) || do32bit || (fr & VT_SYM))
-          EI(0x13 | do32bit, 0, rr, rb, fc << 20 >> 20); // addi[w] R, x0|R, FC
+          EI(0x13 | do32bit, 0, rr, rb, SIGN11(fc)); // addi[w] R, x0|R, FC
         if (zext) {
             EI(0x13, 1, rr, rr, 32); // slli RR, RR, 32
             EI(0x13, 5, rr, rr, 32); // srli RR, RR, 32
         }
     } else if (v == VT_LOCAL) {
-        int br = load_symofs(r, sv, 0);
+        int br = load_symofs(r, sv, 0, &fc);
         assert(is_ireg(r));
-        fc = sv->c.i;
         EI(0x13, 0, rr, br, fc); // addi R, s0, FC
     } else if (v < VT_CONST) { /* reg-reg */
         //assert(!fc); XXX support offseted regs
@@ -323,7 +356,7 @@ ST_FUNC void load(int r, SValue *sv)
               func7 |= 1;
             assert(size == 4 || size == 8);
             o(0x53 | (rr << 7) | ((is_freg(v) ? freg(v) : ireg(v)) << 15)
-              | (func7 << 25)); // fmv.{w.x, x.w, d.x, x.d} RR, VR
+              | ((unsigned)func7 << 25)); // fmv.{w.x, x.w, d.x, x.d} RR, VR
         }
     } else if (v == VT_CMP) {
         int op = vtop->cmp_op;
@@ -390,11 +423,10 @@ ST_FUNC void store(int r, SValue *sv)
       tcc_error("unimp: large sized store");
     assert(sv->r & VT_LVAL);
     if (fr == VT_LOCAL || (sv->r & VT_SYM)) {
-        ptrreg = load_symofs(-1, sv, 1);
-        fc = sv->c.i;
+        ptrreg = load_symofs(-1, sv, 1, &fc);
     } else if (fr < VT_CONST) {
         ptrreg = ireg(fr);
-        /*if (((unsigned)fc + (1 << 11)) >> 12)
+        /*if (LOW_OVERFLOW(fc))
           tcc_error("unimp: store(large addend) (0x%x)", fc);*/
         fc = 0; // XXX support offsets regs
     } else if (fr == VT_CONST) {
@@ -403,10 +435,10 @@ ST_FUNC void store(int r, SValue *sv)
         si >>= 32;
         if (si != 0) {
 	    load_large_constant(ptrreg, fc, si);
-            fc &= 0xff;
+            fc = SIGN7(fc);
         } else {
-            o(0x37 | (ptrreg << 7) | ((0x800 + fc) & 0xfffff000)); //lui RR, upper(fc)
-            fc = fc << 20 >> 20;
+            o(0x37 | (ptrreg << 7) | UPPER(fc)); //lui RR, upper(fc)
+            fc = SIGN11(fc);
 	}
     } else
       tcc_error("implement me: %s(!local)", __FUNCTION__);
@@ -557,6 +589,7 @@ ST_FUNC void gfunc_call(int nb_args)
     int i, align, size, areg[2];
     int *info = tcc_malloc((nb_args + 1) * sizeof (int));
     int stack_adj = 0, tempspace = 0, stack_add, ofs, splitofs = 0;
+    int old = (vtop[-nb_args].type.ref->f.func_type == FUNC_OLD);
     SValue *sv;
     Sym *sa;
 
@@ -584,8 +617,8 @@ ST_FUNC void gfunc_call(int nb_args)
             size = align = 8;
             byref = 64 | (tempofs << 7);
         }
-        reg_pass(&sv->type, prc, fieldofs, sa != 0);
-        if (!sa && align == 2*XLEN && size <= 2*XLEN)
+        reg_pass(&sv->type, prc, fieldofs, old || sa != 0);
+        if (!old && !sa && align == 2*XLEN && size <= 2*XLEN)
           areg[0] = (areg[0] + 1) & ~1;
         nregs = prc[0];
         if (size == 0)
@@ -600,7 +633,7 @@ ST_FUNC void gfunc_call(int nb_args)
             if (align < XLEN)
               align = XLEN;
             stack_adj += (size + align - 1) & -align;
-            if (!sa) /* one vararg on stack forces the rest on stack */
+            if (!old && !sa) /* one vararg on stack forces the rest on stack */
               areg[0] = 8, areg[1] = 16;
         } else {
             info[i] = areg[prc[1] - 1]++;
@@ -628,18 +661,10 @@ ST_FUNC void gfunc_call(int nb_args)
     tempspace = (tempspace + 15) & -16;
     stack_add = stack_adj + tempspace;
 
-    /* fetch cpu flag before generating any code */
-    if ((vtop->r & VT_VALMASK) == VT_CMP)
-      gv(RC_INT);
-
-
     if (stack_add) {
         if (stack_add >= 0x800) {
-            unsigned int bit11 = (((unsigned int)-stack_add) >> 11) & 1;
-            o(0x37 | (5 << 7) |
-              ((-stack_add + (bit11 << 12)) & 0xfffff000)); //lui t0, upper(v)
-            EI(0x13, 0, 5, 5, ((-stack_add & 0xfff) - bit11 * (1 << 12)));
-                                                         // addi t0, t0, lo(v)
+            o(0x37 | (5 << 7) | UPPER(-stack_add)); //lui t0, upper(v)
+            EI(0x13, 0, 5, 5, SIGN11(-stack_add)); // addi t0, t0, lo(v)
             ER(0x33, 0, 2, 2, 5, 0); // add sp, sp, t0
         }
         else
@@ -767,11 +792,8 @@ done:
     vtop -= nb_args + 1;
     if (stack_add) {
         if (stack_add >= 0x800) {
-            unsigned int bit11 = ((unsigned int)stack_add >> 11) & 1;
-            o(0x37 | (5 << 7) |
-              ((stack_add + (bit11 << 12)) & 0xfffff000)); //lui t0, upper(v)
-            EI(0x13, 0, 5, 5, (stack_add & 0xfff) - bit11 * (1 << 12));
-                                                           // addi t0, t0, lo(v)
+            o(0x37 | (5 << 7) | UPPER(stack_add)); //lui t0, upper(v)
+            EI(0x13, 0, 5, 5, SIGN11(stack_add)); // addi t0, t0, lo(v)
             ER(0x33, 0, 2, 2, 5, 0); // add sp, sp, t0
         }
         else
@@ -844,9 +866,7 @@ ST_FUNC void gfunc_prolog(Sym *func_sym)
                 }
             }
         }
-        sym_push(sym->v & ~SYM_FIELD, &sym->type,
-                 (byref ? VT_LLOCAL : VT_LOCAL) | VT_LVAL,
-                 param_addr);
+        gfunc_set_param(sym, param_addr, byref);
     }
     func_va_list_ofs = addr;
     num_va_regs = 0;
@@ -910,21 +930,17 @@ ST_FUNC void gfunc_epilog(void)
     loc = (loc - num_va_regs * 8);
     d = v = (-loc + 15) & -16;
 
-    if (v >= (1 << 11)) {
-        d = 16;
-        o(0x37 | (5 << 7) | ((0x800 + (v-16)) & 0xfffff000)); //lui t0, upper(v)
-        EI(0x13, 0, 5, 5, (v-16) << 20 >> 20); // addi t0, t0, lo(v)
-        ER(0x33, 0, 2, 2, 5, 0); // add sp, sp, t0
-    }
-    EI(0x03, 3, 1, 2, d - 8 - num_va_regs * 8);  // ld ra, v-8(sp)
-    EI(0x03, 3, 8, 2, d - 16 - num_va_regs * 8); // ld s0, v-16(sp)
-    EI(0x13, 0, 2, 2, d);      // addi sp, sp, v
-    EI(0x67, 0, 0, 1, 0);      // jalr x0, 0(x1), aka ret
+    EI(0x13, 0, 2, 8, num_va_regs * 8); // addi sp, s0, num_va_regs*8
+    EI(0x03, 3, 1, 8, -8); // ld ra, -8(s0)
+    EI(0x03, 3, 8, 8, -16); // ld s0, -16(s0)
+    EI(0x67, 0, 0, 1, 0); // jalr x0, 0(x1), aka ret
+
     large_ofs_ind = ind;
     if (v >= (1 << 11)) {
+        d = 16;
         EI(0x13, 0, 8, 2, d - num_va_regs * 8);      // addi s0, sp, d
-        o(0x37 | (5 << 7) | ((0x800 + (v-16)) & 0xfffff000)); //lui t0, upper(v)
-        EI(0x13, 0, 5, 5, (v-16) << 20 >> 20); // addi t0, t0, lo(v)
+        o(0x37 | (5 << 7) | UPPER(v-16)); //lui t0, upper(v)
+        EI(0x13, 0, 5, 5, SIGN11(v-16)); // addi t0, t0, lo(v)
         ER(0x33, 0, 2, 2, 5, 0x20); // sub sp, sp, t0
         gjmp_addr(func_sub_sp_offset + 5*4);
     }
@@ -973,8 +989,8 @@ ST_FUNC void gjmp_addr(int a)
 {
     uint32_t r = a - ind, imm;
     if ((r + (1 << 21)) & ~((1U << 22) - 2)) {
-        o(0x17 | (5 << 7) | (((r + 0x800) & 0xfffff000))); // lui RR, up(r)
-        r = (int)r << 20 >> 20;
+        o(0x17 | (5 << 7) | UPPER(r)); // lui RR, up(r)
+        r = SIGN11(r);
         EI(0x67, 0, 0, 5, r);      // jalr x0, r(t0)
     } else {
         imm = (((r >> 12) &  0xff) << 12)
@@ -1027,7 +1043,7 @@ static void gen_opil(int op, int ll)
     ll = ll ? 0 : 8;
     if ((vtop->r & (VT_VALMASK | VT_LVAL | VT_SYM)) == VT_CONST) {
         int fc = vtop->c.i;
-        if (fc == vtop->c.i && !(((unsigned)fc + (1 << 11)) >> 12)) {
+        if (fc == vtop->c.i && !LOW_OVERFLOW(fc)) {
             int cll = 0;
             int m = ll ? 31 : 63;
             vswap();
@@ -1127,6 +1143,7 @@ static void gen_opil(int op, int ll)
         ER(0x33 | ll, 0, d, a, b, 1); // mul d, a, b
         break;
     case '/':
+    case TOK_PDIV:
         ER(0x33 | ll, 4, d, a, b, 1); // div d, a, b
         break;
     case '&':
@@ -1144,7 +1161,6 @@ static void gen_opil(int op, int ll)
     case TOK_UMOD:
         ER(0x33 | ll, 7, d, a, b, 1); // remu d, a, b
         break;
-    case TOK_PDIV:
     case TOK_UDIV:
         ER(0x33 | ll, 5, d, a, b, 1); // divu d, a, b
         break;
@@ -1232,6 +1248,10 @@ ST_FUNC void gen_opf(int op)
         ER(0x53, op, rd, rs1, rs2, dbl | 0x50); // fcmp.[sd] RD, RS1, RS2 (op == eq/lt/le)
         if (invert)
           EI(0x13, 4, rd, rd, 1); // xori RD, 1
+
+        /* generate VT_CMP output */
+        vset_VT_CMP(TOK_NE);
+        vtop->cmp_r = rd | (0 << 8);
         break;
     case TOK_NE:
         invert = 1;
@@ -1254,10 +1274,31 @@ ST_FUNC void gen_opf(int op)
     }
 }
 
+ST_FUNC void gen_cvt_csti(int t)
+{
+    int r = ireg(gv(RC_INT));
+    if ((t & VT_BTYPE) == VT_SHORT) {
+        if (t & VT_UNSIGNED) {
+            EI(0x13, 1, r, r, 48); // slli r, r, 48
+            EI(0x13, 5, r, r, 48); // srli r, r, 48
+        } else {
+            EI(0x13, 1, r, r, 48); // slli r, r, 48
+            EIu(0x13, 5, r, r, 0x400 | 48); // srai r, r, 48
+        }
+    } else {
+        if (t & VT_UNSIGNED) {
+            EI(0x13, 7, r, r, 0xff); // andi r, r, 0xff
+        } else {
+            EI(0x13, 1, r, r, 56); // slli r, r, 56
+            EIu(0x13, 5, r, r, 0x400 | 56); // srai r, r, 56
+        }
+    }
+}
+
 ST_FUNC void gen_cvt_sxtw(void)
 {
-    /* XXX on risc-v the registers are usually sign-extended already.
-       Let's try to not do anything here.  */
+    int r = ireg(gv(RC_INT));
+    EI(0x1b, 0, r, r, 0); // addiw r, r, 0
 }
 
 ST_FUNC void gen_cvt_itof(int t)
@@ -1394,10 +1435,10 @@ ST_FUNC void ggoto(void)
 
 ST_FUNC void gen_vla_sp_save(int addr)
 {
-    if (((unsigned)addr + (1 << 11)) >> 12) {
-	o(0x37 | (5 << 7) | ((0x800 + addr) & 0xfffff000)); //lui t0,upper(addr)
+    if (LOW_OVERFLOW(addr)) {
+	o(0x37 | (5 << 7) | UPPER(addr)); //lui t0,upper(addr)
         ER(0x33, 0, 5, 5, 8, 0); // add t0, t0, s0
-        ES(0x23, 3, 5, 2, (int)addr << 20 >> 20); // sd sp, fc(t0)
+        ES(0x23, 3, 5, 2, SIGN11(addr)); // sd sp, fc(t0)
     }
     else
         ES(0x23, 3, 8, 2, addr); // sd sp, fc(s0)
@@ -1405,10 +1446,10 @@ ST_FUNC void gen_vla_sp_save(int addr)
 
 ST_FUNC void gen_vla_sp_restore(int addr)
 {
-    if (((unsigned)addr + (1 << 11)) >> 12) {
-	o(0x37 | (5 << 7) | ((0x800 + addr) & 0xfffff000)); //lui t0,upper(addr)
+    if (LOW_OVERFLOW(addr)) {
+	o(0x37 | (5 << 7) | UPPER(addr)); //lui t0,upper(addr)
         ER(0x33, 0, 5, 5, 8, 0); // add t0, t0, s0
-        EI(0x03, 3, 2, 5, (int)addr << 20 >> 20); // ld sp, fc(t0)
+        EI(0x03, 3, 2, 5, SIGN11(addr)); // ld sp, fc(t0)
     }
     else
         EI(0x03, 3, 2, 8, addr); // ld sp, fc(s0)
@@ -1443,5 +1484,13 @@ ST_FUNC void gen_vla_alloc(CType *type, int align)
         func_bound_add_epilog = 1;
     }
 #endif
+}
+
+ST_FUNC void gen_clear_cache(void)
+{
+    /* Zifencei extension: fence + fence.i for I/D synchronization.
+       Required by RISC-V Linux ABI, present on all Linux-capable cores. */
+    o(0x0ff0000f); // fence iorw, iorw
+    o(0x0000100f); // fence.i
 }
 #endif

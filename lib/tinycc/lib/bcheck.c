@@ -22,6 +22,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <setjmp.h>
+#include <stdatomic.h>
 
 #if !defined(__FreeBSD__) \
  && !defined(__FreeBSD_kernel__) \
@@ -37,6 +38,8 @@
 #include <sys/syscall.h>
 #endif
 
+#include "config.h"
+
 #define BOUND_DEBUG             (1)
 #define BOUND_STATISTIC         (1)
 
@@ -50,7 +53,11 @@
   /* an __attribute__ macro is defined in the system headers */
   #undef __attribute__ 
 #endif
+#ifdef __i386__
 #define FASTCALL __attribute__((regparm(3)))
+#else
+#define FASTCALL
+#endif
 
 #ifdef _WIN32
 # define DLL_EXPORT __declspec(dllexport)
@@ -154,14 +161,14 @@ static pthread_spinlock_t bounds_spin;
 #define HAVE_SIGNAL            (1)
 #define HAVE_SIGACTION         (1)
 #define HAVE_FORK              (1)
-#if !defined(__APPLE__) && defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
-#define HAVE_TLS_FUNC          (0)
-#define HAVE_TLS_VAR           (1)
-#else
+#if defined(__APPLE__) || defined(__arm__) || defined(__GNUC__) || defined(BCHECK_RUN)
 #define HAVE_TLS_FUNC          (1)
 #define HAVE_TLS_VAR           (0)
+#else
+#define HAVE_TLS_FUNC          (0)
+#define HAVE_TLS_VAR           (1)
 #endif
-#if defined TCC_MUSL || defined __ANDROID__
+#if defined CONFIG_TCC_MUSL || defined __ANDROID__
 # undef HAVE_CTYPE
 #endif
 #endif
@@ -348,7 +355,7 @@ static unsigned char print_heap;
 static unsigned char print_statistic;
 static unsigned char no_strdup;
 static unsigned char use_sem;
-static int never_fatal;
+static _Atomic int never_fatal;
 #if HAVE_TLS_FUNC
 #if defined(_WIN32)
 static int no_checking = 0;
@@ -390,7 +397,7 @@ static __thread int no_checking = 0;
 #define NO_CHECKING_GET()  no_checking
 #define NO_CHECKING_SET(v) no_checking = v 
 #else
-static int no_checking = 0;
+static _Atomic int no_checking = 0;
 #define NO_CHECKING_GET()  no_checking
 #define NO_CHECKING_SET(v) no_checking = v 
 #endif
@@ -481,35 +488,13 @@ static void bound_not_found_warning(const char *file, const char *function,
     dprintf(stderr, "%s%s, %s(): Not found %p\n", exec, file, function, ptr);
 }
 
-static void fetch_and_add(int* variable, int value)
-{
-#if defined __i386__ || defined __x86_64__
-      __asm__ volatile("lock; addl %0, %1"
-        : "+r" (value), "+m" (*variable) // input+output
-        : // No input-only
-        : "memory"
-      );
-#elif defined __arm__
-      extern void fetch_and_add_arm(int* variable, int value);
-      fetch_and_add_arm(variable, value);
-#elif defined __aarch64__
-      extern void fetch_and_add_arm64(int* variable, int value);
-      fetch_and_add_arm64(variable, value);
-#elif defined __riscv
-      extern void fetch_and_add_riscv64(int* variable, int value);
-      fetch_and_add_riscv64(variable, value);
-#else
-      *variable += value;
-#endif
-}
-
 /* enable/disable checking. This can be used in signal handlers. */
 void __bounds_checking (int no_check)
 {
 #if HAVE_TLS_FUNC || HAVE_TLS_VAR
     NO_CHECKING_SET(NO_CHECKING_GET() + no_check);
 #else
-    fetch_and_add (&no_checking, no_check);
+    atomic_fetch_add (&no_checking, no_check);
 #endif
 }
 
@@ -526,7 +511,7 @@ void __bound_checking_unlock(void)
 /* enable/disable checking. This can be used in signal handlers. */
 void __bound_never_fatal (int neverfatal)
 {
-    fetch_and_add (&never_fatal, neverfatal);
+    atomic_fetch_add (&never_fatal, neverfatal);
 }
 
 /* return '(p + offset)' for pointer arithmetic (a pointer can reach
@@ -559,7 +544,9 @@ void * __bound_ptr_add(void *p, size_t offset)
             if (tree->is_invalid || addr + offset > tree->size) {
                 POST_SEM ();
                 if (print_warn_ptr_add)
-                    bound_warning("%p is outside of the region", p + offset);
+                    bound_warning("%p is outside of the region (0x%lx..0x%lx)",
+                                  p + offset, (long)tree->start,
+                                  (long)(tree->start + tree->size - 1));
                 if (never_fatal <= 0)
                     return INVALID_POINTER; /* return an invalid pointer */
                 return p + offset;
@@ -605,7 +592,10 @@ void * __bound_ptr_indir ## dsize (void *p, size_t offset)                     \
         if (addr <= tree->size) {                                              \
             if (tree->is_invalid || addr + offset + dsize > tree->size) {      \
                 POST_SEM ();                                                   \
-                bound_warning("%p is outside of the region", p + offset); \
+                bound_warning("%p (size %d) is outside of the region "         \
+                              "(0x%lx..0x%lx)",                                \
+                              p + offset, dsize, (long)tree->start,            \
+                              (long)(tree->start + tree->size - 1));           \
                 if (never_fatal <= 0)                                          \
                     return INVALID_POINTER; /* return an invalid pointer */    \
                 return p + offset;                                             \
@@ -1105,11 +1095,9 @@ add_bounds:
     while (p[0] != 0) {
         tree = splay_insert(p[0], p[1], tree);
 #if BOUND_DEBUG
-        if (print_calls) {
-            dprintf(stderr, "%s, %s(): static var %p 0x%lx\n",
-                    __FILE__, __FUNCTION__,
-                    (void *) p[0], (unsigned long) p[1]);
-        }
+        dprintf(stderr, "%s, %s(): static var %p 0x%lx\n",
+                __FILE__, __FUNCTION__,
+                (void *) p[0], (unsigned long) p[1]);
 #endif
         p += 2;
     }
@@ -1185,7 +1173,7 @@ void __attribute__((destructor)) __bound_exit(void)
     dprintf(stderr, "%s, %s():\n", __FILE__, __FUNCTION__);
 
     if (inited) {
-#if !defined(_WIN32) && !defined(__APPLE__) && !defined TCC_MUSL && \
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined CONFIG_TCC_MUSL && \
     !defined(__OpenBSD__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && \
     !defined(__ANDROID__)
         if (print_heap) {

@@ -121,18 +121,18 @@ typedef int pid_t;
     !defined(TCC_TARGET_ARM64) && !defined(TCC_TARGET_C67) && \
     !defined(TCC_TARGET_X86_64) && !defined(TCC_TARGET_RISCV64)
 # if defined(__x86_64__) || defined(_M_X64)
-#  define TCC_TARGET_X86_64
+#  define TCC_TARGET_X86_64 1
 # elif defined(__arm__) || defined(_M_ARM)
-#  define TCC_TARGET_ARM
+#  define TCC_TARGET_ARM 1
 #  define TCC_ARM_EABI
 #  define TCC_ARM_VFP
 #  define TCC_ARM_HARDFLOAT
 # elif defined(__aarch64__) || defined(_M_ARM64)
-#  define TCC_TARGET_ARM64
+#  define TCC_TARGET_ARM64 1
 # elif defined __riscv
-#  define TCC_TARGET_RISCV64
+#  define TCC_TARGET_RISCV64 1
 # else
-#  define TCC_TARGET_I386
+#  define TCC_TARGET_I386 1
 # endif
 # ifdef _WIN32
 #  define TCC_TARGET_PE 1

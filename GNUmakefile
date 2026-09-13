@@ -59,6 +59,9 @@ win-mingw: ## 🪟 Build cjit.exe for WIN64 on Windows using MinGW
 win-msvc: ## 🪟 Build cjit.exe for WIN64 on Windows using MSVC
 	"$(MAKE)" -f build/win-msvc.mk win-msvc
 
+win-arm64: ## 🪟 Build native ARM64 cjit.exe on Windows using MSVC
+	"$(MAKE)" -f build/win-msvc.mk win-msvc TARGET_ARCH=arm64
+
 apple-osx: ## 🍎 Build cjit.command for Apple/OSX using clang static
 	$(MAKE) -f build/osx.mk embed-posix cjit.command cjit-ar.command
 	@rm -f .build_done*

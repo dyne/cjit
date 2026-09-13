@@ -4,6 +4,9 @@
    intrinsic with gcc.  However tcc in order to compile
    itself needs this function */
 
+/* ------------------------------------------------------------- */
+#if defined __arm__
+
 #ifdef __TINYC__
 
 /* syscall wrapper */
@@ -49,3 +52,19 @@ void __clear_cache(void *beginning, void *end)
  * However, there is no ARM asm parser in tcc so we use it for now */
     syscall(__ARM_NR_cacheflush, beginning, end, 0);
 }
+
+/* ------------------------------------------------------------- */
+#elif defined __aarch64__
+void __clear_cache(void *beg, void *end)
+{
+    __arm64_clear_cache(beg, end);
+}
+
+/* ------------------------------------------------------------- */
+#elif defined __riscv
+void __clear_cache(void *beg, void *end)
+{
+    __riscv64_clear_cache(beg, end);
+}
+
+#endif

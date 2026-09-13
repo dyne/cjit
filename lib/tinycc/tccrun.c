@@ -105,14 +105,19 @@ static void win64_del_function_table(void *);
 #define PAGEALIGN(n) ((addr_t)n + (-(addr_t)n & (PAGESIZE-1)))
 
 #if !_WIN32 && !__APPLE__
-//#define HAVE_SELINUX 1
+//#define CONFIG_SELINUX 1
+#endif
+
+/* use VirtualAlloc() instead of tcc_malloc() */
+#if defined _WIN32 && !defined CONFIG_RUNMEM_VIRTUALALLOC
+# define CONFIG_RUNMEM_VIRTUALALLOC 1
 #endif
 
 static int rt_mem(TCCState *s1, int size)
 {
     void *ptr;
     int ptr_diff = 0;
-#ifdef HAVE_SELINUX
+#ifdef CONFIG_SELINUX
     /* Using mmap instead of malloc */
     void *prw;
     char tmpfname[] = "/tmp/.tccrunXXXXXX";
@@ -129,6 +134,11 @@ static int rt_mem(TCCState *s1, int size)
     ptr_diff = (char*)prw - (char*)ptr; /* = size; */
     //printf("map %p %p %p\n", ptr, prw, (void*)ptr_diff);
     size *= 2;
+#elif CONFIG_RUNMEM_VIRTUALALLOC
+    /* always page-aligned */
+    ptr = VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    if (!ptr)
+        return tcc_error_noabort("tccrun: could not allocate memory");
 #else
     ptr = tcc_malloc(size += PAGESIZE); /* one extra page to align malloc memory */
 #endif
@@ -184,18 +194,22 @@ ST_FUNC void tcc_run_free(TCCState *s1)
     if (NULL == ptr)
         return;
     st_unlink(s1);
+#ifdef _WIN64
+    win64_del_function_table(s1->run_function_table);
+#endif
     size = s1->run_size;
-#ifdef HAVE_SELINUX
+#ifdef CONFIG_SELINUX
     munmap(ptr, size);
+#elif CONFIG_RUNMEM_VIRTUALALLOC
+    VirtualFree(ptr, size, MEM_RELEASE);
 #else
     /* unprotect memory to make it usable for malloc again */
     protect_pages((void*)PAGEALIGN(ptr), size - PAGESIZE, 2 /*rw*/);
-# ifdef _WIN64
-    win64_del_function_table(s1->run_function_table);
-# endif
     tcc_free(ptr);
 #endif
 }
+
+#define RT_EXIT_ZERO 0xE0E00E0E /* passed from longjmp instead of '0' */
 
 /* launch the compiled program with the given arguments */
 LIBTCCAPI int tcc_run(TCCState *s1, int argc, char **argv)
@@ -204,9 +218,10 @@ LIBTCCAPI int tcc_run(TCCState *s1, int argc, char **argv)
     const char *top_sym;
     jmp_buf main_jb;
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
-    char **envp = NULL;
-#elif defined(__OpenBSD__) || defined(__NetBSD__)
+#if defined(__APPLE__)
+    extern char ***_NSGetEnviron(void);
+    char **envp = *_NSGetEnviron();
+#elif defined(__OpenBSD__) || defined(__NetBSD__)  || defined(__FreeBSD__)
     extern char **environ;
     char **envp = environ;
 #else
@@ -218,28 +233,38 @@ LIBTCCAPI int tcc_run(TCCState *s1, int argc, char **argv)
         return 0;
 
     tcc_add_symbol(s1, "__rt_exit", rt_exit);
-    if (s1->nostdlib) {
-        s1->run_main = top_sym = "_start";
-    } else {
-        tcc_add_support(s1, "runmain.o");
-        s1->run_main = "_runmain";
-        top_sym = "main";
-    }
+    s1->run_main = "_runmain", top_sym = "main";
+    if (s1->elf_entryname)
+        s1->run_main = top_sym = s1->elf_entryname;
+    tcc_add_support(s1, "runmain.o");
+
     if (tcc_relocate(s1) < 0)
         return -1;
 
     prog_main = (void*)get_sym_addr(s1, s1->run_main, 1, 1);
     if ((addr_t)-1 == (addr_t)prog_main)
         return -1;
+
+    /* custom stdin for run_main, mainly if stdin is/was an input file.
+     * fileno(stdin) should remain 0, as posix mandates to use the smallest
+     * free fd, which is 0 after the initial fclose in freopen. windows too.
+     * to set stdin to the tty, use /dev/tty (posix) or con (windows).
+     */
+    if (s1->run_stdin && !freopen(s1->run_stdin, "r", stdin)) {
+        tcc_error_noabort("failed to reopen stdin from '%s'", s1->run_stdin);
+        return -1;
+    }
+
     errno = 0; /* clean errno value */
     fflush(stdout);
     fflush(stderr);
 
     ret = tcc_setjmp(s1, main_jb, tcc_get_symbol(s1, top_sym));
-    if (0 == ret)
+    if (0 == ret) {
         ret = prog_main(argc, argv, envp);
-    else if (256 == ret)
+    } else if (RT_EXIT_ZERO == ret) {
         ret = 0;
+    }
 
     if (s1->dflag & 16 && ret) /* tcc -dt -run ... */
         fprintf(s1->ppfp, "[returns %d]\n", ret), fflush(s1->ppfp);
@@ -284,7 +309,7 @@ static void cleanup_sections(TCCState *s1)
 }
 
 /* ------------------------------------------------------------- */
-/* 0 = .text rwx  other rw (memory >= 2 pages a 4096 bytes) */
+/* 0 = .text rwx  other rwx (memory >= 2 pages a 4096 bytes) */
 /* 1 = .text rx   other rw (memory >= 3 pages) */
 /* 2 = .text rx  .rdata ro  .data/.bss rw (memory >= 4 pages) */
 
@@ -310,6 +335,7 @@ static int tcc_relocate_ex(TCCState *s1, void *ptr, unsigned ptr_diff)
     addr_t mem, addr;
 
     if (NULL == ptr) {
+        s1->nb_errors = 0;
 #ifdef TCC_TARGET_PE
         pe_output_file(s1, NULL);
 #else
@@ -359,6 +385,9 @@ redo:
                 continue;
             }
 
+            if ((s->sh_flags & SHF_TLS) && length)
+                return tcc_error_noabort("thread-local storage not supported with -run");
+
             align = s->sh_addralign;
             if (++n == 1) {
 #if defined TCC_TARGET_I386 || defined TCC_TARGET_X86_64
@@ -381,7 +410,7 @@ redo:
         if (copy == 2) { /* set permissions */
             if (n == 0) /* no data  */
                 continue;
-#ifdef HAVE_SELINUX
+#ifdef CONFIG_SELINUX
             if (k == 0) /* SHF_EXECINSTR has its own mapping */
                 continue;
 #endif
@@ -398,7 +427,11 @@ redo:
             }
             if (protect_pages((void*)addr, n, f) < 0)
                 return tcc_error_noabort(
+#ifdef _WIN32
+                    "VirtualProtect failed");
+#else
                     "mprotect failed (did you mean to configure --with-selinux?)");
+#endif
         }
     }
 
@@ -419,7 +452,9 @@ redo:
     }
 
     /* relocate symbols */
-    relocate_syms(s1, s1->symtab, !(s1->nostdlib));
+    relocate_syms(s1, s1->symtab, 1);
+    if (s1->nb_errors)
+        goto redo;
     /* relocate sections */
 #ifdef TCC_TARGET_PE
     s1->pe_imagebase = mem;
@@ -454,13 +489,18 @@ static int protect_pages(void *ptr, unsigned long length, int mode)
         };
     if (mprotect(ptr, length, protect[mode]))
         return -1;
+#endif
 /* XXX: BSD sometimes dump core with bad system call */
-# if (defined TCC_TARGET_ARM && !TARGETOS_BSD) || defined TCC_TARGET_ARM64
+#if (defined TCC_TARGET_ARM && !TARGETOS_BSD) \
+    || defined TCC_TARGET_ARM64 || defined TCC_TARGET_RISCV64
     if (mode == 0 || mode == 3) {
+#ifdef _WIN32
+        FlushInstructionCache(GetCurrentProcess(), ptr, length);
+#else
         void __clear_cache(void *beginning, void *end);
         __clear_cache(ptr, (char *)ptr + length);
+#endif
     }
-# endif
 #endif
     return 0;
 }
@@ -493,8 +533,6 @@ static void bt_link(TCCState *s1)
 {
 #ifdef CONFIG_TCC_BACKTRACE
     rt_context *rc;
-    void *p;
-
     if (!s1->do_backtrace)
         return;
     rc = tcc_get_symbol(s1, "__rt_info");
@@ -507,6 +545,7 @@ static void bt_link(TCCState *s1)
         rc->prog_base &= 0xffffffff00000000ULL;
 #ifdef CONFIG_TCC_BCHECK
     if (s1->do_bounds_check) {
+        void *p;
         if ((p = tcc_get_symbol(s1, "__bound_init")))
             ((void(*)(void*,int))p)(rc->bounds_start, 1);
     }
@@ -595,8 +634,15 @@ static void rt_exit(rt_frame *f, int code)
     s = rt_find_state(f);
     rt_post_sem();
     if (s && s->run_lj) {
+#ifdef CONFIG_TCC_BCHECK
+        if (f->fp) { /* called from signal */
+            void *p = tcc_get_symbol(s, "__bound_exit");
+            if (p)
+                ((void (*)(void))p)();
+        }
+#endif
         if (code == 0)
-            code = 256;
+            code = RT_EXIT_ZERO;
         ((void(*)(void*,int))s->run_lj)(s->run_jb, code);
     }
     exit(code);
@@ -760,19 +806,9 @@ found:
 /* ------------------------------------------------------------- */
 /* rt_printline - dwarf version */
 
-#define MAX_128	((8 * sizeof (long long) + 6) / 7)
-
 #define DIR_TABLE_SIZE	(64)
 #define FILE_TABLE_SIZE	(512)
 
-#define	dwarf_read_1(ln,end) \
-	((ln) < (end) ? *(ln)++ : 0)
-#define	dwarf_read_2(ln,end) \
-	((ln) + 2 < (end) ? (ln) += 2, read16le((ln) - 2) : 0)
-#define	dwarf_read_4(ln,end) \
-	((ln) + 4 < (end) ? (ln) += 4, read32le((ln) - 4) : 0)
-#define	dwarf_read_8(ln,end) \
-	((ln) + 8 < (end) ? (ln) += 8, read64le((ln) - 8) : 0)
 #define	dwarf_ignore_type(ln, end) /* timestamp/size/md5/... */ \
 	switch (entry_format[j].form) { \
 	case DW_FORM_data1: (ln) += 1; break; \
@@ -783,45 +819,6 @@ found:
 	case DW_FORM_udata: dwarf_read_uleb128(&(ln), (end)); break; \
 	default: goto next_line; \
 	}
-
-static unsigned long long
-dwarf_read_uleb128(unsigned char **ln, unsigned char *end)
-{
-    unsigned char *cp = *ln;
-    unsigned long long retval = 0;
-    int i;
-
-    for (i = 0; i < MAX_128; i++) {
-	unsigned long long byte = dwarf_read_1(cp, end);
-
-        retval |= (byte & 0x7f) << (i * 7);
-	if ((byte & 0x80) == 0)
-	    break;
-    }
-    *ln = cp;
-    return retval;
-}
-
-static long long
-dwarf_read_sleb128(unsigned char **ln, unsigned char *end)
-{
-    unsigned char *cp = *ln;
-    long long retval = 0;
-    int i;
-
-    for (i = 0; i < MAX_128; i++) {
-	unsigned long long byte = dwarf_read_1(cp, end);
-
-        retval |= (byte & 0x7f) << (i * 7);
-	if ((byte & 0x80) == 0) {
-	    if ((byte & 0x40) && (i + 1) * 7 < 64)
-		retval |= -1LL << ((i + 1) * 7);
-	    break;
-	}
-    }
-    *ln = cp;
-    return retval;
-}
 
 static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 {
@@ -1228,7 +1225,11 @@ static int rt_error(rt_frame *f, const char *fmt, ...)
 /* translate from ucontext_t* to internal rt_context * */
 static void rt_getcontext(ucontext_t *uc, rt_frame *rc)
 {
-#if defined _WIN64
+#if defined _WIN64 && defined __aarch64__
+    rc->ip = uc->Pc;      /* Program Counter */
+    rc->fp = uc->Fp;      /* Frame Pointer (X29) */
+    rc->sp = uc->Sp;      /* Stack Pointer (X30 is LR, but SP is separate) */
+#elif defined _WIN64
     rc->ip = uc->Rip;
     rc->fp = uc->Rbp;
     rc->sp = uc->Rsp;
@@ -1427,7 +1428,11 @@ static long __stdcall cpu_exception_handler(EXCEPTION_POINTERS *ex_info)
 /* Generate a stack backtrace when a CPU exception occurs. */
 static void set_exception_handler(void)
 {
+#ifdef _WIN64
+    AddVectoredExceptionHandler(1, cpu_exception_handler);
+#else
     SetUnhandledExceptionFilter(cpu_exception_handler);
+#endif
 }
 
 #endif

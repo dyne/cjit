@@ -46,6 +46,7 @@ clean:
 	rm -f *.output
 
 02.test : DIFF_OPTS += -w
+16.test : DIFF_OPTS += -B
 # 15.test : DIFF_OPTS += -I"^XXX:"
 
 # diff options:

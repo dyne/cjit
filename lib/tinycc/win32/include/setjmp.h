@@ -124,37 +124,76 @@ extern "C" {
     SETJMP_FLOAT128 Xmm14;
     SETJMP_FLOAT128 Xmm15;
   } _JUMP_BUFFER;
+#elif defined(_ARM_)
+
+#define _JBLEN 28
+#define _JBTYPE int
+
+  typedef struct __JUMP_BUFFER {
+    unsigned long Frame;
+    unsigned long R4;
+    unsigned long R5;
+    unsigned long R6;
+    unsigned long R7;
+    unsigned long R8;
+    unsigned long R9;
+    unsigned long R10;
+    unsigned long R11;
+    unsigned long Sp;
+    unsigned long Pc;
+    unsigned long Fpscr;
+    unsigned long long D[8];
+  } _JUMP_BUFFER;
+#elif defined(_ARM64_)
+
+#define _JBLEN 24
+#define _JBTYPE unsigned __int64
+
+  typedef struct __JUMP_BUFFER {
+    unsigned __int64 Frame;
+    unsigned __int64 Reserved;
+    unsigned __int64 X19;
+    unsigned __int64 X20;
+    unsigned __int64 X21;
+    unsigned __int64 X22;
+    unsigned __int64 X23;
+    unsigned __int64 X24;
+    unsigned __int64 X25;
+    unsigned __int64 X26;
+    unsigned __int64 X27;
+    unsigned __int64 X28;
+    unsigned __int64 Fp;
+    unsigned __int64 Lr;
+    unsigned __int64 Sp;
+    unsigned long Fpcr;
+    unsigned long Fpsr;
+    double D[8];
+  } _JUMP_BUFFER;
+#else
+#define _JBLEN 1
+#define _JBTYPE int
 #endif
 #ifndef _JMP_BUF_DEFINED
   typedef _JBTYPE jmp_buf[_JBLEN];
 #define _JMP_BUF_DEFINED
 #endif
 
-  void * __cdecl __attribute__ ((__nothrow__)) mingw_getsp(void);
+#pragma pack(pop)
 
-#ifdef USE_MINGW_SETJMP_TWO_ARGS
-#ifndef _INC_SETJMPEX
-#define setjmp(BUF) _setjmp((BUF),mingw_getsp())
-  int __cdecl __attribute__ ((__nothrow__)) _setjmp(jmp_buf _Buf,void *_Ctx);
-#else
-#undef setjmp
-#define setjmp(BUF) _setjmpex((BUF),mingw_getsp())
-#define setjmpex(BUF) _setjmpex((BUF),mingw_getsp())
-  int __cdecl __attribute__ ((__nothrow__)) _setjmpex(jmp_buf _Buf,void *_Ctx);
-#endif
-#else
-#ifndef _INC_SETJMPEX
-#define setjmp _setjmp
-#endif
-  int __cdecl __attribute__ ((__nothrow__)) setjmp(jmp_buf _Buf);
+#if defined __aarch64__
+  int _setjmpex(jmp_buf _Buf, void *frame);
+  #define setjmp(BUF) _setjmpex((BUF), (char*)__builtin_frame_address(0) + 224)
+#elif defined __x86_64__
+  int _setjmp(jmp_buf _Buf, void *frame);
+  #define setjmp(BUF) _setjmp((BUF), __builtin_frame_address(0))
+#else /* __i386__ */
+  int _setjmp(jmp_buf _Buf);
+  #define setjmp _setjmp
 #endif
 
-  __declspec(noreturn) __attribute__ ((__nothrow__)) void __cdecl ms_longjmp(jmp_buf _Buf,int _Value)/* throw(...)*/;
-  __declspec(noreturn) __attribute__ ((__nothrow__)) void __cdecl longjmp(jmp_buf _Buf,int _Value);
+__declspec(noreturn) void longjmp(jmp_buf _Buf,int _Value);
 
 #ifdef __cplusplus
 }
 #endif
-
-#pragma pack(pop)
 #endif

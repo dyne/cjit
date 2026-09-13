@@ -58,7 +58,12 @@ require_job win-mingw-test 'CJIT_REQUIRED_PLATFORM: windows'
 require_job win-msvc-test 'make win-msvc'
 require_job win-msvc-test 'check-unit-msvc'
 require_job win-msvc-test 'Run MSVC unit tests'
-require_job semantic-release 'needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, tutorial-examples, debian-test, osx-native-test, win-mingw-test, win-msvc-test]'
+require_job win-arm64-test 'runs-on: windows-11-arm'
+require_job win-arm64-test 'make win-arm64'
+require_job win-arm64-test 'AA64 machine \(ARM64\)'
+require_job win-arm64-test 'CJIT_REQUIRED_PLATFORM: windows'
+require_job win-arm64-test 'check-unit-msvc TARGET_ARCH=arm64'
+require_job semantic-release 'needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, tutorial-examples, debian-test, osx-native-test, win-mingw-test, win-msvc-test, win-arm64-test]'
 require_job_order virustotal 'actions/checkout@' './test/release_artifact_set.sh'
 
 grep -Fxq $'\tdate | tee .build_done_win' build/win-msvc.mk || {
@@ -103,4 +108,4 @@ if grep -Eq '^[[:space:]]+(actions|deployments|id-token|packages|pages|security-
     printf 'Workflow grants an unapproved write permission\n' >&2; exit 1
 fi
 
-printf 'CI_CONTRACT lanes=9 capabilities=18 workflow=%s\n' "$workflow"
+printf 'CI_CONTRACT lanes=10 capabilities=23 workflow=%s\n' "$workflow"

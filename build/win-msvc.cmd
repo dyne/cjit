@@ -9,6 +9,9 @@ set "SOURCE_LIST=%~3"
 set "PREFIX=%CJIT_PREFIX%"
 set "VERSION=%CJIT_VERSION%"
 set "CURRENT_YEAR=%CJIT_CURRENT_YEAR%"
+set "TARGET_ARCH=%CJIT_TARGET_ARCH%"
+
+if "%TARGET_ARCH%"=="" set "TARGET_ARCH=x86_64"
 
 if "%ROOT%"=="" goto :usage
 
@@ -45,7 +48,16 @@ exit /b 1
 
 :load_vs
 set "PATH=%SystemRoot%\System32;%SystemRoot%;%SystemRoot%\System32\Wbem;%SystemRoot%\System32\WindowsPowerShell\v1.0\;%PATH%"
-call "%VSDEVCMD%" -arch=x64 -host_arch=x64 >nul || exit /b 1
+if /I "%TARGET_ARCH%"=="arm64" (
+  call "%VSDEVCMD%" -arch=arm64 -host_arch=arm64 >nul || exit /b 1
+  set "TCC_TARGET_DEFINE=/DTCC_TARGET_ARM64"
+) else if /I "%TARGET_ARCH%"=="x86_64" (
+  call "%VSDEVCMD%" -arch=x64 -host_arch=x64 >nul || exit /b 1
+  set "TCC_TARGET_DEFINE=/DTCC_TARGET_X86_64"
+) else (
+  echo Unsupported target architecture: %TARGET_ARCH% 1>&2
+  exit /b 1
+)
 if defined CL (
   set "CL=/FS %CL%"
 ) else (
@@ -56,7 +68,7 @@ exit /b 0
 :tinycc
 cd /d "%ROOT%\lib\tinycc\win32" || exit /b 1
 call build-tcc.bat -clean || exit /b 1
-call build-tcc.bat -c cl -t 64 || exit /b 1
+call build-tcc.bat -c cl || exit /b 1
 if not exist "lib\libtcc1.a" exit /b 1
 if not exist "libtcc.lib" exit /b 1
 if not exist "libtcc.dll" exit /b 1
@@ -79,7 +91,7 @@ for /f "usebackq delims=" %%I in ("%SOURCE_LIST%") do >> "%RSP%" echo %%~I
 cl /nologo /O2 /W2 /MT /GS- ^
   /DCJIT_BUILD_WIN ^
   /DTCC_TARGET_PE ^
-  /DTCC_TARGET_X86_64 ^
+  %TCC_TARGET_DEFINE% ^
   /DPREFIX=\"%PREFIX%\" ^
   /DVERSION=\"%VERSION%\" ^
   /DCURRENT_YEAR=\"%CURRENT_YEAR%\" ^
@@ -95,7 +107,7 @@ cl /nologo /O2 /W2 /MT /GS- ^
   /DCJIT_BUILD_WIN ^
   /DCJIT_AR_MAIN ^
   /DTCC_TARGET_PE ^
-  /DTCC_TARGET_X86_64 ^
+  %TCC_TARGET_DEFINE% ^
   /DPREFIX=\"%PREFIX%\" ^
   /DVERSION=\"%VERSION%\" ^
   /DCURRENT_YEAR=\"%CURRENT_YEAR%\" ^

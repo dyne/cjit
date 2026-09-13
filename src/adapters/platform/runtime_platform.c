@@ -169,6 +169,8 @@ void cjit_platform_print_status(const CJITState *cjit)
 
 #if defined(TCC_TARGET_PE) && defined(TCC_TARGET_X86_64)
     _err("Target system: WIN64");
+#elif defined(TCC_TARGET_PE) && defined(TCC_TARGET_ARM64)
+    _err("Target system: Windows ARM64");
 #elif defined(TCC_TARGET_PE) && defined(TCC_TARGET_I386)
     _err("Target system: WIN32");
 #elif defined(TCC_TARGET_MACHO)
