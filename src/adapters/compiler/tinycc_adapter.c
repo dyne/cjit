@@ -2,6 +2,10 @@
 
 #include <stdlib.h>
 #include <string.h>
+#if !defined(_WIN32) && !defined(WINDOWS)
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 #include "adapters/platform/library_resolver_posix.h"
 #include "adapters/platform/library_resolver_windows.h"
@@ -229,6 +233,16 @@ static CJITResult link_executable(void *context, RuntimeSession *session)
     if (active_api.output_file(compiler_handle, cjit->output_filename) < 0) {
         return cjit_result_error(CJIT_RESULT_LINK_ERROR, 1, "Error in linker compiling to file");
     }
+#if !defined(_WIN32) && !defined(WINDOWS)
+    /* TinyCC's Mach-O writer does not reliably preserve executable mode on
+     * every host filesystem.  The adapter's successful executable contract
+     * includes an executable artifact, independent of the backend writer. */
+    if (chmod(cjit->output_filename, 0755) < 0) {
+        unlink(cjit->output_filename);
+        return cjit_result_error(CJIT_RESULT_IO_ERROR, 1,
+                                 "Error making output file executable");
+    }
+#endif
     return cjit_result_ok();
 }
 
