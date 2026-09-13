@@ -22,3 +22,23 @@ linux-fuzz|make fuzz-smoke|make fuzz-disabled
 macos-native|make apple-osx|make apple-disabled
 windows-msvc|check-unit-msvc|check-unit-disabled
 CASES
+
+cp .github/workflows/main.yml "$fixture"
+sed -i 's/, debian-test,/,/' "$fixture"
+if ./test/ci_contract.sh "$fixture"; then printf 'CI contract accepted an ungated shared-libtcc lane\n' >&2; exit 1; fi
+
+cp .github/workflows/main.yml "$fixture"
+sed -i '/^permissions:$/,+1d' "$fixture"
+if ./test/ci_contract.sh "$fixture"; then printf 'CI contract accepted missing default permissions\n' >&2; exit 1; fi
+
+cp .github/workflows/main.yml "$fixture"
+sed -i '0,/      contents: write/s//      actions: write/' "$fixture"
+if ./test/ci_contract.sh "$fixture"; then printf 'CI contract accepted overbroad or missing release permissions\n' >&2; exit 1; fi
+
+cp .github/workflows/main.yml "$fixture"
+sed -i '/  reuse:/a\    permissions:\n      issues: write' "$fixture"
+if ./test/ci_contract.sh "$fixture"; then printf 'CI contract accepted write permission on a test job\n' >&2; exit 1; fi
+
+cp .github/workflows/main.yml "$fixture"
+sed -i '/      - uses: actions\/checkout@.*# v7.0.1/{N;/      - name: download binary artifacts/{d;}}' "$fixture"
+if ./test/ci_contract.sh "$fixture"; then printf 'CI contract accepted VirusTotal without checkout\n' >&2; exit 1; fi
