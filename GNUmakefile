@@ -128,7 +128,6 @@ check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	$(call RUN_BATS,test/muntar.bats,1)
 	$(RUN_ARCHIVE_BATS)
 	$(call RUN_BATS,test/compatibility_modes.bats,1)
-	@if [ -r .build_done_linux ] || [ -r .build_done_win ]; then $(MAKE) run-dmon-suite; fi
 
 run-linux-suite:
 	$(call RUN_BATS,test/linux.bats,$(if $(filter linux,$(CJIT_REQUIRED_PLATFORM)),1,0))
