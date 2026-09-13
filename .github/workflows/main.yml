@@ -191,6 +191,8 @@ jobs:
         run: |
           make apple-osx
       - name: Run tests
+        env:
+          CJIT_REQUIRED_PLATFORM: macos
         run: |
           make check-ci
 

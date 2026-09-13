@@ -111,26 +111,30 @@ check: ## 🧪 Run all tests using the currently built binary ./cjit
 	$(call RUN_BATS,test/cli.bats,1)
 	@if [ -r .build_done_linux ]; then $(MAKE) run-linux-suite; fi
 	$(call RUN_BATS,test/windows.bats,$(if $(filter windows,$(CJIT_REQUIRED_PLATFORM)),1,0))
+	$(call RUN_BATS,test/macos.bats,$(if $(filter macos,$(CJIT_REQUIRED_PLATFORM)),1,0))
 	$(call RUN_BATS,test/muntar.bats,1)
 	$(RUN_ARCHIVE_BATS)
 	$(call RUN_BATS,test/compatibility_modes.bats,1)
-	@if [ -r .build_done_linux ]; then $(MAKE) run-dmon-suite; fi
+	@if [ -r .build_done_linux ] || [ -r .build_done_win ]; then $(MAKE) run-dmon-suite; fi
 
 check-ci: ## 🧪 Run all tests using the currently built binary ./cjit
 	@$(MAKE) check-unit
 	$(call RUN_BATS,test/cli.bats,1)
 	@if [ "$(CJIT_REQUIRED_PLATFORM)" = linux ] && [ ! -r .build_done_linux ]; then echo 'Linux platform suite requires a Linux target build marker' >&2; exit 1; fi
+	@if [ "$(CJIT_REQUIRED_PLATFORM)" = windows ] && [ ! -r .build_done_win ]; then echo 'Windows platform suite requires a Windows target build marker' >&2; exit 1; fi
 	@if [ -r .build_done_linux ]; then $(MAKE) run-linux-suite; fi
 	$(call RUN_BATS,test/windows.bats,$(if $(filter windows,$(CJIT_REQUIRED_PLATFORM)),1,0))
+	$(call RUN_BATS,test/macos.bats,$(if $(filter macos,$(CJIT_REQUIRED_PLATFORM)),1,0))
 	$(call RUN_BATS,test/muntar.bats,1)
 	$(RUN_ARCHIVE_BATS)
 	$(call RUN_BATS,test/compatibility_modes.bats,1)
+	@if [ -r .build_done_linux ] || [ -r .build_done_win ]; then $(MAKE) run-dmon-suite; fi
 
 run-linux-suite:
 	$(call RUN_BATS,test/linux.bats,$(if $(filter linux,$(CJIT_REQUIRED_PLATFORM)),1,0))
 
 run-dmon-suite:
-	$(call RUN_BATS,test/dmon.bats,$(if $(filter linux,$(CJIT_REQUIRED_PLATFORM)),1,0))
+	$(call RUN_BATS,test/dmon.bats,$(if $(filter linux windows,$(CJIT_REQUIRED_PLATFORM)),1,0))
 
 COVERAGE_FLAGS := --coverage -O0 -g
 COVERAGE_SOURCES := src/file.c src/cjit.c src/cjit-ar.c src/main.c src/support/source_files.c \
