@@ -219,9 +219,14 @@ test/compiler_adapter_unit.bin: CFLAGS += -Ilib/tinycc
 test/library_resolver_unit.bin: UNIT_SOURCES := src/adapters/platform/library_resolver_posix.c src/adapters/platform/library_resolver_windows.c src/support/string_list.c src/array.c src/support/cwalk.c
 FUZZ_REPLAY := test/fuzz/replay.bin
 FUZZ_CORPUS ?= test/fuzz/corpus/*/*
+ifeq ($(OS),Windows_NT)
+FUZZ_REPLAY_CFLAGS :=
+else
+FUZZ_REPLAY_CFLAGS := -DCJIT_FUZZ_HAS_LDSCRIPT
+endif
 
 $(FUZZ_REPLAY): test/fuzz/replay.c lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c src/adapters/cli/route_parser.c src/adapters/platform/library_resolver_posix.c src/support/string_list.c src/array.c src/support/cwalk.c
-	$(CC) $(CFLAGS) -Isrc -Ilib/muntarfs -o $@ $^
+	$(CC) $(CFLAGS) $(FUZZ_REPLAY_CFLAGS) -Isrc -Ilib/muntarfs -o $@ $^
 
 fuzz-replay:
 	@set -eu; \
@@ -229,7 +234,13 @@ fuzz-replay:
 	$(MAKE) "$(FUZZ_REPLAY)"; \
 	for seed in $(FUZZ_CORPUS); do \
 		[ -f "$$seed" ] || { printf 'Missing fuzz seed: %s\n' "$$seed" >&2; exit 2; }; \
-		"$(FUZZ_REPLAY)" "$${seed#test/fuzz/corpus/}" "$$seed"; \
+		if "$(FUZZ_REPLAY)" "$${seed#test/fuzz/corpus/}" "$$seed"; then \
+			:; \
+		else \
+			status=$$?; \
+			[ "$$status" -eq 77 ] || exit "$$status"; \
+			printf 'FUZZ_REPLAY capability=unsupported seed=%s\n' "$${seed#test/fuzz/corpus/}"; \
+		fi; \
 	done
 
 fuzz-smoke: fuzz-replay
