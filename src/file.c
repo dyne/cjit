@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <limits.h>
 #include <errno.h>
 #include <time.h>
 #include <fcntl.h>
@@ -61,6 +62,9 @@ char* file_load(const char *filename, unsigned int *len) {
     if (file_length < 1) {
         return NULL;
     }
+    if ((unsigned long)file_length > UINT_MAX) {
+        return NULL;
+    }
     length = (size_t)file_length;
 
     FILE *file = fopen(filename, "rb");
@@ -86,7 +90,7 @@ char* file_load(const char *filename, unsigned int *len) {
 	}
 
     contents[length] = '\0'; // Null-terminate the string
-    *len = length;
+    *len = (unsigned int)length;
     fclose(file);
 
     return contents;
