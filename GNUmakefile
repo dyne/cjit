@@ -199,6 +199,15 @@ test/cjit_lifecycle_unit.bin: CFLAGS += -DSHAREDTCC -DVERSION=\"unit\" -Ilib/tin
 test/compiler_adapter_unit.bin: UNIT_SOURCES := src/adapters/compiler/tinycc_adapter.c src/support/string_list.c src/support/source_files.c src/support/cwalk.c src/array.c
 test/compiler_adapter_unit.bin: CFLAGS += -Ilib/tinycc
 test/library_resolver_unit.bin: UNIT_SOURCES := src/adapters/platform/library_resolver_posix.c src/adapters/platform/library_resolver_windows.c src/support/string_list.c src/array.c src/support/cwalk.c
+FUZZ_REPLAY := test/fuzz/replay.bin
+
+$(FUZZ_REPLAY): test/fuzz/replay.c lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c src/adapters/cli/route_parser.c src/adapters/platform/library_resolver_posix.c src/support/string_list.c src/array.c src/support/cwalk.c
+	$(CC) $(CFLAGS) -Isrc -Ilib/muntarfs -o $@ $^
+
+fuzz-replay: $(FUZZ_REPLAY)
+	@for seed in test/fuzz/corpus/*/*; do [ -f "$$seed" ] && "$(FUZZ_REPLAY)" "$${seed#test/fuzz/corpus/}" "$$seed" || exit $$?; done
+
+fuzz-smoke: fuzz-replay
 test/muntar_unit.bin: UNIT_SOURCES := lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c lib/muntarfs/muntarfs_runtime.c
 test/runtime_platform_unit.bin: UNIT_SOURCES := src/adapters/platform/runtime_platform.c src/support/cwalk.c
 test/runtime_platform_unit.bin: CFLAGS += -Ilib/tinycc
@@ -224,7 +233,7 @@ install: ## 🔌 Install the built binaries in PREFIX
 	@cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
 	@cp -ra examples ${DESTDIR}${DATADIR}/
 
-.PHONY: meson debian
+.PHONY: meson debian fuzz-replay fuzz-smoke
 debian:
 	$(info Creating the Debian package)
 	@rm -rf debian

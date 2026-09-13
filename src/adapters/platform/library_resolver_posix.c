@@ -54,6 +54,9 @@ typedef struct LDState {
     int static_link;
     StringList *libs;
     StringList *libpaths;
+    const unsigned char *buffer;
+    size_t buffer_length;
+    size_t buffer_position;
 } LDState;
 
 // TinyCC internals used by the ldscript parser.
@@ -271,7 +274,7 @@ static int find_library(StringList *resolved, const StringList *library_paths,
     bool is_ldscript;
     char elf[4];
     char *reallib;
-    LDState state;
+    LDState state = {0};
     StringList *script_resolved;
 
     reallib = new_solve_symlink(path);
@@ -348,10 +351,45 @@ static int ld_inp(LDState *state)
         state->cc = -1;
         return ch;
     }
+    if (state->buffer) {
+        if (state->buffer_position >= state->buffer_length) {
+            return CH_EOF;
+        }
+        return state->buffer[state->buffer_position++];
+    }
     if (1 == read(state->fd, &byte, 1)) {
         return byte;
     }
     return CH_EOF;
+}
+
+int posix_ldscript_parse_buffer(const unsigned char *buffer, size_t length)
+{
+    LDState state = {0};
+    char token[64];
+    int value;
+    int depth;
+
+    if (!buffer || length == 0) return -1;
+    state.fd = -1;
+    state.cc = -1;
+    state.buffer = buffer;
+    state.buffer_length = length;
+    for (;;) {
+        value = ld_next(&state, token, sizeof(token));
+        if (value == LD_TOK_EOF) return 0;
+        if (value != LD_TOK_NAME ||
+            (strcmp(token, "INPUT") && strcmp(token, "GROUP") &&
+             strcmp(token, "OUTPUT_FORMAT") && strcmp(token, "TARGET"))) return -1;
+        if (ld_next(&state, token, sizeof(token)) != '(') return -1;
+        depth = 1;
+        while (depth) {
+            value = ld_next(&state, token, sizeof(token));
+            if (value == LD_TOK_EOF) return -1;
+            if (value == '(') depth++;
+            else if (value == ')') depth--;
+        }
+    }
 }
 
 static int ld_next(LDState *state, char *name, int name_size)
