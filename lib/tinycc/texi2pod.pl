@@ -239,6 +239,8 @@ while(<$inf>) {
 	and $_ = "\n=head2 $1\n";
     /^\@subsection\s+(.+)$/
 	and $_ = "\n=head3 $1\n";
+    /^\@subheading\s+(.+)$/
+	and $_ = "\n=head3 $1\n";
 
     # Block command handlers:
     /^\@itemize\s+(\@[a-z]+|\*|-)/ and do {

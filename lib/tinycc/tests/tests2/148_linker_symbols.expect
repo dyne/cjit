@@ -1,0 +1,42 @@
+
+--- TEST 1 ---
+linker symbols test
+ 1 (etext == _etext)
+ 1 (edata == _edata)
+ 1 (end == _end)
+ 1 (check_linker_symbols() == 0)
+
+--- TEST 2 ---
+DSO linker symbols test
+ 1 (p[0] == _etext)
+ 1 (p[1] == _edata)
+ 1 (p[2] == _end)
+
+--- TEST 3 ---
+user definition test
+ 1 (etext() + edata() + end() == 6)
+
+--- TEST 4 ---
+end copy relocation test
+ 1 (end == _end)
+ 1 ((unsigned long)end >= data_end)
+ 1 (copy_reloc_data[256] == 42)
+
+--- TEST 5 ---
+linker boundary test
+ 1 (linker_test_bss > linker_test_data)
+ 1 (etext == _etext)
+ 1 (edata == _edata)
+ 1 (end == _end)
+ 1 (etext >= text_addr)
+ 1 (edata >= data_end)
+ 1 (end >= bss_end)
+ 1 (linker_test_data[22] == 42)
+ 1 (linker_test_bss[256] == 42)
+
+--- TEST 6 ---
+DSO initialized data test
+ 1 (end == 7)
+ 1 (eight == 8)
+ 1 (nine == 9)
+ 1 (sum == 24)

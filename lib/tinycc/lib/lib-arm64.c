@@ -18,42 +18,40 @@ typedef int int32_t;
 typedef unsigned uint32_t;
 typedef long long int64_t;
 typedef unsigned long long uint64_t;
-void *memcpy(void*,void*,__SIZE_TYPE__);
 #else
 #include <stdint.h>
 #include <string.h>
 #endif
 
-#if !defined __riscv && !defined __APPLE__
-void __clear_cache(void *beg, void *end)
-{
-    __arm64_clear_cache(beg, end);
-}
-#endif
-
-typedef struct {
-    uint64_t x0, x1;
+typedef union {
+    struct { uint64_t x0, x1; };
+    long double f;
 } u128_t;
+
+typedef union {
+    uint64_t x;
+    double f;
+} u64_t;
+
+typedef union {
+    uint32_t x;
+    float f;
+} u32_t;
 
 static long double f3_zero(int sgn)
 {
-    long double f;
     u128_t x = { 0, (uint64_t)sgn << 63 };
-    memcpy(&f, &x, 16);
-    return f;
+    return x.f;
 }
 
 static long double f3_infinity(int sgn)
 {
-    long double f;
     u128_t x = { 0, (uint64_t)sgn << 63 | 0x7fff000000000000 };
-    memcpy(&f, &x, 16);
-    return f;
+    return x.f;
 }
 
 static long double f3_NaN(void)
 {
-    long double f;
 #if 0
     // ARM's default NaN usually has just the top fraction bit set:
     u128_t x = {  0, 0x7fff800000000000 };
@@ -61,28 +59,31 @@ static long double f3_NaN(void)
     // GCC's library sets all fraction bits:
     u128_t x = { -1, 0x7fffffffffffffff };
 #endif
-    memcpy(&f, &x, 16);
-    return f;
+    return x.f;
 }
 
-static int fp3_convert_NaN(long double *f, int sgn, u128_t mnt)
+static int fp3_convert_NaN(long double *f, int sgn, u128_t *mnt)
 {
-    u128_t x = { mnt.x0,
-                 mnt.x1 | 0x7fff800000000000 | (uint64_t)sgn << 63 };
-    memcpy(f, &x, 16);
+    u128_t x = { mnt->x0,
+                 mnt->x1 | 0x7fff800000000000 | (uint64_t)sgn << 63 };
+    *f = x.f;
     return 1;
+#define fp3_convert_NaN(a,b,c) fp3_convert_NaN(a,b,&c)
 }
 
 static int fp3_detect_NaNs(long double *f,
-                           int a_sgn, int a_exp, u128_t a,
-                           int b_sgn, int b_exp, u128_t b)
+                           int a_sgn, int a_exp, u128_t *a,
+                           int b_sgn, int b_exp, u128_t *b)
+#define a (*a)
+#define b (*b)
 {
+#if 0
     // Detect signalling NaNs:
     if (a_exp == 32767 && (a.x0 | a.x1 << 16) && !(a.x1 >> 47 & 1))
         return fp3_convert_NaN(f, a_sgn, a);
     if (b_exp == 32767 && (b.x0 | b.x1 << 16) && !(b.x1 >> 47 & 1))
         return fp3_convert_NaN(f, b_sgn, b);
-
+#endif
     // Detect quiet NaNs:
     if (a_exp == 32767 && (a.x0 | a.x1 << 16))
         return fp3_convert_NaN(f, a_sgn, a);
@@ -90,12 +91,16 @@ static int fp3_detect_NaNs(long double *f,
         return fp3_convert_NaN(f, b_sgn, b);
 
     return 0;
+#undef a
+#undef b
+#define fp3_detect_NaNs(a,b,c,d,e,f,g) fp3_detect_NaNs(a,b,c,&d,e,f,&g)
 }
 
 static void f3_unpack(int *sgn, int32_t *exp, u128_t *mnt, long double f)
 {
     u128_t x;
-    memcpy(&x, &f, 16);
+
+    x.f = f;
     *sgn = x.x1 >> 63;
     *exp = x.x1 >> 48 & 32767;
     x.x1 = x.x1 << 16 >> 16;
@@ -103,74 +108,72 @@ static void f3_unpack(int *sgn, int32_t *exp, u128_t *mnt, long double f)
         x.x1 |= (uint64_t)1 << 48;
     else
         *exp = 1;
-    *mnt = x;
+    mnt->f = x.f;
 }
 
-static u128_t f3_normalise(int32_t *exp, u128_t mnt)
+static void f3_normalise(int32_t *exp, u128_t *mnt)
 {
     int sh;
-    if (!(mnt.x0 | mnt.x1))
-        return mnt;
-    if (!mnt.x1) {
-        mnt.x1 = mnt.x0;
-        mnt.x0 = 0;
+    if (!(mnt->x0 | mnt->x1))
+        return;
+    if (!mnt->x1) {
+        mnt->x1 = mnt->x0;
+        mnt->x0 = 0;
         *exp -= 64;
     }
     for (sh = 32; sh; sh >>= 1) {
-        if (!(mnt.x1 >> (64 - sh))) {
-            mnt.x1 = mnt.x1 << sh | mnt.x0 >> (64 - sh);
-            mnt.x0 = mnt.x0 << sh;
+        if (!(mnt->x1 >> (64 - sh))) {
+            mnt->x1 = mnt->x1 << sh | mnt->x0 >> (64 - sh);
+            mnt->x0 = mnt->x0 << sh;
             *exp -= sh;
         }
     }
-    return mnt;
 }
 
-static u128_t f3_sticky_shift(int32_t sh, u128_t x)
+static void f3_sticky_shift(int32_t sh, u128_t *x)
 {
   if (sh >= 128) {
-      x.x0 = !!(x.x0 | x.x1);
-      x.x1 = 0;
-      return x;
+      x->x0 = !!(x->x0 | x->x1);
+      x->x1 = 0;
+      return;
   }
   if (sh >= 64) {
-      x.x0 = x.x1 | !!x.x0;
-      x.x1 = 0;
+      x->x0 = x->x1 | !!x->x0;
+      x->x1 = 0;
       sh -= 64;
   }
   if (sh > 0) {
-      x.x0 = x.x0 >> sh | x.x1 << (64 - sh) | !!(x.x0 << (64 - sh));
-      x.x1 = x.x1 >> sh;
+      x->x0 = x->x0 >> sh | x->x1 << (64 - sh) | !!(x->x0 << (64 - sh));
+      x->x1 = x->x1 >> sh;
   }
-  return x;
 }
 
-static long double f3_round(int sgn, int32_t exp, u128_t x)
+static long double f3_round(int sgn, int32_t exp, u128_t *x)
 {
     long double f;
     int error;
 
     if (exp > 0) {
-        x = f3_sticky_shift(13, x);
+        f3_sticky_shift(13, x);
     }
     else {
-        x = f3_sticky_shift(14 - exp, x);
+        f3_sticky_shift(14 - exp, x);
         exp = 0;
     }
 
-    error = x.x0 & 3;
-    x.x0 = x.x0 >> 2 | x.x1 << 62;
-    x.x1 = x.x1 >> 2;
+    error = x->x0 & 3;
+    x->x0 = x->x0 >> 2 | x->x1 << 62;
+    x->x1 = x->x1 >> 2;
 
-    if (error == 3 || ((error == 2) & (x.x0 & 1))) {
-        if (!++x.x0) {
-            ++x.x1;
-            if (x.x1 == (uint64_t)1 << 48)
+    if (error == 3 || ((error == 2) & (x->x0 & 1))) {
+        if (!++x->x0) {
+            ++x->x1;
+            if (x->x1 == (uint64_t)1 << 48)
                 exp = 1;
-            else if (x.x1 == (uint64_t)1 << 49) {
+            else if (x->x1 == (uint64_t)1 << 49) {
                 ++exp;
-                x.x0 = x.x0 >> 1 | x.x1 << 63;
-                x.x1 = x.x1 >> 1;
+                x->x0 = x->x0 >> 1 | x->x1 << 63;
+                x->x1 = x->x1 >> 1;
             }
         }
     }
@@ -178,9 +181,8 @@ static long double f3_round(int sgn, int32_t exp, u128_t x)
     if (exp >= 32767)
         return f3_infinity(sgn);
 
-    x.x1 = x.x1 << 16 >> 16 | (uint64_t)exp << 48 | (uint64_t)sgn << 63;
-    memcpy(&f, &x, 16);
-    return f;
+    x->x1 = x->x1 << 16 >> 16 | (uint64_t)exp << 48 | (uint64_t)sgn << 63;
+    return x->f;
 }
 
 static long double f3_add(long double fa, long double fb, int neg)
@@ -214,11 +216,11 @@ static long double f3_add(long double fa, long double fb, int neg)
     b.x0 = b.x0 << 3;
 
     if (a_exp <= b_exp) {
-        a = f3_sticky_shift(b_exp - a_exp, a);
+        f3_sticky_shift(b_exp - a_exp, &a);
         a_exp = b_exp;
     }
     else {
-        b = f3_sticky_shift(a_exp - b_exp, b);
+        f3_sticky_shift(a_exp - b_exp, &b);
         b_exp = a_exp;
     }
 
@@ -241,9 +243,9 @@ static long double f3_add(long double fa, long double fb, int neg)
     if (!(x.x0 | x.x1))
         return f3_zero(0);
 
-    x = f3_normalise(&x_exp, x);
+    f3_normalise(&x_exp, &x);
 
-    return f3_round(x_sgn, x_exp + 12, x);
+    return f3_round(x_sgn, x_exp + 12, &x);
 }
 
 long double __addtf3(long double a, long double b)
@@ -278,8 +280,8 @@ long double __multf3(long double fa, long double fb)
     if (!(a.x0 | a.x1) || !(b.x0 | b.x1))
         return f3_zero(a_sgn ^ b_sgn);
 
-    a = f3_normalise(&a_exp, a);
-    b = f3_normalise(&b_exp, b);
+    f3_normalise(&a_exp, &a);
+    f3_normalise(&b_exp, &b);
 
     x_sgn = a_sgn ^ b_sgn;
     x_exp = a_exp + b_exp - 16352;
@@ -318,7 +320,7 @@ long double __multf3(long double fa, long double fb)
         x.x1 = y1;
     }
 
-    return f3_round(x_sgn, x_exp, x);
+    return f3_round(x_sgn, x_exp, &x);
 }
 
 long double __divtf3(long double fa, long double fb)
@@ -343,8 +345,8 @@ long double __divtf3(long double fa, long double fb)
     if (!(a.x0 | a.x1) || b_exp == 32767)
         return f3_zero(a_sgn ^ b_sgn);
 
-    a = f3_normalise(&a_exp, a);
-    b = f3_normalise(&b_exp, b);
+    f3_normalise(&a_exp, &a);
+    f3_normalise(&b_exp, &b);
 
     x_sgn = a_sgn ^ b_sgn;
     x_exp = a_exp - b_exp + 16395;
@@ -368,19 +370,27 @@ long double __divtf3(long double fa, long double fb)
     }
     x.x0 |= !!(a.x0 | a.x1);
 
-    x = f3_normalise(&x_exp, x);
+    f3_normalise(&x_exp, &x);
 
-    return f3_round(x_sgn, x_exp, x);
+    return f3_round(x_sgn, x_exp, &x);
+}
+
+long double __negtf2(long double f)
+{
+    ((u128_t*)&f)->x1 ^= 1UL << 63;
+    return f;
 }
 
 long double __extendsftf2(float f)
 {
-    long double fx;
     u128_t x;
+    u32_t u;
     uint32_t a;
     uint64_t aa;
-    memcpy(&a, &f, 4);
+
+    u.f = f, a = u.x;
     aa = a;
+
     x.x0 = 0;
     if (!(a << 1))
         x.x1 = aa << 32;
@@ -395,16 +405,17 @@ long double __extendsftf2(float f)
     } else
         x.x1 = (aa >> 31 << 63 | ((aa >> 23 & 255) + 16256) << 48 |
                 aa << 41 >> 16);
-    memcpy(&fx, &x, 16);
-    return fx;
+    return x.f;
 }
 
 long double __extenddftf2(double f)
 {
-    long double fx;
     u128_t x;
+    u64_t u;
     uint64_t a;
-    memcpy(&a, &f, 8);
+
+    u.f = f, a = u.x;
+
     x.x0 = a << 60;
     if (!(a << 1))
         x.x1 = a;
@@ -419,8 +430,7 @@ long double __extenddftf2(double f)
         x.x1 = a >> 63 << 63 | (15360 - adj + 1) << 48 | a << adj << 12 >> 16;
     } else
         x.x1 = a >> 63 << 63 | ((a >> 52 & 2047) + 15360) << 48 | a << 12 >> 16;
-    memcpy(&fx, &x, 16);
-    return fx;
+    return x.f;
 }
 
 float __trunctfsf2(long double f)
@@ -428,11 +438,10 @@ float __trunctfsf2(long double f)
     u128_t mnt;
     int32_t exp;
     int sgn;
-    uint32_t x;
-    float fx;
+    u32_t x;
+#define x x.x
 
     f3_unpack(&sgn, &exp, &mnt, f);
-
     if (exp == 32767 && (mnt.x0 | mnt.x1 << 16))
         x = 0x7fc00000 | (uint32_t)sgn << 31 | (mnt.x1 >> 25 & 0x007fffff);
     else if (exp > 16510)
@@ -450,8 +459,8 @@ float __trunctfsf2(long double f)
             x += 4;
         x = ((x >> 2) + (exp << 23)) | (uint32_t)sgn << 31;
     }
-    memcpy(&fx, &x, 4);
-    return fx;
+#undef x
+    return x.f;
 }
 
 double __trunctfdf2(long double f)
@@ -459,11 +468,10 @@ double __trunctfdf2(long double f)
     u128_t mnt;
     int32_t exp;
     int sgn;
-    uint64_t x;
-    double fx;
+    u64_t x;
+#define x x.x
 
     f3_unpack(&sgn, &exp, &mnt, f);
-
     if (exp == 32767 && (mnt.x0 | mnt.x1 << 16))
         x = (0x7ff8000000000000 | (uint64_t)sgn << 63 |
              mnt.x1 << 16 >> 12 | mnt.x0 >> 60);
@@ -482,8 +490,8 @@ double __trunctfdf2(long double f)
             x += 4;
         x = ((x >> 2) + ((uint64_t)exp << 52)) | (uint64_t)sgn << 63;
     }
-    memcpy(&fx, &x, 8);
-    return fx;
+#undef x
+    return x.f;
 }
 
 int32_t __fixtfsi(long double fa)
@@ -548,7 +556,6 @@ long double __floatsitf(int32_t a)
     int exp = 16414;
     uint32_t mnt = a;
     u128_t x = { 0, 0 };
-    long double f;
     int i;
     if (a) {
         if (a < 0) {
@@ -563,8 +570,7 @@ long double __floatsitf(int32_t a)
         x.x1 = ((uint64_t)sgn << 63 | (uint64_t)exp << 48 |
                 (uint64_t)(mnt << 1) << 16);
     }
-    memcpy(&f, &x, 16);
-    return f;
+    return x.f;
 }
 
 long double __floatditf(int64_t a)
@@ -573,7 +579,6 @@ long double __floatditf(int64_t a)
     int exp = 16446;
     uint64_t mnt = a;
     u128_t x = { 0, 0 };
-    long double f;
     int i;
     if (a) {
         if (a < 0) {
@@ -588,8 +593,7 @@ long double __floatditf(int64_t a)
         x.x0 = mnt << 49;
         x.x1 = (uint64_t)sgn << 63 | (uint64_t)exp << 48 | mnt << 1 >> 16;
     }
-    memcpy(&f, &x, 16);
-    return f;
+    return x.f;
 }
 
 long double __floatunsitf(uint32_t a)
@@ -597,7 +601,6 @@ long double __floatunsitf(uint32_t a)
     int exp = 16414;
     uint32_t mnt = a;
     u128_t x = { 0, 0 };
-    long double f;
     int i;
     if (a) {
         for (i = 16; i; i >>= 1)
@@ -607,8 +610,7 @@ long double __floatunsitf(uint32_t a)
             }
         x.x1 = (uint64_t)exp << 48 | (uint64_t)(mnt << 1) << 16;
     }
-    memcpy(&f, &x, 16);
-    return f;
+    return x.f;
 }
 
 long double __floatunditf(uint64_t a)
@@ -627,15 +629,14 @@ long double __floatunditf(uint64_t a)
         x.x0 = mnt << 49;
         x.x1 = (uint64_t)exp << 48 | mnt << 1 >> 16;
     }
-    memcpy(&f, &x, 16);
-    return f;
+    return x.f;
 }
 
 static int f3_cmp(long double fa, long double fb)
 {
     u128_t a, b;
-    memcpy(&a, &fa, 16);
-    memcpy(&b, &fb, 16);
+    a.f = fa;
+    b.f = fb;
     return (!(a.x0 | a.x1 << 1 | b.x0 | b.x1 << 1) ? 0 :
             ((a.x1 << 1 >> 49 == 0x7fff && (a.x0 | a.x1 << 16)) ||
              (b.x1 << 1 >> 49 == 0x7fff && (b.x0 | b.x1 << 16))) ? 2 :

@@ -19,10 +19,10 @@ if [[ "$uploads" -eq 0 || "$uploads" -ne "$strict_uploads" ]]; then
     exit 1
 fi
 
-for marker in 'test -s coverage/maintained.txt' 'test -s cjit-x86_64-' 'Test-Path cjit.exe' 'test -s cjit-Darwin-' './test/release_artifact_set.sh cjit-bin'; do
+for marker in 'test -s coverage/maintained.txt' 'test -s cjit-linux-x86_64-' 'Test-Path cjit-windows-x86_64.exe' 'test -s cjit-darwin-' 'cjit-windows-arm64.exe' './test/release_artifact_set.sh cjit-bin'; do
     grep -Fq -- "$marker" "$workflow" || { printf 'Missing artifact validation: %s\n' "$marker" >&2; exit 1; }
 done
-for consumed in 'cjit-bin/release-linux-ubuntu-24.04/cjit-x86_64-ubuntu-24.04' 'cjit-bin/release-linux-ubuntu-22.04/cjit-x86_64-ubuntu-22.04' 'cjit-bin/release-win-mingw-x86_64/*' 'cjit-bin/release-osx-macos-14-*/cjit-Darwin-macos-14-*' 'cjit-bin/release-osx-macos-15-*/cjit-Darwin-macos-15-*' 'cjit-bin/release-osx-macos-26-*/cjit-Darwin-macos-26-*'; do
+for consumed in 'cjit-bin/release-linux-ubuntu-24.04/cjit-linux-x86_64-ubuntu-24.04' 'cjit-bin/release-linux-ubuntu-22.04/cjit-linux-x86_64-ubuntu-22.04' 'cjit-bin/release-windows-x86_64/*' 'cjit-bin/release-windows-arm64/*' 'cjit-bin/release-osx-macos-14-*/cjit-darwin-*-macos-14' 'cjit-bin/release-osx-macos-15-*/cjit-darwin-*-macos-15' 'cjit-bin/release-osx-macos-26-*/cjit-darwin-*-macos-26'; do
     grep -Fq -- "$consumed" "$workflow" || { printf 'VirusTotal does not consume expected artifact: %s\n' "$consumed" >&2; exit 1; }
 done
 printf 'CI_ARTIFACT_CONTRACT uploads=%s strict=%s\n' "$uploads" "$strict_uploads"

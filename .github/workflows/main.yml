@@ -217,6 +217,26 @@ jobs:
         run: |
           make -f build/win-msvc.mk check-unit-msvc
 
+  win-arm64-test:
+    name: 🪟 Windows ARM64 test
+    needs: [reuse, c-lint]
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build native Windows ARM64 executables
+        run: |
+          make win-arm64
+          if (!(dumpbin /headers cjit.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit.exe is not ARM64' }
+          if (!(dumpbin /headers cjit-ar.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit-ar.exe is not ARM64' }
+      - name: Run tests
+        env:
+          CJIT_REQUIRED_PLATFORM: windows
+        run: |
+          make check-ci
+      - name: Run ARM64 MSVC unit tests
+        run: |
+          make -f build/win-msvc.mk check-unit-msvc TARGET_ARCH=arm64
+
   osx-native-test:
     name: 🍎 OSX native test
     needs: [reuse, c-lint]
@@ -234,7 +254,7 @@ jobs:
 
   semantic-release:
     name: 🤖 Semantic release
-    needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, tutorial-examples, debian-test, osx-native-test, win-mingw-test, win-msvc-test]
+    needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, tutorial-examples, debian-test, osx-native-test, win-mingw-test, win-msvc-test, win-arm64-test]
     permissions:
       contents: write
       issues: write
@@ -282,14 +302,14 @@ jobs:
       - name: Build x86_64 on Linux
         run: |
           make linux RELEASE=1
-          mv cjit cjit-x86_64-${{ matrix.os }}
-          test -s cjit-x86_64-${{ matrix.os }}
-      - name: Upload artifact linux-amd64
+          mv cjit cjit-linux-x86_64-${{ matrix.os }}
+          test -s cjit-linux-x86_64-${{ matrix.os }}
+      - name: Upload Linux x86_64 artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-linux-${{ matrix.os }}
           path: |
-            cjit-x86_64-${{ matrix.os }}
+            cjit-linux-x86_64-${{ matrix.os }}
           if-no-files-found: error
 
   win-mingw-release:
@@ -316,18 +336,44 @@ jobs:
       - name: Compile the installer
         run: |
           ISCC.exe /DMyAppVersion=${{ needs.semantic-release.outputs.new_release_version }} build\innosetup.iss
-          mv build\Output\cjit_innosetup.exe CJIT_install.exe
-          if (!(Test-Path cjit.exe) -or !(Test-Path CJIT_install.exe)) { throw 'required Windows release artifact is missing' }
+          mv build\Output\cjit_innosetup.exe cjit-installer-windows-x86_64.exe
+          mv cjit.exe cjit-windows-x86_64.exe
+          if (!(Test-Path cjit-windows-x86_64.exe) -or !(Test-Path cjit-installer-windows-x86_64.exe)) { throw 'required Windows release artifact is missing' }
       - name: Build winget package manifest
         run: |
-          bash.exe ./build/winpkg-update.sh CJIT_install.exe ${{ needs.semantic-release.outputs.new_release_version }}
-      - name: Upload artifact windows-amd64
+          bash.exe ./build/winpkg-update.sh cjit-installer-windows-x86_64.exe ${{ needs.semantic-release.outputs.new_release_version }}
+      - name: Upload Windows x86_64 artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-win-mingw-x86_64
+          name: release-windows-x86_64
           path: |
-            cjit.exe
-            CJIT_install.exe
+            cjit-windows-x86_64.exe
+            cjit-installer-windows-x86_64.exe
+          if-no-files-found: error
+
+  win-arm64-release:
+    name: 🪟 Windows ARM64 binary release build
+    needs: [semantic-release]
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Build native Windows ARM64 executables
+        run: |
+          make win-arm64 RELEASE=1
+          if (!(dumpbin /headers cjit.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit.exe is not ARM64' }
+          if (!(dumpbin /headers cjit-ar.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit-ar.exe is not ARM64' }
+          mv cjit.exe cjit-windows-arm64.exe
+          mv cjit-ar.exe cjit-ar-windows-arm64.exe
+      - name: Upload Windows ARM64 artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-windows-arm64
+          path: |
+            cjit-windows-arm64.exe
+            cjit-ar-windows-arm64.exe
           if-no-files-found: error
 
   osx-native-release:
@@ -342,23 +388,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Get architecture
         run: |
-          echo "ARCH=$(uname -m)" >> $GITHUB_ENV
+          echo "ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx RELEASE=1
-          mv cjit.command cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
-          test -s cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
+          mv cjit.command cjit-darwin-${{ env.ARCH }}-${{ matrix.os }}
+          test -s cjit-darwin-${{ env.ARCH }}-${{ matrix.os }}
       - name: Upload artifact apple-osx
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-osx-${{ matrix.os }}-${{ env.ARCH }}
           path: |
-            cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
+            cjit-darwin-${{ env.ARCH }}-${{ matrix.os }}
           if-no-files-found: error
 
   binary-release:
     name: 📢 Public release
-    needs: [semantic-release, osx-native-release, linux-release, win-mingw-release]
+    needs: [semantic-release, osx-native-release, linux-release, win-mingw-release, win-arm64-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -419,16 +465,17 @@ jobs:
           vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
           update_release_body: true
           files: |
-            cjit-bin/release-linux-ubuntu-24.04/cjit-x86_64-ubuntu-24.04
-            cjit-bin/release-linux-ubuntu-22.04/cjit-x86_64-ubuntu-22.04
-            cjit-bin/release-win-mingw-x86_64/*
-            cjit-bin/release-osx-macos-14-*/cjit-Darwin-macos-14-*
-            cjit-bin/release-osx-macos-15-*/cjit-Darwin-macos-15-*
-            cjit-bin/release-osx-macos-26-*/cjit-Darwin-macos-26-*
+            cjit-bin/release-linux-ubuntu-24.04/cjit-linux-x86_64-ubuntu-24.04
+            cjit-bin/release-linux-ubuntu-22.04/cjit-linux-x86_64-ubuntu-22.04
+            cjit-bin/release-windows-x86_64/*
+            cjit-bin/release-windows-arm64/*
+            cjit-bin/release-osx-macos-14-*/cjit-darwin-*-macos-14
+            cjit-bin/release-osx-macos-15-*/cjit-darwin-*-macos-15
+            cjit-bin/release-osx-macos-26-*/cjit-darwin-*-macos-26
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
-    needs: [binary-release, semantic-release, osx-native-release, linux-release, win-mingw-release]
+    needs: [binary-release, semantic-release, osx-native-release, linux-release, win-mingw-release, win-arm64-release]
     runs-on: ubuntu-latest
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
     permissions:

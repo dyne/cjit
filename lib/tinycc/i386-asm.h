@@ -37,7 +37,10 @@
      DEF_ASM_OP0(pause, 0xf390)
      DEF_ASM_OP0(xlat, 0xd7)
 
-     /* strings */
+    /* Control-Flow Enforcement */
+    DEF_ASM_OP0L(endbr32, 0xf30f1e, 7, OPC_MODRM)
+
+    /* strings */
 ALT(DEF_ASM_OP0L(cmpsb, 0xa6, 0, OPC_BWLX))
 ALT(DEF_ASM_OP0L(scmpb, 0xa6, 0, OPC_BWLX))
 

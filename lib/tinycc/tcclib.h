@@ -19,6 +19,7 @@ int atoi(const char *nptr);
 long int strtol(const char *nptr, char **endptr, int base);
 unsigned long int strtoul(const char *nptr, char **endptr, int base);
 void exit(int);
+void *alloca(size_t);
 
 /* stdio.h */
 typedef struct __FILE FILE;
@@ -39,6 +40,7 @@ int getchar(void);
 char *gets(char *s);
 int ungetc(int c, FILE *stream);
 int fflush(FILE *stream);
+int puts(const char *s);
 int putchar (int c);
 
 int printf(const char *format, ...);

@@ -1,0 +1,11 @@
+assert "loaded == 42" : yes
+assert "success" : yes
+assert "atomic_var == 200" : yes
+assert "expected == 100" : yes
+assert "!success" : yes
+assert "atomic_var == 100" : yes
+assert "expected == 100" : yes
+assert "atomic_var == 60" : yes
+assert "loaded_ptr == NULL" : yes
+assert "__atomic_load_n(&atomic_var, __ATOMIC_RELAXED) == 10" : yes
+All atomic tests passed!

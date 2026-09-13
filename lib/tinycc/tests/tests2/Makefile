@@ -31,9 +31,11 @@ ifeq ($(CONFIG_bcheck),no)
  SKIP += 116_bound_setjmp2.test
  SKIP += 117_builtins.test
  SKIP += 126_bound_global.test
+ SKIP += 132_bound_test.test
 endif
 ifeq ($(CONFIG_dll),no)
  SKIP += 113_btdll.test # no shared lib support yet
+ SKIP += 148_linker_symbols.test
 endif
 ifeq (-$(findstring gcc,$(CC))-,--)
  SKIP += $(patsubst %.expect,%.test,$(GEN-ALWAYS))
@@ -45,12 +47,34 @@ ifeq (-$(CONFIG_WIN32)-,-yes-)
  SKIP += 106_versym.test # No pthread support
  SKIP += 114_bound_signal.test # No pthread support
  SKIP += 117_builtins.test # win32 port doesn't define __builtins
- SKIP += 124_atomic_counter.test # No pthread support
+ SKIP += 148_linker_symbols.test # ELF linker tests
 endif
-ifneq (,$(filter OpenBSD FreeBSD NetBSD,$(TARGETOS)))
+ifneq (,$(filter OpenBSD FreeBSD NetBSD DragonFly,$(TARGETOS)))
  SKIP += 106_versym.test # no pthread_condattr_setpshared
  SKIP += 114_bound_signal.test # libc problem signal/fork
  SKIP += 116_bound_setjmp2.test # No TLS_FUNC/TLS_VAR in bcheck.c
+ SKIP += 144_tls.test 146_tls_extern.test # No tls support
+endif
+ifeq ($(CONFIG_OSX),yes)
+ SKIP += 144_tls.test 146_tls_extern.test # TLS runtime not supported on Mach-O
+ SKIP += 148_linker_symbols.test # ELF linker tests
+endif
+ifeq ($(CONFIG_pie),yes)
+ SKIP += 148_linker_symbols.test # PIE executables do not use copy relocations
+endif
+ifeq (-$(ARCH)-,-arm-)
+ SKIP += 144_tls.test 146_tls_extern.test # doesn't work currently
+endif
+ifneq (-$(ARCH)-,-arm64-)
+ SKIP += 138_arm64_encoding.test
+ SKIP += 139_arm64_errors.test
+ SKIP += 140_arm64_extasm.test
+endif
+ifneq (-$(ARCH)-,-riscv64-)
+ SKIP += 141_riscv_asm.test # riscv64 asm
+endif
+ifneq (-$(ARCH)-$(CONFIG_WIN32)-,-arm64-yes-)
+ SKIP += 145_winarm64_interlocked.test
 endif
 
 # Some tests might need arguments
@@ -61,6 +85,7 @@ ARGS =
 # And some tests don't test the right thing with -run
 NORUN =
 42_function_pointer.test : NORUN = true
+# riscv64 asm tests validate encoding, raw regs may crash at runtime
 
 # Some tests might need different flags
 FLAGS =
@@ -73,8 +98,8 @@ endif
 # These tests run several snippets from the same file one by one
 60_errors_and_warnings.test : FLAGS += -dt
 96_nodata_wanted.test : FLAGS += -dt
+139_arm64_errors.test : FLAGS += -dt
 
-# Always generate certain .expects (don't put these in the GIT),
 GEN-ALWAYS =
 # GEN-ALWAYS += 95_bitfields.expect # does not work
 
@@ -106,8 +131,8 @@ GEN-ALWAYS =
 113_btdll.test: T1 = \
     $(TCC) -bt $1 -shared -D DLL=1 -o a1$(DLLSUF) && \
     $(TCC) -bt $1 -shared -D DLL=2 -o a2$(DLLSUF) && \
-    $(TCC) -bt $1 a1$(DLLSUF) a2$(DLLSUF) -Wl,-rpath=. -o $(basename $@).exe && \
-    ./$(basename $@).exe
+    $(TCC) -bt $1 a1$(DLLSUF) a2$(DLLSUF) -Wl,-rpath=. -o $*.exe && \
+    ./$*.exe
 
 114_bound_signal.test: FLAGS += -b
 114_bound_signal.test: NORUN = true # tcc -run does not support fork and -b and SELINUX
@@ -124,6 +149,34 @@ endif
 126_bound_global.test: NORUN = true
 128_run_atexit.test: FLAGS += -dt
 132_bound_test.test: FLAGS += -b
+140_arm64_extasm.test: GEN = $(GEN-TCC)
+141_riscv_asm.test: GEN = $(GEN-TCC)
+
+# TLS needs executable and pthread, not -run
+144_tls.test: FLAGS += -pthread
+144_tls.test: NORUN = true
+
+# Verify that undefined TLS symbols in TCC objects work with the system linker.
+# (note: '$*' is '146_tls_extern' here)
+146_tls_extern.test: T1 = \
+	$(TCC) -c $1 -o $*-main.o && \
+	$(TCC) -c $1 -DDEFS -o $*-defs.o && \
+	$(CC) -no-pie -Wl,-z,noexecstack $*-main.o $*-defs.o -o $*.exe && \
+	./$*.exe
+ifeq (-$(CONFIG_WIN32)-,-yes-)
+146_tls_extern.test : CC=$(TCC)
+endif
+
+# Check ELF linker symbols
+148_linker_symbols.test: T1 = \
+	for T in 1 2 3 4 5 6; do \
+	  echo; echo "--- TEST $$T ---"; F=$*-$$T; \
+	  $(TCC) $1 -DTEST=$$T+100 -c -fcommon -o $$F.o && \
+	  $(TCC) $1 -DTEST=$$T+200 -shared -o $$F.so -fPIC && \
+	  $(TCC) $1 -DTEST=$$T -Wl,-rpath=. -o $$F.exe $$F.o $$F.so -no-pie && \
+	  ./$$F.exe; \
+	done
+148_linker_symbols.test: GEN=$(T1)
 
 # Filter source directory in warnings/errors (out-of-tree builds)
 FILTER = 2>&1 | sed -e 's,$(SRC)/,,g'
@@ -136,7 +189,7 @@ all test tests2.all: $(filter-out $(SKIP),$(TESTS))
 	@$(call T1,$<) $(T3)
 
 T1 = $(TCC) $(FLAGS) $(T2) $(ARGS)
-T2 = $(if $(NORUN),$1 -o $(basename $@).exe && ./$(basename $@).exe,-run $1)
+T2 = $(if $(NORUN),$1 -o $*.exe && ./$*.exe,-run $1)
 T3 = $(FILTER) >$*.output 2>&1 || true \
      && diff -Nbu $(filter %.expect,$^) $*.output \
      && rm -f $*.output $(filter $*.expect,$(GEN-ALWAYS))
@@ -164,9 +217,9 @@ F2 = $1 UPDATE="$(patsubst %.test,%.expect,$1)"
 
 # using TCC for .expect if -dt in FLAGS
 GEN = $(if $(filter -dt -bt -b,$(FLAGS)),$(GEN-TCC),$(GEN-CC))
-GEN-CC = $(CC) -w -std=gnu99 $(FLAGS) $1 -o $(basename $@).exe && ./$(basename $@).exe $(ARGS)
+GEN-CC = $(CC) -w -std=gnu99 $(FLAGS) $1 -o $*.exe && ./$*.exe $(ARGS)
 GEN-TCC = $(T1)
-GEN-MSC = $(MS-CC) $1 && ./$(basename $@).exe
+GEN-MSC = $(MS-CC) $1 && ./$*.exe
 MS-CC = cl
 
 # tell make not to delete
@@ -177,4 +230,4 @@ $(sort $(GEN-ALWAYS) $(UPDATE)) : force
 force:
 
 clean :
-	rm -f fred.txt *.output *.exe *.dll *.so *.def $(GEN-ALWAYS)
+	rm -f fred.txt *.output *.o *.a *.exe *.dll *.so *.def $(GEN-ALWAYS)

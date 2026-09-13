@@ -68,9 +68,11 @@ nb_exe_failed="0"
 old_pwd="`pwd`"
 cd "$TESTSUITE_PATH"
 
-skip_builtin="`grep "_builtin_"  compile/*.c  execute/*.c  execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f2 |  sort -u `"
-skip_ieee="`grep "_builtin_"   execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f3 |  sort -u `"
-skip_complex="`grep -i "_Complex"  compile/*.c  execute/*.c  execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f2 |  sort -u `"
+skip_builtin="`grep '_builtin_'  compile/*.c  execute/*.c  execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f2 |  sort -u `"
+skip_ieee="`grep '_builtin_'   execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f3 |  sort -u `"
+skip_complex="`grep -i '_Complex'  compile/*.c  execute/*.c  execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f2 |  sort -u `"
+skip_int128="`grep -Eiw '__int128_t|__uint128_t'  compile/*.c  execute/*.c  execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f2 |  sort -u `"
+skip_vector="`grep -Eiw 'vector|vector_size|__vector_size__'  compile/*.c  execute/*.c  execute/ieee/*.c | cut -d ':' -f1 | cut -d '/' -f2 |  sort -u `"
 skip_misc="20000120-2.c mipscop-1.c mipscop-2.c mipscop-3.c mipscop-4.c
    fp-cmp-4f.c fp-cmp-4l.c fp-cmp-8f.c fp-cmp-8l.c pr38016.c "
 
@@ -78,21 +80,27 @@ cd "$old_pwd"
 
 for src in $TESTSUITE_PATH/compile/*.c ; do
   echo $TCC -o $RUNTIME_DIR/tst.o -c $src
-  $TCC -o $RUNTIME_DIR/tst.o -c $src >> tcc.fail 2>&1
-  if [ "$?" = "0" ] ; then
-    result="PASS"
-    nb_ok=$(( $nb_ok + 1 ))
+  if $TCC -o $RUNTIME_DIR/tst.o -c $src 2>&1 | grep 'cannot use local functions' >/dev/null 2>&1
+  then
+    result="SKIP"
+    nb_skipped=$(( $nb_skipped + 1 ))
   else
-    base=`basename "$src"`
-    skip_me="`echo  $skip_builtin $skip_ieee $skip_complex $skip_misc | grep -w $base`"
-
-    if [ -n "$skip_me" ]
-    then
-      result="SKIP"
-      nb_skipped=$(( $nb_skipped + 1 ))
+    $TCC -o $RUNTIME_DIR/tst.o -c $src >> tcc.fail 2>&1
+    if [ "$?" = "0" ] ; then
+      result="PASS"
+      nb_ok=$(( $nb_ok + 1 ))
     else
-      result="FAIL"
-      nb_failed=$(( $nb_failed + 1 ))
+      base=`basename "$src"`
+      skip_me="`echo  $skip_builtin $skip_ieee $skip_complex $skip_int128 $skip_misc $skip_vector | grep -w $base`"
+
+      if [ -n "$skip_me" ]
+      then
+        result="SKIP"
+        nb_skipped=$(( $nb_skipped + 1 ))
+      else
+        result="FAIL"
+        nb_failed=$(( $nb_failed + 1 ))
+      fi
     fi
   fi
   echo "$result: $src"  >> tcc.sum
@@ -105,28 +113,33 @@ fi
 
 for src in $TESTSUITE_PATH/execute/*.c  $TESTSUITE_PATH/execute/ieee/*.c ; do
   echo $TCC $src -o $RUNTIME_DIR/tst -lm
-  $TCC $src -o $RUNTIME_DIR/tst -lm >> tcc.fail 2>&1
-  if [ "$?" = "0" ] ; then
-    result="PASS"
-    if $RUNTIME_DIR/tst >> tcc.fail 2>&1
-    then
-      result="PASS"
-      nb_ok=$(( $nb_ok + 1 ))
-    else
-      result="FAILEXE"
-      nb_exe_failed=$(( $nb_exe_failed + 1 ))
-    fi
+  if $TCC $src -o $RUNTIME_DIR/tst -lm 2>&1 | grep 'cannot use local functions' >/dev/null 2>&1
+  then
+    result="SKIP"
+    nb_skipped=$(( $nb_skipped + 1 ))
   else
-    base=`basename "$src"`
-    skip_me="`echo $skip_builtin $skip_ieee $skip_complex $skip_misc | grep -w $base`"
-
-    if [ -n "$skip_me" ]
-    then
-      result="SKIP"
-      nb_skipped=$(( $nb_skipped + 1 ))
+    $TCC $src -o $RUNTIME_DIR/tst -lm >> tcc.fail 2>&1
+    if [ "$?" = "0" ] ; then
+      if $RUNTIME_DIR/tst >> tcc.fail 2>&1
+      then
+        result="PASS"
+        nb_ok=$(( $nb_ok + 1 ))
+      else
+        result="FAILEXE"
+        nb_exe_failed=$(( $nb_exe_failed + 1 ))
+      fi
     else
-      result="FAIL"
-      nb_failed=$(( $nb_failed + 1 ))
+      base=`basename "$src"`
+      skip_me="`echo $skip_builtin $skip_ieee $skip_complex $skip_int128 $skip_misc $skip_vector | grep -w $base`"
+
+      if [ -n "$skip_me" ]
+      then
+        result="SKIP"
+        nb_skipped=$(( $nb_skipped + 1 ))
+      else
+        result="FAIL"
+        nb_failed=$(( $nb_failed + 1 ))
+      fi
     fi
   fi
   echo "$result: $src"  >> tcc.sum

@@ -47,7 +47,7 @@ typedef struct unsigned_int_struct {
 } unsigned_int_struct;
 
 #define REGS_RETURN(name, type) \
-    void name ## _return(type ret) {}
+    static void name ## _return(type ret) {}
 
 
 /* Float helper functions */
@@ -177,7 +177,7 @@ void __aeabi_ ## name(double_unsigned_struct val)                            \
         ret.high = 0;                                                        \
         ret.low = 1 << exp;                                                  \
         if (exp > DOUBLE_FRAC_BITS - 32) {                                   \
-            high_shift = exp - DOUBLE_FRAC_BITS - 32;                        \
+            high_shift = exp - (DOUBLE_FRAC_BITS - 32);                      \
             ret.low |= val.high << high_shift;                               \
             ret.low |= val.low >> (32 - high_shift);                         \
         } else                                                               \
@@ -339,7 +339,7 @@ __AEABI_XL2D(ul2d, 0)
 /* long long to double conversion */
 __AEABI_XL2D(l2d, 1)
 
-
+#if 1
 /* Long long helper functions */
 
 /* TODO: add error in case of den == 0 (see §4.3.1 and §4.3.2) */
@@ -474,6 +474,7 @@ void __aeabi_lasr(unsigned_int_struct val, int shift)
 
 /* Integer division functions */
 
+#if 0 /* very slow */
 AEABI_UXDIVMOD(uidivmod, unsigned, uidiv_t, UINT)
 
 int __aeabi_idiv(int numerator, int denominator)
@@ -506,6 +507,9 @@ void __aeabi_uidivmod(unsigned num, unsigned den)
 {
     uidiv_t_return(aeabi_uidivmod(num, den));
 }
+#else
+# define UIDIVMOD_ASM 1
+#endif
 
 /* Some targets do not have all eabi calls (OpenBSD) */
 typedef __SIZE_TYPE__ size_t;
@@ -542,3 +546,97 @@ __aeabi_memset (void *s, size_t n, int c)
 {
     return memset (s, c, n);
 }
+
+/* ***************************************************************** */
+#if UIDIVMOD_ASM
+#include <config.h>
+__asm__(
+   "\n  .global __aeabi_idiv, __aeabi_idivmod"
+   "\n  .global __aeabi_uidiv, __aeabi_uidivmod"
+#if __ARM_FEATURE_IDIV
+   "\n__aeabi_idiv:"
+   "\n__aeabi_idivmod:"
+   "\n  mov     r2, r0"
+   "\n  sdiv    r0, r0, r1"
+   "\n  mls     r1, r1, r0, r2"
+   "\n  bx      lr"
+
+   "\n__aeabi_uidiv:"
+   "\n__aeabi_uidivmod:"
+   "\n  mov     r2, r0"
+   "\n  udiv    r0, r0, r1"
+   "\n  mls     r1, r1, r0, r2"
+   "\n  bx      lr"
+#else
+/* Runtime ABI for the ARM Cortex-M0
+ * idivmod.S: signed 32 bit division (quotient and remainder)
+ *
+ * Copyright (c) 2012 Jörg Mische <bobbl@gmx.de>
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ */
+   "\n__aeabi_idiv:"
+   "\n__aeabi_idivmod:"
+   "\n  cmp     r0, #0"
+   "\n  bge     .Lnumerator_pos"
+   "\n  rsb     r0, r0, #0" // num = -num
+   "\n  cmp     r1, #0"
+   "\n  bge     .Lboth_neg"
+   "\n  rsb     r1, r1, #0" // den = -den
+   "\n  push    {lr}"
+   "\n  bl      __aeabi_uidivmod"
+   "\n  rsb     r1, r1, #0" // rem = -rem
+   "\n  pop     {pc}"
+   "\n.Lboth_neg:"
+   "\n  push    {lr}"
+   "\n  bl      __aeabi_uidivmod"
+   "\n  rsb     r0, r0, #0" // quot = -quot
+   "\n  rsb     r1, r1, #0" // rem = -rem
+   "\n  pop     {pc}"
+   "\n.Ldenom_neg:"
+   "\n  rsb     r1, r1, #0" // den = -den
+   "\n  push    {lr}"
+   "\n  bl      __aeabi_uidivmod"
+   "\n  rsb     r0, r0, #0" // quot = -quot
+   "\n  pop     {pc}"
+   "\n.Lnumerator_pos:"
+   "\n  cmp     r1, #0"
+   "\n  blt     .Ldenom_neg"
+
+   // Divide r0 by r1 and return the quotient in r0 and the remainder in r1
+   "\n__aeabi_uidiv:"
+   "\n__aeabi_uidivmod:"
+   // Shift left the denominator until it is greater than the numerator
+   "\n  mov     r2, #1"	    // counter
+   "\n  mov     r3, #0"	    // result
+   "\n  cmp     r0, r1"
+   "\n  bls     .Lsub_loop"
+   "\n  adds    r1, #0"	    // dont shift if denominator would overflow
+   "\n  bmi     .Lsub_loop"
+   "\n  beq     .Luidiv0"
+   "\n.Ldenom_shift_loop:"
+   "\n  lsl     r2, #1"
+   "\n  lsls    r1, #1"
+   "\n  bmi     .Lsub_loop"
+   "\n  cmp     r0, r1"
+   "\n  bhi     .Ldenom_shift_loop"
+   "\n.Lsub_loop:"
+   "\n  cmp     r0, r1"     // if (num >= den)...
+   "\n  subcs   r0, r1"     // numerator -= denom
+   "\n  orrcs   r3, r2"     // result(r3) |= bitmask(r2)
+   "\n  lsr     r1, #1"	    // denom(r1) >>= 1
+   "\n  lsrs    r2, #1"	    // bitmask(r2) >>= 1
+   "\n  bne     .Lsub_loop"
+   "\n  mov     r1, r0"	    // remainder(r1) = numerator(r0)
+   "\n  mov     r0, r3"	    // quotient(r0) = result(r3)
+   "\n  bx      lr"
+   "\n.Luidiv0:"            // XXX: division by zero
+   "\n  mov     r0, #0"
+   "\n  bx      lr"
+#endif
+);
+#endif /* UIDIVMOD_ASM */
+/* ***************************************************************** */
+#endif

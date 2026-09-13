@@ -376,8 +376,8 @@ static void asm_coprocessor_opcode(TCCState *s1, int token) {
     for (i = 0; i < 3; ++i) {
         skip(',');
         if (i == 0 && token != TOK_ASM_cdp2 && (ARM_INSTRUCTION_GROUP(token) == TOK_ASM_mrceq || ARM_INSTRUCTION_GROUP(token) == TOK_ASM_mcreq)) {
-            if (tok >= TOK_ASM_r0 && tok <= TOK_ASM_r15) {
-                registers[i] = tok - TOK_ASM_r0;
+            if (tok >= TOK_ASM_r0 && tok <= TOK_ASM_pc) {
+                registers[i] = asm_parse_regvar(tok);
                 next();
             } else {
                 expect("'r<number>'");
@@ -971,12 +971,21 @@ static void asm_multiplication_opcode(TCCState *s1, int token)
         opcode |= 1 << 20; // Status
         /* fallthrough */
     case TOK_ASM_mlaeq:
+    case_TOK_ASM_mlaeq:
         if (nb_ops != 4)
             expect("four operands");
         else {
             opcode |= 1 << 21; // Accumulate
             asm_emit_opcode(token, opcode);
         }
+        break;
+    case TOK_ASM_mlseq:
+        opcode |= 0x00400000;
+        goto case_TOK_ASM_mlaeq;
+    case TOK_ASM_udiveq:
+        opcode |= 0x00200000;
+    case TOK_ASM_sdiveq:
+        asm_emit_opcode(token, (opcode & ~0x80) | 0x0710f010);
         break;
     default:
         expect("known multiplication instruction");
@@ -1084,6 +1093,7 @@ static void asm_single_data_transfer_opcode(TCCState *s1, int token)
     next(); // skip ','
 
     switch (ARM_INSTRUCTION_GROUP(token)) {
+    case TOK_ASM_strexheq:
     case TOK_ASM_strexbeq:
     case TOK_ASM_strexeq:
         parse_operand(s1, &strex_operand);
@@ -1200,6 +1210,8 @@ static void asm_single_data_transfer_opcode(TCCState *s1, int token)
             opcode |= asm_encode_shift(&shift);
         asm_emit_opcode(token, opcode);
         break;
+    case TOK_ASM_strexheq:
+        opcode |= 1 << 21;
     case TOK_ASM_strexbeq:
         opcode |= 1 << 22; // B
         /* fallthrough */
@@ -1217,6 +1229,8 @@ static void asm_single_data_transfer_opcode(TCCState *s1, int token)
         opcode |= strex_operand.reg;
         asm_emit_opcode(token, opcode);
         break;
+    case TOK_ASM_ldrexheq:
+        opcode |= 1 << 21;
     case TOK_ASM_ldrexbeq:
         opcode |= 1 << 22; // B
         /* fallthrough */
@@ -2305,11 +2319,16 @@ static void asm_branch_opcode(TCCState *s1, int token)
     case TOK_ASM_beq:
     case TOK_ASM_bleq:
         asm_expr(s1, &e);
-        esym = elfsym(e.sym);
-        if (!esym || esym->st_shndx != cur_text_section->sh_num) {
-            tcc_error("invalid branch target");
+        if (e.sym) {
+            esym = elfsym(e.sym);
+            if (esym && esym->st_shndx == cur_text_section->sh_num) {
+                jmp_disp = esym->st_value;
+            } else {
+                greloca(cur_text_section, e.sym, ind, R_ARM_PC24, 0);
+                jmp_disp = ind;
+            }
         }
-        jmp_disp = encbranchoffset(ind, e.v + esym->st_value, 1);
+        jmp_disp = encbranchoffset(ind, e.v + jmp_disp, 1);
         break;
     default:
         parse_operand(s1, &op);
@@ -2409,8 +2428,10 @@ ST_FUNC void asm_opcode(TCCState *s1, int token)
     case TOK_ASM_strbeq:
     case TOK_ASM_ldrexeq:
     case TOK_ASM_ldrexbeq:
+    case TOK_ASM_ldrexheq:
     case TOK_ASM_strexeq:
     case TOK_ASM_strexbeq:
+    case TOK_ASM_strexheq:
         asm_single_data_transfer_opcode(s1, token);
         return;
 
@@ -2473,6 +2494,9 @@ ST_FUNC void asm_opcode(TCCState *s1, int token)
     case TOK_ASM_mulseq:
     case TOK_ASM_mlaeq:
     case TOK_ASM_mlaseq:
+    case TOK_ASM_mlseq:
+    case TOK_ASM_udiveq:
+    case TOK_ASM_sdiveq:
         asm_multiplication_opcode(s1, token);
         return;
 
@@ -2607,7 +2631,7 @@ ST_FUNC void subst_asm_operand(CString *add_str, SValue *sv, int modifier)
         val = sv->c.i;
         if (modifier == 'n')
             val = -val;
-        cstr_printf(add_str, "%d", (int) sv->c.i);
+        cstr_printf(add_str, "%d", val);
       no_offset:;
     } else if ((r & VT_VALMASK) == VT_LOCAL) {
         cstr_printf(add_str, "[fp,#%d]", (int) sv->c.i);
@@ -3048,23 +3072,20 @@ ST_FUNC void asm_clobber(uint8_t *clobber_regs, const char *str)
    Otherwise return -1.  */
 ST_FUNC int asm_parse_regvar (int t)
 {
-    if (t >= TOK_ASM_r0 && t <= TOK_ASM_pc) { /* register name */
-        switch (t) {
-            case TOK_ASM_fp:
-                return TOK_ASM_r11 - TOK_ASM_r0;
-            case TOK_ASM_ip:
-                return TOK_ASM_r12 - TOK_ASM_r0;
-            case TOK_ASM_sp:
-                return TOK_ASM_r13 - TOK_ASM_r0;
-            case TOK_ASM_lr:
-                return TOK_ASM_r14 - TOK_ASM_r0;
-            case TOK_ASM_pc:
-                return TOK_ASM_r15 - TOK_ASM_r0;
-            default:
-                return t - TOK_ASM_r0;
-        }
-    } else
+    /* coprocessors (p0-p15) and coprocessor registers (c0-c15) are handled elsewere */
+    /* single fp (s0-s31) and double fp registers (d0-d15) are handled elsewere */
+
+    if (t < TOK_ASM_r0 || t > TOK_ASM_pc) /* filter unrelated registers */
         return -1;
+
+    if (t <= TOK_ASM_r15)       /* default register names r0-r15 */
+        return t - TOK_ASM_r0;
+
+    if (t <= TOK_ASM_v8)        /* synonym register names a1-a4,v1-v8 (alias: r0-r11) */
+        return t - TOK_ASM_a1;
+
+    /* special register names sb/sl/fp/ip/sp/lr/pc (alias: r9-r15) */
+    return t - TOK_ASM_sb + (TOK_ASM_r9 - TOK_ASM_r0);
 }
 
 /*************************************************************/

@@ -12,6 +12,7 @@ SHELL := C:\Program Files\Git\bin\bash.exe
 
 CURDIR_WIN := $(subst /,\,$(CURDIR))
 POWERSHELL := /c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+TARGET_ARCH ?= x86_64
 
 MSVC_SOURCES := $(filter-out src/adapters/platform/library_resolver_posix.o,$(SOURCES))
 MSVC_SOURCES += src/win-compat.o src/embed_tinycc_win32.o src/embed_win32ports.o
@@ -21,7 +22,7 @@ all: win-msvc
 
 tinycc-msvc:
 	@mkdir -p build/win-msvc
-	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action tinycc -Root "$(CURDIR_WIN)" -Prefix "$(PREFIX)" -Version "$(VERSION)" -CurrentYear "$(CURRENT_YEAR)"
+	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action tinycc -Root "$(CURDIR_WIN)" -Prefix "$(PREFIX)" -Version "$(VERSION)" -CurrentYear "$(CURRENT_YEAR)" -TargetArch "$(TARGET_ARCH)"
 	@test -r lib/tinycc/libtcc1.a
 	@test -r lib/tinycc/libtcc.lib
 	@test -r libtcc.dll
@@ -45,15 +46,15 @@ cjit.exe: embed-win-msvc
 	@mkdir -p build/win-msvc
 	@rm -f build/win-msvc/cjit-sources.txt
 	@printf '%s\n' $(foreach source,$(MSVC_SOURCES),"$(CURDIR_WIN)\$(subst /,\,$(source))") > build/win-msvc/cjit-sources.txt
-	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action cjit -Root "$(CURDIR_WIN)" -Prefix "$(PREFIX)" -Version "$(VERSION)" -CurrentYear "$(CURRENT_YEAR)" -SourceList "$(CURDIR_WIN)\build\win-msvc\cjit-sources.txt"
+	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action cjit -Root "$(CURDIR_WIN)" -Prefix "$(PREFIX)" -Version "$(VERSION)" -CurrentYear "$(CURRENT_YEAR)" -SourceList "$(CURDIR_WIN)\build\win-msvc\cjit-sources.txt" -TargetArch "$(TARGET_ARCH)"
 
 cjit-ar.exe: tinycc-msvc
 	@mkdir -p build/win-msvc
-	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action cjit-ar -Root "$(CURDIR_WIN)" -Prefix "$(PREFIX)" -Version "$(VERSION)" -CurrentYear "$(CURRENT_YEAR)"
+	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action cjit-ar -Root "$(CURDIR_WIN)" -Prefix "$(PREFIX)" -Version "$(VERSION)" -CurrentYear "$(CURRENT_YEAR)" -TargetArch "$(TARGET_ARCH)"
 
 win-msvc: cjit.exe cjit-ar.exe
 	@rm -f .build_done*
 	date | tee .build_done_win
 
 check-unit-msvc:
-	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action units -Root "$(CURDIR_WIN)"
+	@"$(POWERSHELL)" -NoProfile -ExecutionPolicy Bypass -File build/win-msvc.ps1 -Action units -Root "$(CURDIR_WIN)" -TargetArch "$(TARGET_ARCH)"

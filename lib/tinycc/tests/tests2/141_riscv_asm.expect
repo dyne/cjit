@@ -1,0 +1,6 @@
+csrr fcsr=1
+csrw: wrote e0 got e0
+csrwi: wrote 0x10 got 10
+csrsi: old|3=3
+csrci: old&~3=0
+PASS

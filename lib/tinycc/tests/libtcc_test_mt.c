@@ -162,6 +162,7 @@ void *reloc_state(TCCState *s, const char *entry)
 {
     void *func;
     tcc_add_symbol(s, "add", add);
+    tcc_add_symbol(s, "printf", printf);
     if (tcc_relocate(s) < 0) {
         fprintf(stderr, __FILE__ ": could not relocate tcc state.\n");
         return NULL;
@@ -337,8 +338,16 @@ int main(int argc, char **argv)
 
 #else
 #include <tcclib.h>
-
-unsigned int sleep(unsigned int seconds);
+#ifdef _WIN32
+# ifndef _WIN64
+    __declspec(stdcall)
+# endif
+    void Sleep(unsigned);
+# define sleep_ms Sleep
+#else
+    int usleep(unsigned long);
+# define sleep_ms(x) usleep((x)*1000);
+#endif
 
 int fib(n)
 {
@@ -347,7 +356,7 @@ int fib(n)
 
 int main(int argc, char **argv)
 {
-    sleep(1);
+    sleep_ms(333);
     printf(" %d", fib(atoi(argv[1])));
     return 0;
 }

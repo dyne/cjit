@@ -225,6 +225,8 @@ ALT(DEF_ASM_OP2(shrdw, 0x0fad, 0, OPC_MODRM | OPC_WLX, OPT_REGW, OPT_EA | OPT_RE
 
 ALT(DEF_ASM_OP1(call, 0xff, 2, OPC_MODRM, OPT_INDIR))
 ALT(DEF_ASM_OP1(call, 0xe8, 0, 0, OPT_DISP))
+    DEF_ASM_OP1(callq, 0xff, 2, OPC_MODRM, OPT_INDIR)
+ALT(DEF_ASM_OP1(callq, 0xe8, 0, 0, OPT_DISP))
 ALT(DEF_ASM_OP1(jmp, 0xff, 4, OPC_MODRM, OPT_INDIR))
 ALT(DEF_ASM_OP1(jmp, 0xeb, 0, 0, OPT_DISP8))
 
@@ -507,7 +509,12 @@ ALT(DEF_ASM_OP2(movhps, 0x0f17, 0, OPC_MODRM, OPT_SSE, OPT_EA | OPT_REG32 ))
     DEF_ASM_OP2(addps, 0x0f58, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
     DEF_ASM_OP2(cvtpi2ps, 0x0f2a, 0, OPC_MODRM, OPT_EA | OPT_MMX, OPT_SSE )
     DEF_ASM_OP2(cvtps2pi, 0x0f2d, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_MMX )
+    DEF_ASM_OP2(cvtss2si, 0xf30f2d, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_REG32 )
+ALT(DEF_ASM_OP2(cvtss2si, 0xf30f2d, 0, OPC_MODRM | OPC_48, OPT_EA | OPT_SSE, OPT_REG64 ))
+    DEF_ASM_OP2(cvtsd2si, 0xf20f2d, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_REG32 )
+ALT(DEF_ASM_OP2(cvtsd2si, 0xf20f2d, 0, OPC_MODRM | OPC_48, OPT_EA | OPT_SSE, OPT_REG64 ))
     DEF_ASM_OP2(cvttps2pi, 0x0f2c, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_MMX )
+    DEF_ASM_OP2(andps, 0x0f54, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
     DEF_ASM_OP2(divps, 0x0f5e, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
     DEF_ASM_OP2(maxps, 0x0f5f, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
     DEF_ASM_OP2(minps, 0x0f5d, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
@@ -521,7 +528,12 @@ ALT(DEF_ASM_OP2(movhps, 0x0f17, 0, OPC_MODRM, OPT_SSE, OPT_EA | OPT_REG32 ))
     DEF_ASM_OP2(rcpss, 0x0f53, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
     DEF_ASM_OP2(rsqrtps, 0x0f52, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
     DEF_ASM_OP2(sqrtps, 0x0f51, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
+    DEF_ASM_OP2(sqrtss, 0xf30f51, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
     DEF_ASM_OP2(subps, 0x0f5c, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE )
+
+    /* sse2 */
+    DEF_ASM_OP2(andpd, 0x660f54, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE)
+    DEF_ASM_OP2(sqrtsd, 0xf20f51, 0, OPC_MODRM, OPT_EA | OPT_SSE, OPT_SSE)
 
     /* movnti should only accept REG32 and REG64, we accept more */
     DEF_ASM_OP2(movnti, 0x0fc3, 0, OPC_MODRM, OPT_REG, OPT_EA)
@@ -536,6 +548,9 @@ ALT(DEF_ASM_OP2(movhps, 0x0f17, 0, OPC_MODRM, OPT_SSE, OPT_EA | OPT_REG32 ))
     DEF_ASM_OP0L(mfence, 0x0fae, 6, OPC_MODRM)
     DEF_ASM_OP0L(sfence, 0x0fae, 7, OPC_MODRM)
     DEF_ASM_OP1(clflush, 0x0fae, 7, OPC_MODRM, OPT_EA)
+
+    /* Control-Flow Enforcement */
+    DEF_ASM_OP0L(endbr64, 0xf30f1e, 7, OPC_MODRM)
 #undef ALT
 #undef DEF_ASM_OP0
 #undef DEF_ASM_OP0L

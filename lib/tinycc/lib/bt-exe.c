@@ -3,13 +3,27 @@
    from tccrun.c into executables. */
 
 #define CONFIG_TCC_BACKTRACE_ONLY
-#define ONE_SOURCE 1
+#define ONE_SOURCE 0
 #define pstrcpy tcc_pstrcpy
-#define TCC_SEM_IMPL 1
 #include "../tccrun.c"
 
 #ifndef _WIN32
 # define __declspec(n)
+#endif
+
+#ifdef _WIN64
+static void bt_init_pe_prog_base(rt_context *p)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    addr_t imagebase;
+
+    if (!p->prog_base)
+        return;
+    if (!VirtualQuery(p, &mbi, sizeof(mbi)) || !mbi.AllocationBase)
+        return;
+    imagebase = (addr_t)mbi.AllocationBase - p->prog_base;
+    p->prog_base = (addr_t)mbi.AllocationBase - (imagebase & 0xffffffffu);
+}
 #endif
 
 __declspec(dllexport)
@@ -24,6 +38,10 @@ void __bt_init(rt_context *p, int is_exe)
     /* needed to add global symbols */
     if (p->bounds_start)
 	__bound_init(p->bounds_start, -1);
+
+#ifdef _WIN64
+    bt_init_pe_prog_base(p);
+#endif
 
     /* add to chain */
     rt_wait_sem();

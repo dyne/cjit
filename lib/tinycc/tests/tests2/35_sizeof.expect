@@ -1,2 +1,7 @@
-1 1
-2 2
+sizeof a : 1 1
+sizeof b : 2 2
+sizeof ii : 0
+sizeof kk : 4
+sizeof cc : 3
+len-of ll : 6
+sizeof ss : 12

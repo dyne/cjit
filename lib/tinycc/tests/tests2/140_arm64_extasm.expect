@@ -1,0 +1,36 @@
+ARM64 Extended Inline Assembly Tests
+Test 1 (basic output): PASSED
+Test 2 (input operand): PASSED
+Test 3 (read-write operand): PASSED
+Test 4 (memory load): PASSED
+Test 5 (memory store): PASSED
+Test 5a (stack memory operand): PASSED
+Test 5b (symbol memory operand): PASSED
+Test 6 (clobber list): PASSED
+Test 7 (multiple outputs): PASSED
+Test 8 (constraint reference): PASSED
+Test 9 (early clobber): PASSED
+Test 10 (w register modifier): PASSED
+Test 11 (immediate I constraint): PASSED
+Test 12 (general operand constraint): PASSED
+Test 13 (multiple IO): PASSED
+Test 14 (regvar preservation): PASSED
+Test 15 (complex arithmetic): PASSED
+Test 16 (named operand): PASSED
+Test 17 (memory clobber): PASSED
+Test 18 (cc clobber): PASSED
+Test 19 (large immediate): PASSED
+Test 20 (bitwise ops): PASSED
+Test 21 (register shifts): PASSED
+Test 22 (ror immediate): PASSED
+Test 23 (fp register operand): PASSED
+Test 24 (Z constraint): PASSED
+Test 25 (K constraint): PASSED
+Test 26 (L constraint): PASSED
+Test 27 (M constraint): PASSED
+Test 28 (N constraint): PASSED
+Test 29 (x constraint): PASSED
+Test 30 (y constraint): PASSED
+Test 31 (Q constraint): PASSED
+Test 32 (Ump constraint): PASSED
+ARM64 Extended Inline Assembly Tests PASSED!

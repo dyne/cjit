@@ -21,9 +21,17 @@ double scale(double d)
     return x.d;
 }
 
+void mul(double *p)
+{
+    *p *= 2.0;
+}
+
 int
 main(void)
 {
+    double d = 4.0;
     printf("%g\n", scale(42));
+    mul(&d);
+    printf("%g\n", d);
     return 0;
 }

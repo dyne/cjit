@@ -15,7 +15,11 @@
 #define ELF_START_ADDR 0x08048000
 #define ELF_PAGE_SIZE  0x1000
 
+#if defined CONFIG_TCC_PIC
+#define PCRELATIVE_DLLPLT 1
+#else
 #define PCRELATIVE_DLLPLT 0
+#endif
 #define RELOCATE_DLLPLT 1
 
 #else /* !TARGET_DEFS_ONLY */
@@ -301,7 +305,6 @@ ST_FUNC void relocate(TCCState *s1, ElfW_Rel *rel, int type, unsigned char *ptr,
             }
             return;
         case R_386_TLS_LDO_32:
-        case R_386_TLS_LE:
             {
                 ElfW(Sym) *sym;
                 Section *sec;
@@ -310,6 +313,19 @@ ST_FUNC void relocate(TCCState *s1, ElfW_Rel *rel, int type, unsigned char *ptr,
                 sym = &((ElfW(Sym) *)symtab_section->data)[sym_index];
                 sec = s1->sections[sym->st_shndx];
                 x = val - sec->sh_addr - sec->data_offset;
+                add32le(ptr, x);
+            }
+            return;
+        case R_386_TLS_LE:
+            {
+                int32_t x;
+                if (s1->tls_end) {
+                    x = val - s1->tls_end;
+                } else {
+                    ElfW(Sym) *sym = &((ElfW(Sym) *)symtab_section->data)[sym_index];
+                    Section *sec = s1->sections[sym->st_shndx];
+                    x = val - sec->sh_addr - sec->data_offset;
+                }
                 add32le(ptr, x);
             }
             return;

@@ -1968,7 +1968,7 @@ void gfunc_prolog(Sym *func_sym)
     /* define parameters */
     while ((sym = sym->next) != NULL) {
 	type = &sym->type;
-	sym_push(sym->v & ~SYM_FIELD, type, VT_LOCAL | VT_LVAL, addr);
+	gfunc_set_param(sym, addr, 0);
 	size = type_size(type, &align);
 	size = (size + 3) & ~3;
 
