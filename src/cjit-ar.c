@@ -360,9 +360,11 @@ finish:
         memcpy(&arhdro.ar_size, stmp, 10);
         fwrite(&arhdro, sizeof(arhdro), 1, fo);
         fwrite(buf, fsize, 1, fo);
+        if (fsize & 1)
+            fwrite("\n", 1, 1, fo);
         tcc_free(buf);
         i_obj++;
-        fpos += (fsize + sizeof(arhdro));
+        fpos += (fsize + (fsize & 1) + sizeof(arhdro));
     }
     hofs = 8 + sizeof(arhdr) + strpos + (funccnt+1) * sizeof(int);
     fpos = 0;

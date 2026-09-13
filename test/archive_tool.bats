@@ -26,8 +26,16 @@ make_object() {
     [ -s "${object}" ]
 }
 
+make_odd_sized() {
+    local object="$1"
+    if [ "$(( $(wc -c < "${object}") % 2 ))" -eq 0 ]; then
+        printf '\0' >> "${object}"
+    fi
+}
+
 @test "standalone cjit-ar creates, lists, and extracts an object archive" {
     make_object "${TMP}/helper.c" "${TMP}/helper.o"
+    make_odd_sized "${TMP}/helper.o"
     archive="${TMP}/libhelper.a"
 
     run "${ARCHIVE_TOOL}" rcs "${archive}" "${TMP}/helper.o"
