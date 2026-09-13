@@ -169,8 +169,11 @@ int main(void)
     free(contents);
     expect(file_load(missing, &length) == NULL, "Windows missing file is rejected");
     expect(file_load(temporary, NULL) == NULL, "Windows missing length destination is rejected");
+    expect(CreateDirectoryA(output, NULL) != 0,
+           "Windows unwritable destination fixture is created");
     expect(!write_to_file(fixture, "output space.bin", binary, sizeof(binary)),
-           "Windows write rejects duplicate fixture name");
+           "Windows write rejects a directory destination");
+    RemoveDirectoryA(output);
     expect(write_to_file(fixture, "written.bin", binary, sizeof(binary)), "Windows binary output is written");
     absolute = new_abspath(temporary);
     expect(absolute != NULL && absolute[1] == ':', "Windows drive-qualified path resolves absolutely");
