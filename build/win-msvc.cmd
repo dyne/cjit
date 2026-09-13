@@ -108,8 +108,8 @@ exit /b 0
 
 :units
 if not exist "%ROOT%\build\win-msvc" mkdir "%ROOT%\build\win-msvc" || exit /b 1
-cl /nologo /W4 /WX /MT /DCJIT_BUILD_WIN /I"%ROOT%\src" /I"%ROOT%\lib\muntarfs" /Fe"%ROOT%\build\win-msvc\file_unit.exe" "%ROOT%\test\file_unit.c" "%ROOT%\src\file.c" "%ROOT%\src\support\cwalk.c" /link /nologo shlwapi.lib || exit /b 1
+cl /nologo /W4 /WX /MT /D_CRT_SECURE_NO_WARNINGS /DCJIT_BUILD_WIN /I"%ROOT%\src" /I"%ROOT%\lib\muntarfs" /Fe"%ROOT%\build\win-msvc\file_unit.exe" "%ROOT%\test\file_unit.c" "%ROOT%\src\file.c" "%ROOT%\src\support\cwalk.c" /link /nologo shlwapi.lib || exit /b 1
 "%ROOT%\build\win-msvc\file_unit.exe" || exit /b 1
-cl /nologo /W4 /WX /MT /DCJIT_BUILD_WIN /DVERSION=\"test-runtime\" /I"%ROOT%\src" /I"%ROOT%\lib\muntarfs" /Fe"%ROOT%\build\win-msvc\runtime_cache_unit.exe" "%ROOT%\test\runtime_cache_unit.c" "%ROOT%\src\adapters\fs\local_filesystem.c" "%ROOT%\src\support\cwalk.c" /link /nologo shlwapi.lib || exit /b 1
+cl /nologo /W4 /WX /MT /D_CRT_SECURE_NO_WARNINGS /DCJIT_BUILD_WIN /DVERSION=\"test-runtime\" /I"%ROOT%\src" /I"%ROOT%\lib\muntarfs" /Fe"%ROOT%\build\win-msvc\runtime_cache_unit.exe" "%ROOT%\test\runtime_cache_unit.c" "%ROOT%\src\adapters\fs\local_filesystem.c" "%ROOT%\src\support\cwalk.c" /link /nologo shlwapi.lib || exit /b 1
 "%ROOT%\build\win-msvc\runtime_cache_unit.exe" || exit /b 1
 exit /b 0

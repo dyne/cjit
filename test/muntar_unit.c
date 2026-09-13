@@ -92,6 +92,15 @@ static int remove_fixture_directory(const char *path)
 #endif
 }
 
+static int make_fixture_directory(const char *path)
+{
+#if defined(CJIT_TEST_WINDOWS)
+    return _mkdir(path);
+#else
+    return mkdir(path, 0700);
+#endif
+}
+
 static void test_gzip(void)
 {
     static const uint8_t good[] = {0x1f,0x8b,8,0,0,0,0,0,0,3,0xcb,0x48,0xcd,0xc9,0xc9,7,0,0x86,0xa6,0x10,0x36,5,0,0,0};
@@ -180,7 +189,7 @@ static void test_tar_and_paths(void)
     CHECK(muntar_to_path(root, tar, length) == MTAR_ESUCCESS);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EWRITEFAIL);
     snprintf(canary, sizeof(canary), "%s/occupied", root);
-    CHECK(mkdir(canary, 0700) == 0);
+    CHECK(make_fixture_directory(canary) == 0);
     length = tar_one(tar, "occupied", MTAR_TREG, data, sizeof(data) - 1);
     CHECK(muntar_to_path(root, tar, length) == MTAR_EWRITEFAIL);
     CHECK(rmdir(canary) == 0);
