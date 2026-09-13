@@ -60,6 +60,20 @@ require_job win-msvc-test 'Run MSVC unit tests'
 require_job semantic-release 'needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, debian-test, osx-native-test, win-mingw-test, win-msvc-test]'
 require_job_order virustotal 'actions/checkout@' './test/release_artifact_set.sh'
 
+grep -Fxq $'\tdate | tee .build_done_win' build/win-msvc.mk || {
+    printf 'MSVC build must publish the standard Windows target marker\n' >&2
+    exit 1
+}
+check_ci_body=$(awk '
+    /^check-ci:/ { found = 1; next }
+    found && /^[A-Za-z0-9_-]+:/ { exit }
+    found { print }
+' GNUmakefile)
+if grep -Fq 'run-dmon-suite' <<<"$check_ci_body"; then
+    printf 'check-ci must leave dmon to its dedicated Linux lane\n' >&2
+    exit 1
+fi
+
 grep -A2 '^permissions:$' "$workflow" | grep -Fxq '  contents: read' || {
     printf 'Workflow must default to read-only contents permission\n' >&2; exit 1;
 }
@@ -88,4 +102,4 @@ if grep -Eq '^[[:space:]]+(actions|deployments|id-token|packages|pages|security-
     printf 'Workflow grants an unapproved write permission\n' >&2; exit 1
 fi
 
-printf 'CI_CONTRACT lanes=8 capabilities=15 workflow=%s\n' "$workflow"
+printf 'CI_CONTRACT lanes=8 capabilities=17 workflow=%s\n' "$workflow"
