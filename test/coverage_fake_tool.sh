@@ -3,6 +3,9 @@
 set -Eeuo pipefail
 
 source_file=${!#}
+if [[ "${COVERAGE_FAKE_EMPTY:-}" == 1 ]]; then
+    exit 0
+fi
 if [[ "${COVERAGE_FAKE_OMIT:-}" == "$source_file" ]]; then
     exit 0
 fi

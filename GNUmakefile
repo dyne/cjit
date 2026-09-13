@@ -177,6 +177,19 @@ coverage-report: ## 📊 Print line coverage for maintained sources only
 check-coverage-report: ## 🧪 Verify coverage report failure contracts
 	@./test/coverage_report_test.sh
 
+check-coverage-ratchet: ## 🧪 Verify maintained coverage ratchet
+	@./test/coverage_ratchet_test.sh
+
+check-ci-contract: ## 🧪 Verify CI lane execution manifest
+	@./test/ci_contract_test.sh
+
+check-ci-artifacts: ## 🧪 Verify CI artifact publication contracts
+	@./test/ci_artifact_contract_test.sh
+	@./test/release_artifact_set_test.sh
+
+check-ci-action-pins: ## 🧪 Verify immutable action references
+	@./test/ci_action_pins.sh
+
 coverage-clean: ## 🧹 Remove compiler-native coverage profiles
 	@find src lib/muntarfs lib/tinycc -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
 	@rm -f cjit-ar-cjit-ar.gcda cjit-ar-cjit-ar.gcno
@@ -237,7 +250,7 @@ install: ## 🔌 Install the built binaries in PREFIX
 	@cp -ra README.md REUSE.toml LICENSES ${DESTDIR}${DATADIR}/
 	@cp -ra examples ${DESTDIR}${DATADIR}/
 
-.PHONY: meson debian fuzz-replay fuzz-smoke
+.PHONY: meson debian fuzz-replay fuzz-smoke check-ci-contract check-ci-artifacts check-ci-action-pins check-coverage-report check-coverage-ratchet
 debian:
 	$(info Creating the Debian package)
 	@rm -rf debian
