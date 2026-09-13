@@ -7,6 +7,24 @@ load bats_setup
     assert_output 'Hello World!'
 }
 
+@test "Shared libtcc capability contract is explicit" {
+    if [ -z "${SYSTCC:-}" ]; then
+        skip "contract applies only to the distribution shared-libtcc build"
+    fi
+    run ${CJIT} -v
+    assert_success
+    assert_output --partial 'System libtcc'
+
+    object="${TMP}/shared-contract.o"
+    run ${CJIT} -q -c -o "${object}" test/hello.c
+    assert_success
+    [ -f "${object}" ]
+
+    run ${CJIT} --xass "${TMP}/assets"
+    assert_failure
+    assert_output --partial 'Runtime assets are unavailable with shared libtcc builds'
+}
+
 @test "Pass pre-processor defines" {
     skip_if_systcc_execute_is_unavailable
     run ${CJIT} -q test/cflags.c -DALLOWED
