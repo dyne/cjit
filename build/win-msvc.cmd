@@ -68,7 +68,7 @@ exit /b 0
 :tinycc
 cd /d "%ROOT%\lib\tinycc\win32" || exit /b 1
 call build-tcc.bat -clean || exit /b 1
-call build-tcc.bat -c cl || exit /b 1
+call build-tcc.bat -c cl -t %TARGET_ARCH% || exit /b 1
 if not exist "lib\libtcc1.a" exit /b 1
 if not exist "libtcc.lib" exit /b 1
 if not exist "libtcc.dll" exit /b 1

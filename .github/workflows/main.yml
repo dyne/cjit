@@ -226,8 +226,8 @@ jobs:
       - name: Build native Windows ARM64 executables
         run: |
           make win-arm64
-          if (!(dumpbin /headers cjit.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit.exe is not ARM64' }
-          if (!(dumpbin /headers cjit-ar.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit-ar.exe is not ARM64' }
+          ./build/verify-pe-machine.ps1 -Path cjit.exe -Architecture arm64
+          ./build/verify-pe-machine.ps1 -Path cjit-ar.exe -Architecture arm64
       - name: Run tests
         env:
           CJIT_REQUIRED_PLATFORM: windows
@@ -363,8 +363,8 @@ jobs:
       - name: Build native Windows ARM64 executables
         run: |
           make win-arm64 RELEASE=1
-          if (!(dumpbin /headers cjit.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit.exe is not ARM64' }
-          if (!(dumpbin /headers cjit-ar.exe | Select-String -Quiet 'AA64 machine \(ARM64\)')) { throw 'cjit-ar.exe is not ARM64' }
+          ./build/verify-pe-machine.ps1 -Path cjit.exe -Architecture arm64
+          ./build/verify-pe-machine.ps1 -Path cjit-ar.exe -Architecture arm64
           mv cjit.exe cjit-windows-arm64.exe
           mv cjit-ar.exe cjit-ar-windows-arm64.exe
       - name: Upload Windows ARM64 artifacts
