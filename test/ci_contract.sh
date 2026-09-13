@@ -56,6 +56,7 @@ require_job win-mingw-test 'make win-mingw'
 require_job win-mingw-test 'CJIT_REQUIRED_PLATFORM: windows'
 require_job win-msvc-test 'make win-msvc'
 require_job win-msvc-test 'check-unit-msvc'
+require_job win-msvc-test 'Run MSVC unit tests'
 require_job semantic-release 'needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, debian-test, osx-native-test, win-mingw-test, win-msvc-test]'
 require_job_order virustotal 'actions/checkout@' './test/release_artifact_set.sh'
 

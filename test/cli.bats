@@ -20,9 +20,9 @@ load bats_setup
     assert_success
     [ -f "${object}" ]
 
-    run ${CJIT} --xass "${TMP}/assets"
-    assert_failure
-    assert_output --partial 'Runtime assets are unavailable with shared libtcc builds'
+    run ${CJIT} --help
+    assert_success
+    refute_output --partial '--xass'
 }
 
 @test "Pass pre-processor defines" {

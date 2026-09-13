@@ -150,10 +150,10 @@ COVERAGE_SOURCES := src/file.c src/cjit.c src/cjit-ar.c src/main.c src/support/s
 	lib/muntarfs/tinfgzip.c
 
 ifeq ($(findstring clang,$(shell $(CC) --version 2>/dev/null | head -1)),clang)
-COVERAGE_TOOL ?= llvm-cov
+COVERAGE_TOOL ?= $(shell ./test/coverage_tool.sh "$(CC)")
 COVERAGE_TOOL_ARGS ?= gcov
 else
-COVERAGE_TOOL ?= gcov
+COVERAGE_TOOL ?= $(shell ./test/coverage_tool.sh "$(CC)")
 COVERAGE_TOOL_ARGS ?=
 endif
 
@@ -176,6 +176,7 @@ coverage-report: ## 📊 Print line coverage for maintained sources only
 
 check-coverage-report: ## 🧪 Verify coverage report failure contracts
 	@./test/coverage_report_test.sh
+	@./test/coverage_tool_test.sh
 
 check-coverage-ratchet: ## 🧪 Verify maintained coverage ratchet
 	@./test/coverage_ratchet_test.sh

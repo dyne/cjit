@@ -210,6 +210,13 @@ int posix_resolve_library_lists(const StringList *libraries,
         found = -1;
         for (ii = 0; ii < libpaths_num; ii++) {
             lpath = string_list_get(library_paths, ii);
+#if defined(APPLE)
+            snprintf(tryfile, PATH_MAX - 2, "%s/lib%s.dylib", lpath, lname);
+            found = find_library(resolved, library_paths, tryfile);
+            if (found == 0) {
+                break;
+            }
+#endif
             snprintf(tryfile, PATH_MAX - 2, "%s/lib%s.so", lpath, lname);
             found = find_library(resolved, library_paths, tryfile);
             if (found == 0) {
@@ -217,7 +224,11 @@ int posix_resolve_library_lists(const StringList *libraries,
             }
         }
         if (found != 0) {
+#if defined(APPLE)
+            _err("Library not found: lib%s.dylib or lib%s.so", lname, lname);
+#else
             _err("Library not found: lib%s.so", lname);
+#endif
         }
     }
     return (int)string_list_count(resolved);
