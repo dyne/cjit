@@ -26,16 +26,16 @@ jobs:
     name: 🚨 REUSE Compliance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: fsfe/reuse-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
 
 
   c-lint:
     name: 🚨 C lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: reviewdog/action-cpplint@master
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: reviewdog/action-cpplint@5f1bbc6ecc3dc6d9b2cb8ddae490464240ae415d # v1.12.0
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -67,7 +67,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build x86_64 with Linux
         run: |
           make linux CC=clang
@@ -88,7 +88,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build AddressSanitizer and UndefinedBehavior checks
         run: |
           make debug-asan CC=clang
@@ -104,7 +104,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Measure maintained-source coverage
         run: |
           make coverage CC=clang
@@ -113,8 +113,9 @@ jobs:
           test -s coverage/maintained.txt
           grep -Eq "^File '(src|lib/muntarfs)/" coverage/maintained.txt
           grep -Eq '^Lines executed:([0-9]+\.)?[0-9]+% of [1-9][0-9]*$' coverage/maintained.txt
+          ./test/coverage_ratchet.sh coverage/maintained.txt test/coverage_maintained_baseline.txt
       - name: Upload maintained coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-maintained-coverage
           path: coverage/
@@ -125,7 +126,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build Linux target
         run: |
           make linux CC=clang
@@ -138,7 +139,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install deps
         run: |
           sudo apt-get -qy update
@@ -155,7 +156,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: "windows-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build windows exe for x86_64 with MinGW
         run: |
           make win-mingw
@@ -170,7 +171,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: "windows-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build windows exe for x86_64 with MSVC
         run: |
           make win-msvc
@@ -186,7 +187,7 @@ jobs:
     needs: [reuse, c-lint]
     runs-on: "macos-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build native Apple/OSX command executable
         run: |
           make apple-osx
@@ -205,9 +206,9 @@ jobs:
       new_release_version: ${{ steps.semantic-release.outputs.new_release_version }}
     if: ${{ github.ref_name == 'main' && github.event_name == 'push' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
         id: semantic-release
         with:
           extra_plugins: |
@@ -215,11 +216,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload release docs artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: documentation
           path: |
             build/release-intro.md
+          if-no-files-found: error
 
   linux-release:
     name: 🐧 Linux shared binary release build
@@ -232,7 +234,7 @@ jobs:
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Install build deps
@@ -242,12 +244,14 @@ jobs:
         run: |
           make linux RELEASE=1
           mv cjit cjit-x86_64-${{ matrix.os }}
+          test -s cjit-x86_64-${{ matrix.os }}
       - name: Upload artifact linux-amd64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-linux-${{ matrix.os }}
           path: |
             cjit-x86_64-${{ matrix.os }}
+          if-no-files-found: error
 
   win-mingw-release:
     name: 🪟 Windows MinGW binary release build
@@ -255,7 +259,7 @@ jobs:
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: "windows-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Build windows exe for x86_64 with MinGW
@@ -274,16 +278,18 @@ jobs:
         run: |
           ISCC.exe /DMyAppVersion=${{ needs.semantic-release.outputs.new_release_version }} build\innosetup.iss
           mv build\Output\cjit_innosetup.exe CJIT_install.exe
+          if (!(Test-Path cjit.exe) -or !(Test-Path CJIT_install.exe)) { throw 'required Windows release artifact is missing' }
       - name: Build winget package manifest
         run: |
           bash.exe ./build/winpkg-update.sh CJIT_install.exe ${{ needs.semantic-release.outputs.new_release_version }}
       - name: Upload artifact windows-amd64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-win-mingw-x86_64
           path: |
             cjit.exe
             CJIT_install.exe
+          if-no-files-found: error
 
   osx-native-release:
     name: 🍎 OSX native binary release build
@@ -294,7 +300,7 @@ jobs:
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Get architecture
         run: |
           echo "ARCH=$(uname -m)" >> $GITHUB_ENV
@@ -302,26 +308,31 @@ jobs:
         run: |
           make apple-osx RELEASE=1
           mv cjit.command cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
+          test -s cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
       - name: Upload artifact apple-osx
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-osx-${{ matrix.os }}-${{ env.ARCH }}
           path: |
             cjit-Darwin-${{ matrix.os }}-${{ env.ARCH }}
+          if-no-files-found: error
 
   binary-release:
     name: 📢 Public release
     needs: [semantic-release, osx-native-release, linux-release, win-mingw-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: download binary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: |
             cjit-bin
+      - name: Validate downloaded release artifacts
+        run: |
+          ./test/release_artifact_set.sh cjit-bin
       - name: pack the cjit-demo archive
         run: |
           bash build/pack-examples.sh
@@ -332,7 +343,7 @@ jobs:
       - name: show release directory structure
         run: tree -dL 3
       - name: relase all binary artifacts
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             cjit-bin/release*/*
@@ -351,19 +362,25 @@ jobs:
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
       - name: download binary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: |
             cjit-bin
+      - name: Validate downloaded release artifacts
+        run: |
+          ./test/release_artifact_set.sh cjit-bin
       - name: VirusTotal Scan
-        uses: crazy-max/ghaction-virustotal@v4
+        uses: crazy-max/ghaction-virustotal@936d8c5c00afe97d3d9a1af26d017cfdf26800a2 # v5.0.0
         with:
           vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
           update_release_body: true
           files: |
-            cjit-bin/release-osx-native/*
+            cjit-bin/release-linux-ubuntu-24.04/cjit-x86_64-ubuntu-24.04
+            cjit-bin/release-linux-ubuntu-22.04/cjit-x86_64-ubuntu-22.04
             cjit-bin/release-win-mingw-x86_64/*
-            cjit-bin/release-shared-linux-x86_64/*
+            cjit-bin/release-osx-macos-14/cjit-Darwin-macos-14-*
+            cjit-bin/release-osx-macos-15/cjit-Darwin-macos-15-*
+            cjit-bin/release-osx-macos-26/cjit-Darwin-macos-26-*
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
@@ -372,9 +389,9 @@ jobs:
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Remove tag
-        uses: dev-drprasad/delete-tag-and-release@v1.0
+        uses: dev-drprasad/delete-tag-and-release@82600feb9527126eca69833f07bafe53279bd9b4 # v1.1
         with:
           tag_name: v${{ needs.semantic-release.outputs.new_release_version }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

@@ -12,6 +12,9 @@ if COVERAGE_TOOL=/bin/false ./test/coverage_report.sh "$report" src/main.c; then
 test ! -e "$report"
 if COVERAGE_TOOL=/bin/true ./test/coverage_report.sh "$report" src/main.c; then exit 1; fi
 test ! -e "$report"
+if COVERAGE_TOOL=./test/coverage_fake_tool.sh COVERAGE_FAKE_EMPTY=1 \
+    ./test/coverage_report.sh "$report" src/main.c; then exit 1; fi
+test ! -e "$report"
 if COVERAGE_TOOL=./test/coverage_fake_tool.sh COVERAGE_FAKE_OMIT=src/cjit.c \
     ./test/coverage_report.sh "$report" src/main.c src/cjit.c; then exit 1; fi
 test ! -e "$report"

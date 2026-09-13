@@ -39,6 +39,12 @@ job keeps that host-specific smoke test out of the fast `check-ci` gate.
 
 ## Instrumented runs
 
+Run `make fuzz-smoke` for deterministic corpus replay and `make
+check-ci-contract check-ci-artifacts check-ci-action-pins check-coverage-ratchet`
+to audit the executable CI policy locally. Parser seeds that reveal a regression
+belong under `test/fuzz/corpus/` (and, where useful, a matching dictionary);
+promote them with the regression before relying on the bounded CI replay.
+
 `make coverage` builds an instrumented Linux binary, runs `make check-ci`, and
 prints a maintained-source summary for every maintained source compiled by the
 Linux target, including `src/cjit-ar.c`. It excludes generated assets/embed
@@ -48,9 +54,12 @@ target (it is currently compiled only by the muntar component harness), and
 measurement. The command then removes its instrumented objects so a normal
 build cannot reuse them. `make coverage-clean` removes profiles on demand;
 `make coverage` invokes it after reporting.
-Coverage is an initial measurement with no threshold; CI uploads
-the validated `coverage/` report directory (including `maintained.txt`) so a ratchet can be chosen from measured data rather
-than invented. `make debug-asan` builds an AddressSanitizer/LeakSanitizer binary
+CI applies `test/coverage_maintained_baseline.txt`: the measured 63.05% weighted
+baseline is rounded down to 63.0%, with a 0.2-point reporting tolerance. Update
+it only with a reviewed fresh `coverage/maintained.txt` artifact and an explained
+intentional baseline change; update the aggregate and every measured per-file
+entry together so CI can report deterministic regressions. The ratchet counts only `src/` and `lib/muntarfs/`,
+so generated embeds and vendored TinyCC cannot distort it. `make debug-asan` builds an AddressSanitizer/LeakSanitizer binary
 with undefined-behavior checks; run `make check-unit` and the closest Bats suite
 against that binary before wider sanitizer validation.
 

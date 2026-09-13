@@ -1,0 +1,32 @@
+# Derived by `make coverage CC=clang` on 2026-09-13 from maintained.txt.
+# The weighted report was 63.05%; round down, then permit 0.20 percentage
+# points for toolchain-level report rounding.  Update only in a reviewed PR
+# that includes a newly uploaded maintained coverage artifact.
+maintained_percent=63.0
+tolerance_percent=0.2
+src/file.c=54.39
+src/cjit.c=65.47
+src/cjit-ar.c=33.83
+src/main.c=89.51
+src/support/source_files.c=63.16
+src/support/string_list.c=80.95
+src/array.c=36.18
+src/app/execute_source.c=66.67
+src/app/compile_object.c=100.00
+src/app/build_executable.c=87.50
+src/app/print_status.c=100.00
+src/app/extract_assets.c=82.35
+src/app/extract_archive.c=100.00
+src/adapters/cli/route_parser.c=93.80
+src/adapters/cli/render_response.c=94.59
+src/adapters/cli/slice_composition.c=52.00
+src/adapters/compiler/tinycc_adapter.c=59.76
+src/adapters/fs/local_filesystem.c=46.67
+src/adapters/fs/local_asset.c=95.65
+src/adapters/platform/library_resolver_posix.c=73.30
+src/adapters/platform/library_resolver_windows.c=0.00
+src/adapters/platform/runtime_platform.c=66.67
+lib/muntarfs/muntarfs_runtime.c=50.00
+lib/muntarfs/muntar.c=82.69
+lib/muntarfs/tinflate.c=64.44
+lib/muntarfs/tinfgzip.c=60.00
