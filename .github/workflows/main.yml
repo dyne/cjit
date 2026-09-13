@@ -21,6 +21,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   reuse:
     name: 🚨 REUSE Compliance
@@ -33,6 +36,9 @@ jobs:
   c-lint:
     name: 🚨 C lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: reviewdog/action-cpplint@5f1bbc6ecc3dc6d9b2cb8ddae490464240ae415d # v1.12.0
@@ -199,7 +205,11 @@ jobs:
 
   semantic-release:
     name: 🤖 Semantic release
-    needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, osx-native-test, win-mingw-test, win-msvc-test]
+    needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, debian-test, osx-native-test, win-mingw-test, win-msvc-test]
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
@@ -321,6 +331,8 @@ jobs:
     name: 📢 Public release
     needs: [semantic-release, osx-native-release, linux-release, win-mingw-release]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -360,7 +372,10 @@ jobs:
     needs: [binary-release]
     runs-on: ubuntu-latest
     if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: download binary artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -378,15 +393,17 @@ jobs:
             cjit-bin/release-linux-ubuntu-24.04/cjit-x86_64-ubuntu-24.04
             cjit-bin/release-linux-ubuntu-22.04/cjit-x86_64-ubuntu-22.04
             cjit-bin/release-win-mingw-x86_64/*
-            cjit-bin/release-osx-macos-14/cjit-Darwin-macos-14-*
-            cjit-bin/release-osx-macos-15/cjit-Darwin-macos-15-*
-            cjit-bin/release-osx-macos-26/cjit-Darwin-macos-26-*
+            cjit-bin/release-osx-macos-14-*/cjit-Darwin-macos-14-*
+            cjit-bin/release-osx-macos-15-*/cjit-Darwin-macos-15-*
+            cjit-bin/release-osx-macos-26-*/cjit-Darwin-macos-26-*
 
   remove-tag-on-fail:
     name: 🧻 Remove tag on fail
     needs: [binary-release, semantic-release, osx-native-release, linux-release, win-mingw-release]
     runs-on: ubuntu-latest
     if: ${{ (failure() || cancelled()) && needs.semantic-release.outputs.new_release_published == 'true' }}
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

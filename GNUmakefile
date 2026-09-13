@@ -217,12 +217,19 @@ test/compiler_adapter_unit.bin: UNIT_SOURCES := src/adapters/compiler/tinycc_ada
 test/compiler_adapter_unit.bin: CFLAGS += -Ilib/tinycc
 test/library_resolver_unit.bin: UNIT_SOURCES := src/adapters/platform/library_resolver_posix.c src/adapters/platform/library_resolver_windows.c src/support/string_list.c src/array.c src/support/cwalk.c
 FUZZ_REPLAY := test/fuzz/replay.bin
+FUZZ_CORPUS ?= test/fuzz/corpus/*/*
 
 $(FUZZ_REPLAY): test/fuzz/replay.c lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c src/adapters/cli/route_parser.c src/adapters/platform/library_resolver_posix.c src/support/string_list.c src/array.c src/support/cwalk.c
 	$(CC) $(CFLAGS) -Isrc -Ilib/muntarfs -o $@ $^
 
-fuzz-replay: $(FUZZ_REPLAY)
-	@for seed in test/fuzz/corpus/*/*; do [ -f "$$seed" ] && "$(FUZZ_REPLAY)" "$${seed#test/fuzz/corpus/}" "$$seed" || exit $$?; done
+fuzz-replay:
+	@set -eu; \
+	trap 'rm -f "$(FUZZ_REPLAY)"' EXIT HUP INT TERM; \
+	$(MAKE) "$(FUZZ_REPLAY)"; \
+	for seed in $(FUZZ_CORPUS); do \
+		[ -f "$$seed" ] || { printf 'Missing fuzz seed: %s\n' "$$seed" >&2; exit 2; }; \
+		"$(FUZZ_REPLAY)" "$${seed#test/fuzz/corpus/}" "$$seed"; \
+	done
 
 fuzz-smoke: fuzz-replay
 test/muntar_unit.bin: UNIT_SOURCES := lib/muntarfs/muntar.c lib/muntarfs/tinflate.c lib/muntarfs/tinfgzip.c lib/muntarfs/muntarfs_runtime.c
@@ -237,6 +244,7 @@ check-unit: $(UNIT_BINS) ## 🧪 Run small direct C tests for pure support logic
 		printf 'UNIT %s\n' "$$test_binary"; \
 		"./$$test_binary" || exit $$?; \
 	done
+	@./test/fuzz_replay_test.sh
 
 
 _: ##
@@ -264,5 +272,5 @@ clean: ## 🧹 Clean the source from all built objects
 	"${MAKE}" -C src clean
 	@find src lib/muntarfs -type f \( -name '*.o' -o -name '*.d' \) -delete
 	@rm -f cjit cjit.exe cjit-ar cjit-ar.exe cjit.command cjit-ar.command libtcc.dll
-	@rm -f $(UNIT_BINS) test/source_files_unit
+	@rm -f $(UNIT_BINS) test/source_files_unit $(FUZZ_REPLAY)
 	@rm -rf meson coverage
