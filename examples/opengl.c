@@ -15,8 +15,10 @@
 #pragma comment(lib, "opengl32")
 #elif LINUX
 #pragma comment(lib, "OpenGL")
+#pragma comment(lib, "m")
 #else
 #pragma comment(lib, "OpenGL")
+#pragma comment(lib, "m")
 #endif
 
 #include <stdbool.h>

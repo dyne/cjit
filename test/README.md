@@ -11,6 +11,7 @@ change.
 | E2E | Public CLI routes, arguments, files, and output. | `./test/bats/bin/bats test/cli.bats` |
 | Platform | Platform-specific behavior and resolver policy. | `./test/bats/bin/bats test/linux.bats` or `test/windows.bats` |
 | Smoke | Host-library integration that cannot be made fixture-driven yet. | The labeled OpenSSL, ncurses, and system resolver cases in `test/linux.bats` |
+| Tutorial | Published VitePress programs linked against pinned demo headers and SDL/OpenGL development packages. | `make check-tutorial-examples` |
 
 `make check-ci` runs the unit, CLI, applicable platform, Windows-gated, and
 archive/component suites. `make check` additionally runs the Linux dmon suite
@@ -19,6 +20,11 @@ when `.build_done_linux` is present. Every Bats invocation prints a
 `CJIT_REQUIRED_PLATFORM=linux` or `windows` for the job that owns that platform;
 an owned suite with zero executed cases fails the job. The dedicated Linux dmon
 job keeps that host-specific smoke test out of the fast `check-ci` gate.
+The tutorial job runs separately because it needs network access for pinned
+single-header dependencies plus the host SDL2 and OpenGL development packages.
+It executes the inline hello program and dmon's non-interactive usage path,
+links every interactive demo, rejects empty artifacts and unresolved-symbol
+warnings, and does not launch graphical, audio, or terminal interfaces in CI.
 
 ## Test data and platform rules
 

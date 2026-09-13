@@ -1,4 +1,5 @@
 #include <stdio.h>
+#define DMON_IMPL
 #include <dmon.h>
 
 static void watch_callback(dmon_watch_id watch_id,
@@ -37,4 +38,3 @@ int main(int argc, char* argv[]) {
     }
     return 0;
 }
-

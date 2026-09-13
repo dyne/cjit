@@ -4,8 +4,10 @@
 #pragma comment(lib, "opengl32")
 #elif LINUX
 #pragma comment(lib, "OpenGL")
+#pragma comment(lib, "m")
 #else
 #pragma comment(lib, "OpenGL")
+#pragma comment(lib, "m")
 #endif
 #define SDL_DISABLE_IMMINTRIN_H 1
 #define SDL_MAIN_HANDLED 1
@@ -558,4 +560,3 @@ cleanup:
     SDL_Quit();
     return 0;
 }
-

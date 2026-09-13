@@ -1,6 +1,10 @@
 #!/bin/bash
-set -e
+set -Eeuo pipefail
 set -x
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=build/demo-dependencies.sh
+source "${script_dir}/demo-dependencies.sh"
 
 # this script is designed to run on GNU/Linux
 # it will generate a cjit-demo archive usable on all platforms
@@ -15,17 +19,17 @@ function fetch() {
 	local REPO_NAME="$4"
 	local TAG="$5"
 	local FILE_NAME="$out"
-	if [ -r ${odir}/${out} ]; then
-			>&2 echo "Found   : ${odir}/${out}"
+	if [ -r "${odir}/${out}" ]; then
+		>&2 echo "Found   : ${odir}/${out}"
 	else
 		>&2 echo "Download: ${odir}/${out}"
-		if [ "$GITHUB_ACTIONS" == "true" ]; then
+		if [ "${GITHUB_ACTIONS:-}" == "true" ]; then
 			API_URL="https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases/tags/$TAG"
-			DOWNLOAD_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" $API_URL | jq -r ".assets[] | select(.name==\"$FILE_NAME\") | .browser_download_url")
-			curl -L -H "Authorization: token $GITHUB_TOKEN" \
-				 --output ${odir}/$FILE_NAME $DOWNLOAD_URL
+			DOWNLOAD_URL=$(curl -s -H "Authorization: token ${GITHUB_TOKEN:-}" "$API_URL" | jq -r ".assets[] | select(.name==\"$FILE_NAME\") | .browser_download_url")
+			curl -L -H "Authorization: token ${GITHUB_TOKEN:-}" \
+				 --output "${odir}/${FILE_NAME}" "$DOWNLOAD_URL"
 		else
-			curl -sL --output ${odir}/${out} ${url}
+			curl -sL --output "${odir}/${out}" "$url"
 		fi
 	fi
 }
@@ -37,17 +41,18 @@ cp -ra examples cjit-demo/
 odir=dl
 mkdir -p ${odir}
 
-[ -r ${odir}/dmon.h ] ||
-	curl -L --output ${odir}/dmon.h https://raw.githubusercontent.com/septag/dmon/master/dmon.h
-cp dl/dmon.h cjit-demo/include/
-[ -r ${odir}/nuklear.h ] ||
-    curl -L --output ${odir}/nuklear.h https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/master/nuklear.h
+cp test/dmon.h cjit-demo/include/
+curl --fail --silent --show-error --location --retry 3 \
+    --output "${odir}/nuklear.h" \
+    "https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/${NUKLEAR_REF}/nuklear.h"
 cp dl/nuklear.h cjit-demo/include
-[ -r ${odir}/miniaudio.h ] ||
-	curl -L --output ${odir}/miniaudio.h https://raw.githubusercontent.com/mackron/miniaudio/master/miniaudio.h
+curl --fail --silent --show-error --location --retry 3 \
+	--output "${odir}/miniaudio.h" \
+	"https://raw.githubusercontent.com/mackron/miniaudio/${MINIAUDIO_REF}/miniaudio.h"
 cp dl/miniaudio.h cjit-demo/include
-[ -r ${odir}/termbox2.h ] ||
-	curl -L --output ${odir}/termbox2.h https://raw.githubusercontent.com/termbox/termbox2/refs/heads/master/termbox2.h
+curl --fail --silent --show-error --location --retry 3 \
+	--output "${odir}/termbox2.h" \
+	"https://raw.githubusercontent.com/termbox/termbox2/${TERMBOX2_REF}/termbox2.h"
 cp dl/termbox2.h cjit-demo/include
 
 mkdir -p cjit-demo/include/SDL2

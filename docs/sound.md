@@ -34,6 +34,9 @@ is an example of sin wave synthesis that runs smoothly in CJIT:
 #define MA_NO_DECODING
 #define MA_NO_ENCODING
 #define MINIAUDIO_IMPLEMENTATION
+#if !defined(_WIN32)
+#pragma comment(lib, "m")
+#endif
 #include <miniaudio.h>
 #include <stdio.h>
 #define DEVICE_FORMAT       ma_format_f32

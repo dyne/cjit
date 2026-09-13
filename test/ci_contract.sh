@@ -48,6 +48,7 @@ require_job linux-sanitizer 'make debug-asan CC=clang'
 require_job linux-sanitizer 'make fuzz-smoke'
 require_job linux-coverage 'make coverage CC=clang'
 require_job linux-dmon 'CJIT_REQUIRED_PLATFORM=linux make run-dmon-suite'
+require_job tutorial-examples 'make check-tutorial-examples'
 require_job debian-test 'make meson'
 require_job debian-test 'make check-ci'
 require_job osx-native-test 'make apple-osx'
@@ -57,7 +58,7 @@ require_job win-mingw-test 'CJIT_REQUIRED_PLATFORM: windows'
 require_job win-msvc-test 'make win-msvc'
 require_job win-msvc-test 'check-unit-msvc'
 require_job win-msvc-test 'Run MSVC unit tests'
-require_job semantic-release 'needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, debian-test, osx-native-test, win-mingw-test, win-msvc-test]'
+require_job semantic-release 'needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, tutorial-examples, debian-test, osx-native-test, win-mingw-test, win-msvc-test]'
 require_job_order virustotal 'actions/checkout@' './test/release_artifact_set.sh'
 
 grep -Fxq $'\tdate | tee .build_done_win' build/win-msvc.mk || {
@@ -102,4 +103,4 @@ if grep -Eq '^[[:space:]]+(actions|deployments|id-token|packages|pages|security-
     printf 'Workflow grants an unapproved write permission\n' >&2; exit 1
 fi
 
-printf 'CI_CONTRACT lanes=8 capabilities=17 workflow=%s\n' "$workflow"
+printf 'CI_CONTRACT lanes=9 capabilities=18 workflow=%s\n' "$workflow"

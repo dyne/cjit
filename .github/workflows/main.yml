@@ -7,6 +7,11 @@ on:
       - '**'
       - '!docs/**'
       - '!**/*.md'
+      - 'docs/tutorial.md'
+      - 'docs/graphics.md'
+      - 'docs/sound.md'
+      - 'docs/filesystem.md'
+      - 'docs/tui.md'
       - '!.github/workflows/docs-pages.yml'
   pull_request:
     branches:
@@ -15,6 +20,11 @@ on:
       - '**'
       - '!docs/**'
       - '!**/*.md'
+      - 'docs/tutorial.md'
+      - 'docs/graphics.md'
+      - 'docs/sound.md'
+      - 'docs/filesystem.md'
+      - 'docs/tui.md'
       - '!.github/workflows/docs-pages.yml'
 
 concurrency:
@@ -140,6 +150,23 @@ jobs:
         run: |
           CJIT_REQUIRED_PLATFORM=linux make run-dmon-suite
 
+  tutorial-examples:
+    name: 📚 Tutorial examples
+    needs: [reuse, c-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install tutorial library headers
+        run: |
+          sudo apt-get -qy update
+          sudo apt-get -qy install libsdl2-dev libopengl-dev
+      - name: Build Linux target
+        run: |
+          make linux CC=clang
+      - name: Link tutorial examples
+        run: |
+          make check-tutorial-examples
+
   debian-test:
     name: 🐧 Debian (tcc shlib) test
     needs: [reuse, c-lint]
@@ -207,7 +234,7 @@ jobs:
 
   semantic-release:
     name: 🤖 Semantic release
-    needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, debian-test, osx-native-test, win-mingw-test, win-msvc-test]
+    needs: [linux-test, linux-sanitizer, linux-coverage, linux-dmon, tutorial-examples, debian-test, osx-native-test, win-mingw-test, win-msvc-test]
     permissions:
       contents: write
       issues: write

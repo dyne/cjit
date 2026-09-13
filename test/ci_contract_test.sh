@@ -21,6 +21,7 @@ done <<'CASES'
 linux-fuzz|make fuzz-smoke|make fuzz-disabled
 macos-native|make apple-osx|make apple-disabled
 windows-msvc|check-unit-msvc|check-unit-disabled
+tutorial-examples|make check-tutorial-examples|make tutorial-examples-disabled
 CASES
 
 cp .github/workflows/main.yml "$fixture"
